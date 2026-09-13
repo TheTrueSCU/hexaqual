@@ -1,0 +1,72 @@
+[project]
+name = "hexaqual"
+version = "0.0.0"
+description = "Universal Python quality gates, architectural boundary enforcement, and release engineering toolchain."
+readme = "README.md"
+license = "Apache-2.0"
+authors = [
+    { name = "Richard West", email = "dopplereffect.us@gmail.com" }
+]
+requires-python = ">=3.13"
+dependencies = [
+    "hexaflow>=0.1.0",
+    "pydantic>=2.10.0",
+    "rich>=13.9.0",
+    "typer>=0.15.0",
+]
+
+classifiers = [
+    "Development Status :: 2 - Pre-Alpha",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: Apache Software License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Software Development :: Quality Assurance",
+    "Topic :: Software Development :: Testing",
+]
+
+[project.urls]
+Homepage = "https://github.com/TheTrueSCU/hexaqual"
+Repository = "https://github.com/TheTrueSCU/hexaqual"
+Documentation = "https://dopplereffect.us/hexaqual/"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[dependency-groups]
+dev = [
+    "hypothesis>=6.168.0",
+    "pre-commit>=4.6.2",
+    "pytest>=9.1.1",
+    "pytest-asyncio>=1.4.0",
+    "pytest-cov>=7.1.0",
+    "ruff>=0.16.2",
+    "ty>=0.0.75",
+]
+
+[tool.pytest.ini_options]
+minversion = "8.0"
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+asyncio_mode = "auto"
+addopts = "-ra -q --strict-markers"
+
+[tool.ruff]
+line-length = 100
+target-version = "py313"
+
+[tool.ruff.lint]
+select = [
+    "E", "F", "W", "I", "UP", "B", "C4", "SIM", "RUF"
+]
+ignore = ["E501"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["hexaqual"]
+
+[project.scripts]
+hexaqual = "hexaqual.cli.main:app"
+hq = "hexaqual.cli.main:app"
