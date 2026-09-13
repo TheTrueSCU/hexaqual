@@ -18,9 +18,7 @@ def test_pytest_runner_callables() -> None:
 @patch("sys.argv", ["pytest-archon-generate", "-p", "core"])
 def test_archon_generate_main(tmp_path: Path) -> None:
     """Verify archon_generate_main generates architecture boundary test."""
-    with patch(
-        "hexaqual.commands.pytest_runner.get_repo_root", return_value=tmp_path
-    ):
+    with patch("hexaqual.commands.pytest_runner.get_repo_root", return_value=tmp_path):
         pkg_dir = tmp_path / "packages" / "hexastack_core"
         (pkg_dir / "src" / "hexastack_core" / "domain").mkdir(parents=True)
         (pkg_dir / "src" / "hexastack_core" / "ports").mkdir(parents=True)
@@ -42,9 +40,7 @@ def test_run_main_with_context(
     mock_exit: MagicMock, mock_subproc: MagicMock, tmp_path: Path
 ) -> None:
     """Verify run_main forwards -n 0 and --cov-context=test when --with-context is enabled."""
-    with patch(
-        "hexaqual.commands.pytest_runner.get_repo_root", return_value=tmp_path
-    ):
+    with patch("hexaqual.commands.pytest_runner.get_repo_root", return_value=tmp_path):
         pkg_dir = tmp_path / "packages" / "hexastack_core"
         (pkg_dir / "src").mkdir(parents=True)
         (pkg_dir / "tests").mkdir(parents=True)
@@ -63,9 +59,7 @@ def test_run_main_with_example(
     mock_exit: MagicMock, mock_subproc: MagicMock, tmp_path: Path
 ) -> None:
     """Verify run_main resolves example test path and adds src to sys.path."""
-    with patch(
-        "hexaqual.commands.pytest_runner.get_repo_root", return_value=tmp_path
-    ):
+    with patch("hexaqual.commands.pytest_runner.get_repo_root", return_value=tmp_path):
         ex_dir = tmp_path / "examples" / "financial-ledger"
         (ex_dir / "src" / "financial_ledger").mkdir(parents=True)
         (ex_dir / "tests").mkdir(parents=True)
@@ -87,9 +81,7 @@ def test_run_main_with_affected(
     mock_git: MagicMock, mock_exit: MagicMock, mock_subproc: MagicMock, tmp_path: Path
 ) -> None:
     """Verify run_main resolves affected package test path when -A is passed."""
-    with patch(
-        "hexaqual.commands.pytest_runner.get_repo_root", return_value=tmp_path
-    ):
+    with patch("hexaqual.commands.pytest_runner.get_repo_root", return_value=tmp_path):
         pkg_dir = tmp_path / "packages" / "hexastack_core"
         (pkg_dir / "src" / "hexastack_core").mkdir(parents=True)
         (pkg_dir / "tests" / "unit").mkdir(parents=True)

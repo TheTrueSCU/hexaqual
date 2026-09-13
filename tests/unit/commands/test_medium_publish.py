@@ -103,9 +103,7 @@ def test_parse_article_with_tracking_fields(tmp_path: Path) -> None:
     f.write_text(_SAMPLE_MD_WITH_IDS, encoding="utf-8")
     payload = _parse_article(f.read_text(), f)
     assert payload.front_matter.devto_id == 999
-    assert (
-        payload.front_matter.devto_url == "https://dev.to/user/already-uploaded-abc12"
-    )
+    assert payload.front_matter.devto_url == "https://dev.to/user/already-uploaded-abc12"
 
 
 def test_parse_article_missing_frontmatter_exits(tmp_path: Path) -> None:
@@ -132,9 +130,7 @@ def test_write_front_matter_roundtrip(article_file: Path) -> None:
     assert updated.front_matter.devto_id == 12345
     assert updated.front_matter.devto_url == "https://dev.to/user/test-article-abc12"
     # canonical_url should be set to devto_url automatically
-    assert (
-        updated.front_matter.canonical_url == "https://dev.to/user/test-article-abc12"
-    )
+    assert updated.front_matter.canonical_url == "https://dev.to/user/test-article-abc12"
     # Original body is preserved
     assert "# Test Article Title" in updated.body_markdown
 
@@ -267,9 +263,7 @@ def test_run_main_status_with_json_format(medium_dir: Path) -> None:
             return_value=medium_dir,
         ),
         patch("sys.argv", ["medium-publish", "--status", "--format", "json"]),
-        patch(
-            "hexaqual.infra.bootstrap.create_governance_bus"
-        ) as mock_bus_factory,
+        patch("hexaqual.infra.bootstrap.create_governance_bus") as mock_bus_factory,
     ):
         from hexaqual.domain.refactoring import MediumPublishReport
 

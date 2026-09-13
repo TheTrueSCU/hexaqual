@@ -80,9 +80,7 @@ def test_concrete_dependency_presenter_port():
         def present_import_linter(self, report: ImportLinterReport) -> int:
             return report.exit_code
 
-        def present_unified_deps_audit(
-            self, report: UnifiedDependencyAuditReport
-        ) -> int:
+        def present_unified_deps_audit(self, report: UnifiedDependencyAuditReport) -> int:
             return 0 if report.is_healthy else 1
 
     presenter = DummyPresenter()

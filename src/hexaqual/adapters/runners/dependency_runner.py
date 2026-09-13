@@ -92,9 +92,7 @@ class SubprocessDependencyAuditorAdapter(DependencyAuditorPort):
         res = subprocess.run(cmd, capture_output=True, text=True)
         if res.returncode != 0:
             err = (res.stdout.strip() + "\n" + res.stderr.strip()).strip()
-            return DeptryPackageResult(
-                package_name=pkg_dir.name, passed=False, error_output=err
-            )
+            return DeptryPackageResult(package_name=pkg_dir.name, passed=False, error_output=err)
         return DeptryPackageResult(package_name=pkg_dir.name, passed=True)
 
     def run_import_linter(self, pkg_dir: Path) -> ImportLinterPackageResult:

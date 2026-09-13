@@ -114,9 +114,7 @@ def run_target_fuzz(
     return results
 
 
-def run_snapshot_update_for_dir(
-    target_dir: Path, mode: str, root_dir: Path | None = None
-) -> int:
+def run_snapshot_update_for_dir(target_dir: Path, mode: str, root_dir: Path | None = None) -> int:
     """Run pytest in single-process snapshot mode for the target directory.
 
     Args:
@@ -314,22 +312,14 @@ class UpdateInlineSnapshotsHandler:
         """
         from hexaqual.utils.workspace import get_package_directories
 
-        targets = (
-            list(command.targets)
-            if command.targets
-            else get_package_directories(self._root)
-        )
+        targets = list(command.targets) if command.targets else get_package_directories(self._root)
 
         exit_code = 0
         updated: list[str] = []
         for target in targets:
             code = run_snapshot_update_for_dir(target, command.mode, self._root)
             updated.append(
-                str(
-                    target.relative_to(self._root)
-                    if target.is_relative_to(self._root)
-                    else target
-                )
+                str(target.relative_to(self._root) if target.is_relative_to(self._root) else target)
             )
             if code != 0:
                 exit_code = code
@@ -342,8 +332,8 @@ class UpdateInlineSnapshotsHandler:
 
 __all__ = [
     "FuzzRunHandler",
-    "run_snapshot_update_for_dir",
-    "run_target_fuzz",
     "ScanCodeQlHandler",
     "UpdateInlineSnapshotsHandler",
+    "run_snapshot_update_for_dir",
+    "run_target_fuzz",
 ]

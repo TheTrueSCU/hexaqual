@@ -66,9 +66,7 @@ def run_main(argv: list[str] | None = None) -> int:
     Returns:
         Exit code (0 for success, non-zero for failures).
     """
-    ensure_tool_installed(
-        "importlinter", cli_command="lint-imports", extra_name="governance"
-    )
+    ensure_tool_installed("importlinter", cli_command="lint-imports", extra_name="governance")
 
     parser = argparse.ArgumentParser(description="Run import-linter per package.")
     parser.add_argument("files", nargs="*", help="Changed files passed by pre-commit")
@@ -95,9 +93,7 @@ def run_main(argv: list[str] | None = None) -> int:
             try:
                 rel = Path(file_str).relative_to(packages_dir)
                 pkg_dir = packages_dir / rel.parts[0]
-                if (
-                    pkg_dir / "pyproject.toml"
-                ).is_file() and pkg_dir not in target_list:
+                if (pkg_dir / "pyproject.toml").is_file() and pkg_dir not in target_list:
                     target_list.append(pkg_dir)
             except ValueError:
                 continue

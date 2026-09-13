@@ -51,6 +51,4 @@ def test_main_fix_with_presenter() -> None:
         ),
     ):
         main_fix(presenter=mock_presenter)
-        mock_presenter.present_all_statements.assert_called_once_with(
-            [], modified_count=0
-        )
+        mock_presenter.present_all_statements.assert_called_once_with([], modified_count=0)

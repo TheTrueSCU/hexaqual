@@ -96,9 +96,7 @@ class InspectMutationCacheHandler:
         Returns:
             MutationAuditReport domain model.
         """
-        records = self._runner.read_mutmut_cache(
-            command.cache_file, package_filter=command.package
-        )
+        records = self._runner.read_mutmut_cache(command.cache_file, package_filter=command.package)
         if not records:
             return MutationAuditReport(summaries=(), actionable_mutants=())
 
@@ -129,9 +127,7 @@ class InspectMutationCacheHandler:
                 covering_tests: tuple[str, ...] = ()
                 if command.correlate_coverage and command.coverage_file:
                     covering_tests = tuple(
-                        self._runner.get_tests_covering_line(
-                            fname, 1, command.coverage_file
-                        )
+                        self._runner.get_tests_covering_line(fname, 1, command.coverage_file)
                     )
 
                 actionable_mutants.append(
@@ -184,9 +180,7 @@ class AuditTestBoundariesHandler:
             BoundaryAuditReport domain model.
         """
         leaks = self._runner.audit_layer_boundary_leaks(command.coverage_file)
-        return BoundaryAuditReport(
-            leaks=tuple(BoundaryAuditItem(c, f) for c, f in leaks)
-        )
+        return BoundaryAuditReport(leaks=tuple(BoundaryAuditItem(c, f) for c, f in leaks))
 
 
 class AuditTestRedundancyHandler:
@@ -233,9 +227,7 @@ class RunImpactedTestsHandler:
         Returns:
             ImpactedTestsReport domain model.
         """
-        changed_lines = self._runner.get_changed_lines(
-            command.repo_root, command.base_ref
-        )
+        changed_lines = self._runner.get_changed_lines(command.repo_root, command.base_ref)
         changed_files = tuple(sorted(str(p) for p in changed_lines))
 
         if not changed_lines:
@@ -246,9 +238,7 @@ class RunImpactedTestsHandler:
                 exit_code=0,
             )
 
-        impacted = self._runner.find_impacted_tests(
-            changed_lines, command.coverage_file
-        )
+        impacted = self._runner.find_impacted_tests(changed_lines, command.coverage_file)
         impacted_tuple = tuple(sorted(impacted))
 
         if not impacted_tuple or command.dry_run:

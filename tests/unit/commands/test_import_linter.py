@@ -88,9 +88,7 @@ def test_run_main_dispatches_and_presents(tmp_path: Path) -> None:
         cmd = mock_bus.dispatch.call_args[0][0]
         assert isinstance(cmd, RunImportLinterCommand)
         assert cmd.all_packages is True
-        mock_presenter.present_import_linter.assert_called_once_with(
-            mock_bus.dispatch.return_value
-        )
+        mock_presenter.present_import_linter.assert_called_once_with(mock_bus.dispatch.return_value)
 
 
 def test_run_main_no_targets(tmp_path: Path) -> None:

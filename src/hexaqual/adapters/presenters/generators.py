@@ -112,13 +112,9 @@ class RichGeneratorPresenterAdapter(GeneratorPresenterPort):
             Informs the developer about created or skipped architecture boundary tests.
         """
         for f in report.generated_files:
-            self.console.print(
-                f"[bold green]✓[/bold green] Scaffolded boundary tests in {f}"
-            )
+            self.console.print(f"[bold green]✓[/bold green] Scaffolded boundary tests in {f}")
         for s in report.skipped_files:
-            self.console.print(
-                f"[dim]Skipped {s} (no standard hexagonal layers present)[/dim]"
-            )
+            self.console.print(f"[dim]Skipped {s} (no standard hexagonal layers present)[/dim]")
         return 0 if report.is_successful else 1
 
 
@@ -135,8 +131,7 @@ class JsonGeneratorPresenterAdapter(GeneratorPresenterPort):
             "is_successful": report.is_successful,
             "total_diagrams": len(report.results),
             "diagrams": [
-                {"name": r.name, "path": r.path, "success": r.success}
-                for r in report.results
+                {"name": r.name, "path": r.path, "success": r.success} for r in report.results
             ],
         }
         self.console.print_json(data=data)
@@ -249,8 +244,8 @@ def create_generator_presenter(
 
 
 __all__ = [
-    "create_generator_presenter",
     "JsonGeneratorPresenterAdapter",
     "MarkdownGeneratorPresenterAdapter",
     "RichGeneratorPresenterAdapter",
+    "create_generator_presenter",
 ]

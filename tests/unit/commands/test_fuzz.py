@@ -141,9 +141,7 @@ def test_main_cli_success():
 
         exit_code = main()
         assert exit_code == 0
-        mock_run.assert_called_once_with(
-            target="sanitizer", runs=10, engine="standalone"
-        )
+        mock_run.assert_called_once_with(target="sanitizer", runs=10, engine="standalone")
 
 
 def test_main_cli_error_handling():

@@ -94,8 +94,6 @@ def test_update_inline_snapshots_handler(tmp_path: Path) -> None:
         "hexaqual.infra.handlers.analysis.run_snapshot_update_for_dir",
         return_value=0,
     ):
-        report = handler.handle(
-            UpdateInlineSnapshotsCommand(mode="fix", targets=(target,))
-        )
+        report = handler.handle(UpdateInlineSnapshotsCommand(mode="fix", targets=(target,)))
         assert report.exit_code == 0
         assert len(report.targets_updated) == 1

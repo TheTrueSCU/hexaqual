@@ -15,9 +15,7 @@ from hexaqual.domain.github import OutputFormat, ReviewThread
 console = Console()
 
 
-def build_security_comments_table(
-    threads: tuple[ReviewThread, ...], pr_number: int
-) -> Table:
+def build_security_comments_table(threads: tuple[ReviewThread, ...], pr_number: int) -> Table:
     """Construct Rich table for PR review and security comments."""
     table = Table(
         title=f"[bold cyan]Review & Security Comments on PR #{pr_number} ({len(threads)} threads)[/bold cyan]",
@@ -52,9 +50,7 @@ def build_security_comments_table(
     return table
 
 
-def render_security_comments_json(
-    threads: tuple[ReviewThread, ...], pr_number: int
-) -> str:
+def render_security_comments_json(threads: tuple[ReviewThread, ...], pr_number: int) -> str:
     """Serialize review threads to JSON."""
     data = {
         "pr_number": pr_number,
@@ -81,9 +77,7 @@ def render_security_comments_json(
     return json.dumps(data, indent=2)
 
 
-def render_security_comments_plain(
-    threads: tuple[ReviewThread, ...], pr_number: int
-) -> str:
+def render_security_comments_plain(threads: tuple[ReviewThread, ...], pr_number: int) -> str:
     """Serialize review threads to plain TSV lines."""
     lines = [f"PR\t{pr_number}\t{len(threads)}"]
     for t in threads:

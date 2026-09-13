@@ -47,9 +47,7 @@ def test_create_testing_presenter():
     """Verify presenter factory returns correct adapter instance."""
     assert isinstance(create_testing_presenter("table"), RichTestingPresenterAdapter)
     assert isinstance(create_testing_presenter("json"), JsonTestingPresenterAdapter)
-    assert isinstance(
-        create_testing_presenter("markdown"), MarkdownTestingPresenterAdapter
-    )
+    assert isinstance(create_testing_presenter("markdown"), MarkdownTestingPresenterAdapter)
 
 
 def test_rich_mutation_presenter():

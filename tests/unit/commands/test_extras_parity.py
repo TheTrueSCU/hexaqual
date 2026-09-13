@@ -68,9 +68,7 @@ def test_main_dispatches_and_presents() -> None:
         cmd = mock_bus.dispatch.call_args[0][0]
         assert isinstance(cmd, AuditExtrasParityCommand)
         assert cmd.generate_diagram is False
-        mock_presenter.present_extras_parity.assert_called_once_with(
-            mock_bus.dispatch.return_value
-        )
+        mock_presenter.present_extras_parity.assert_called_once_with(mock_bus.dispatch.return_value)
 
 
 def test_main_diagram_flag() -> None:

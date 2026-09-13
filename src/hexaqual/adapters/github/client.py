@@ -158,9 +158,7 @@ class GitHubHttpAdapter(GitHubApiPort):
         data_repo = resp_repo.json()
 
         # 2. Actions permissions
-        resp_act = self._client.get(
-            f"/repos/{target_owner}/{target_repo}/actions/permissions"
-        )
+        resp_act = self._client.get(f"/repos/{target_owner}/{target_repo}/actions/permissions")
         data_act = resp_act.json() if resp_act.status_code == 200 else {}
 
         # 3. Actions workflow permissions
@@ -174,9 +172,7 @@ class GitHubHttpAdapter(GitHubApiPort):
         envs_list: list[str] = []
         if resp_env.status_code == 200:
             envs_list = [
-                e.get("name", "")
-                for e in resp_env.json().get("environments", [])
-                if e.get("name")
+                e.get("name", "") for e in resp_env.json().get("environments", []) if e.get("name")
             ]
 
         # 5. Branch protection for default branch
@@ -188,13 +184,9 @@ class GitHubHttpAdapter(GitHubApiPort):
         require_conv_res = False
         if resp_prot.status_code == 200:
             data_prot = resp_prot.json()
-            required_checks = data_prot.get("required_status_checks", {}).get(
-                "contexts", []
-            )
+            required_checks = data_prot.get("required_status_checks", {}).get("contexts", [])
             require_conv_res = bool(
-                data_prot.get("required_conversation_resolution", {}).get(
-                    "enabled", False
-                )
+                data_prot.get("required_conversation_resolution", {}).get("enabled", False)
             )
 
         return RepoStatus(
@@ -210,9 +202,7 @@ class GitHubHttpAdapter(GitHubApiPort):
             has_pages=bool(data_repo.get("has_pages", False)),
             actions_enabled=bool(data_act.get("enabled", True)),
             allowed_actions=str(data_act.get("allowed_actions", "all")),
-            default_workflow_permissions=str(
-                data_wf.get("default_workflow_permissions", "read")
-            ),
+            default_workflow_permissions=str(data_wf.get("default_workflow_permissions", "read")),
             can_approve_pull_request_reviews=bool(
                 data_wf.get("can_approve_pull_request_reviews", False)
             ),
@@ -290,9 +280,7 @@ class GitHubHttpAdapter(GitHubApiPort):
 
     def get_check_runs(self, ref: str) -> list[CheckRunFinding]:
         """Fetch check runs and commit statuses for a ref."""
-        resp = self._client.get(
-            f"/repos/{self.owner}/{self.repo}/commits/{ref}/check-runs"
-        )
+        resp = self._client.get(f"/repos/{self.owner}/{self.repo}/commits/{ref}/check-runs")
         if resp.status_code != 200:
             return []
 
@@ -360,9 +348,7 @@ class GitHubHttpAdapter(GitHubApiPort):
         for t in threads_nodes:
             thread_id = t.get("id", "")
             is_resolved = bool(t.get("isResolved", False))
-            resolved_by = (
-                t.get("resolvedBy", {}).get("login") if t.get("resolvedBy") else None
-            )
+            resolved_by = t.get("resolvedBy", {}).get("login") if t.get("resolvedBy") else None
 
             comments_list: list[ReviewComment] = []
             for c in t.get("comments", {}).get("nodes", []):
@@ -507,9 +493,7 @@ class GitHubHttpAdapter(GitHubApiPort):
         params: dict[str, Any] = {"per_page": limit}
         if branch:
             params["branch"] = branch
-        resp = self._client.get(
-            f"/repos/{self.owner}/{self.repo}/actions/runs", params=params
-        )
+        resp = self._client.get(f"/repos/{self.owner}/{self.repo}/actions/runs", params=params)
         if resp.status_code != 200:
             return []
         data = resp.json().get("workflow_runs", [])
@@ -529,6 +513,6 @@ class GitHubHttpAdapter(GitHubApiPort):
 
 
 __all__ = [
-    "get_github_token",
     "GitHubHttpAdapter",
+    "get_github_token",
 ]

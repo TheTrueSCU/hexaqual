@@ -54,27 +54,19 @@ def test_leaf_governance_handlers():
     mock_runner.run_ruff.assert_called_once()
 
     h_ty = RunTypecheckHandler(mock_runner)
-    assert (
-        h_ty.handle(RunTypecheckCommand(paths=(Path(),), target_name="cqrs"))
-        == expected_res
-    )
+    assert h_ty.handle(RunTypecheckCommand(paths=(Path(),), target_name="cqrs")) == expected_res
     mock_runner.run_ty.assert_called_once()
 
     h_cpx = AuditComplexityHandler(mock_runner)
     assert (
-        h_cpx.handle(
-            AuditComplexityCommand(
-                paths=(Path(),), target_name="cqrs", max_complexity=25
-            )
-        )
+        h_cpx.handle(AuditComplexityCommand(paths=(Path(),), target_name="cqrs", max_complexity=25))
         == expected_res
     )
     mock_runner.run_complexipy.assert_called_once()
 
     h_all = CheckAllStatementsHandler(mock_runner)
     assert (
-        h_all.handle(CheckAllStatementsCommand(paths=(Path(),), target_name="cqrs"))
-        == expected_res
+        h_all.handle(CheckAllStatementsCommand(paths=(Path(),), target_name="cqrs")) == expected_res
     )
     mock_runner.run_all_statements.assert_called_once()
 
@@ -87,9 +79,7 @@ def test_leaf_governance_handlers():
 
     h_pytest = RunPytestHandler(mock_runner)
     assert (
-        h_pytest.handle(
-            RunPytestCommand(target=target, repo_root=Path("/tmp"), skip=True)
-        )
+        h_pytest.handle(RunPytestCommand(target=target, repo_root=Path("/tmp"), skip=True))
         == expected_res
     )
     mock_runner.run_pytest.assert_called_once()

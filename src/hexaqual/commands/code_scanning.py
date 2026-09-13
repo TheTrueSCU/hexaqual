@@ -34,9 +34,7 @@ def _filter_alerts(
     if rule_filter:
         filtered = [a for a in filtered if rule_filter.lower() in a.rule_id.lower()]
     if severity_filter:
-        filtered = [
-            a for a in filtered if a.severity.lower() == severity_filter.lower()
-        ]
+        filtered = [a for a in filtered if a.severity.lower() == severity_filter.lower()]
     if package_filter:
         filtered = [a for a in filtered if package_filter.lower() in a.path.lower()]
     return filtered
@@ -70,9 +68,7 @@ def _build_rule_summary_table(
         else:
             sev_styled = f"[dim cyan]{sev}[/dim cyan]"
 
-        table.add_row(
-            rule_id, sev_styled, str(len(rule_alerts)), sample.rule_description
-        )
+        table.add_row(rule_id, sev_styled, str(len(rule_alerts)), sample.rule_description)
     return table
 
 
@@ -191,9 +187,7 @@ def main() -> int:
             format_name=args.format,
         )
     except Exception as exc:
-        console.print(
-            f"[bold red]Error querying code scanning alerts:[/bold red] {exc}"
-        )
+        console.print(f"[bold red]Error querying code scanning alerts:[/bold red] {exc}")
         return 1
 
 

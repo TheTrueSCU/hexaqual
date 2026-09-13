@@ -39,9 +39,7 @@ def test_classify_mutant_line() -> None:
     cat, _ = classify_mutant_line("user = cast(User, raw_user)", "src/foo.py")
     assert cat == MutantCategory.EQUIVALENT
 
-    cat, _ = classify_mutant_line(
-        "def fn(val: str | None = None) -> None:", "src/foo.py"
-    )
+    cat, _ = classify_mutant_line("def fn(val: str | None = None) -> None:", "src/foo.py")
     assert cat == MutantCategory.EQUIVALENT
 
     cat, _ = classify_mutant_line("val = d.get('key', None)", "src/foo.py")
@@ -116,9 +114,7 @@ def test_mutmut_run_all_packages(mock_exit: MagicMock, mock_run: MagicMock) -> N
 @patch("hexaqual.commands.mutmut.get_db_connection")
 @patch("hexaqual.commands.mutmut.show_summary")
 @patch("sys.argv", ["mutmut-inspect", "--summary"])
-def test_mutmut_inspect_summary(
-    mock_summary: MagicMock, mock_get_conn: MagicMock
-) -> None:
+def test_mutmut_inspect_summary(mock_summary: MagicMock, mock_get_conn: MagicMock) -> None:
     """Verify mutmut inspect_main invokes show_summary when --summary is passed."""
     mock_conn = MagicMock()
     mock_get_conn.return_value = mock_conn

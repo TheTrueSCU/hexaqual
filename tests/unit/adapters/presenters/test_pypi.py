@@ -38,17 +38,13 @@ def _sample_reports() -> tuple[
         dir_path=Path("/pkg"),
         pyproject_path=Path("/pkg/pyproject.toml"),
     )
-    check_rep = PyPiCheckReport(
-        checks=(PackageReleaseCheck(package=meta, exists=False),)
-    )
+    check_rep = PyPiCheckReport(checks=(PackageReleaseCheck(package=meta, exists=False),))
     build_rep = PyPiBuildReport(
         target_dist=Path("/dist"),
         results=(PackageBuildResult(package=meta, success=True),),
     )
     pub_rep = PyPiPublishReport(
-        results=(
-            PackagePublishResult(package=meta, outcome="published", is_success=True),
-        )
+        results=(PackagePublishResult(package=meta, outcome="published", is_success=True),)
     )
     repro_rep = ReproducibleBuildReport(
         epoch="1700000000",
@@ -96,9 +92,7 @@ def test_rich_pypi_presenter_failures() -> None:
     )
     pub_fail = PyPiPublishReport(
         results=(
-            PackagePublishResult(
-                package=meta, outcome="failed", is_success=False, detail="429"
-            ),
+            PackagePublishResult(package=meta, outcome="failed", is_success=False, detail="429"),
             PackagePublishResult(
                 package=meta,
                 outcome="skipped",

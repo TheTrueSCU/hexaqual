@@ -59,9 +59,7 @@ class RunLinterHandler:
         Returns:
             CheckResult outcome.
         """
-        return self._runner.run_ruff(
-            command.paths, command.target_name, fix=command.fix
-        )
+        return self._runner.run_ruff(command.paths, command.target_name, fix=command.fix)
 
 
 class RunTypecheckHandler:
@@ -132,9 +130,7 @@ class CheckAllStatementsHandler:
         Returns:
             CheckResult outcome.
         """
-        return self._runner.run_all_statements(
-            command.paths, command.target_name, fix=command.fix
-        )
+        return self._runner.run_all_statements(command.paths, command.target_name, fix=command.fix)
 
 
 class CheckTestParityHandler:
@@ -180,9 +176,7 @@ class RunPytestHandler:
         Returns:
             CheckResult outcome.
         """
-        return self._runner.run_pytest(
-            command.target, command.repo_root, skip=command.skip
-        )
+        return self._runner.run_pytest(command.target, command.repo_root, skip=command.skip)
 
 
 class RunSanityCheckHandler:

@@ -183,9 +183,7 @@ def test_inspect_checks_handler_pr_number(mock_client: MagicMock) -> None:
 
 def test_inspect_checks_handler_git_ref(mock_client: MagicMock) -> None:
     """Test InspectChecksHandler with git ref string."""
-    finding = CheckRunFinding(
-        name="typecheck", status="completed", conclusion="failure"
-    )
+    finding = CheckRunFinding(name="typecheck", status="completed", conclusion="failure")
     mock_client.get_check_runs.return_value = [finding]
 
     handler = InspectChecksHandler(mock_client)

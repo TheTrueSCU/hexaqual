@@ -50,9 +50,7 @@ def test_usage_docs_domain_models() -> None:
 def test_archon_domain_models() -> None:
     """Verify ArchonReport and GenerateArchonTestsCommand models."""
     report = ArchonReport(
-        generated_files=(
-            "packages/core/tests/architecture/test_hexagonal_boundaries.py",
-        ),
+        generated_files=("packages/core/tests/architecture/test_hexagonal_boundaries.py",),
         skipped_files=(),
         is_successful=True,
     )

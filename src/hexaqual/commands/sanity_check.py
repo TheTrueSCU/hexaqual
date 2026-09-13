@@ -39,10 +39,10 @@ from hexaqual.utils.workspace import (
 
 __all__ = [
     "CheckResult",
+    "SanityTarget",
     "main",
     "resolve_targets",
     "run_sanity_check",
-    "SanityTarget",
 ]
 
 
@@ -118,9 +118,7 @@ def _detect_git_targets(repo_root: Path) -> list[SanityTarget]:
     return targets
 
 
-def _resolve_package_targets(
-    packages: list[str] | None, repo_root: Path
-) -> list[SanityTarget]:
+def _resolve_package_targets(packages: list[str] | None, repo_root: Path) -> list[SanityTarget]:
     """Resolve target packages from CLI package arguments."""
     if not packages:
         return []
@@ -135,21 +133,14 @@ def _resolve_package_targets(
     return targets
 
 
-def _resolve_example_targets(
-    examples: list[str] | None, repo_root: Path
-) -> list[SanityTarget]:
+def _resolve_example_targets(examples: list[str] | None, repo_root: Path) -> list[SanityTarget]:
     """Resolve example projects from CLI arguments."""
     if not examples:
         return []
-    return [
-        _create_example_target(ex, get_example_directory(ex, repo_root))
-        for ex in examples
-    ]
+    return [_create_example_target(ex, get_example_directory(ex, repo_root)) for ex in examples]
 
 
-def _resolve_file_targets(
-    files: list[str] | None, repo_root: Path
-) -> list[SanityTarget]:
+def _resolve_file_targets(files: list[str] | None, repo_root: Path) -> list[SanityTarget]:
     """Resolve individual file targets from CLI arguments."""
     if not files:
         return []
@@ -174,9 +165,7 @@ def _resolve_fallback_targets(repo_root: Path) -> list[SanityTarget]:
     git_targets = _detect_git_targets(repo_root)
     if git_targets:
         return git_targets
-    return [
-        _create_package_target(p.name, p) for p in get_package_directories(repo_root)
-    ]
+    return [_create_package_target(p.name, p) for p in get_package_directories(repo_root)]
 
 
 def resolve_targets(args: argparse.Namespace, repo_root: Path) -> list[SanityTarget]:

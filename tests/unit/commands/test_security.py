@@ -27,9 +27,7 @@ def test_security_command_dispatches() -> None:
             "hexaqual.commands.security.create_governance_bus",
             return_value=mock_bus,
         ),
-        patch(
-            "hexaqual.commands.security.present_security_comments"
-        ) as mock_present,
+        patch("hexaqual.commands.security.present_security_comments") as mock_present,
     ):
         security(pr_number=42, output_format=OutputFormat.RICH)
 

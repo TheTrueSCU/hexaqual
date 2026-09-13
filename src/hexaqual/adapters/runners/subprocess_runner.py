@@ -27,8 +27,8 @@ from hexaqual.utils.all_statements import (
 from hexaqual.utils.test_parity import check_package_parity
 
 __all__ = [
-    "find_executable",
     "SubprocessToolRunnerAdapter",
+    "find_executable",
 ]
 
 
@@ -123,9 +123,7 @@ class SubprocessToolRunnerAdapter(ToolRunnerPort):
                 check=False,
             )
 
-        code_chk, out_chk, err_chk, dur_chk = _execute_subprocess(
-            [ruff_bin, "check", *path_strs]
-        )
+        code_chk, out_chk, err_chk, dur_chk = _execute_subprocess([ruff_bin, "check", *path_strs])
         if code_chk != 0:
             return CheckResult(
                 "Ruff Lint",
@@ -173,9 +171,7 @@ class SubprocessToolRunnerAdapter(ToolRunnerPort):
         """
         path_strs = [str(p) for p in paths if p.exists()]
         if not path_strs:
-            return CheckResult(
-                "Ty Typecheck", target_name, CheckStatus.SKIP, 0.0, "No paths found"
-            )
+            return CheckResult("Ty Typecheck", target_name, CheckStatus.SKIP, 0.0, "No paths found")
 
         ty_bin = find_executable("ty")
         code, out, err, duration = _execute_subprocess([ty_bin, "check", *path_strs])
@@ -249,9 +245,7 @@ class SubprocessToolRunnerAdapter(ToolRunnerPort):
                     continue
 
         if code != 0 or violations:
-            details = (
-                f"{len(violations)} function(s) exceed complexity {max_complexity}"
-            )
+            details = f"{len(violations)} function(s) exceed complexity {max_complexity}"
             return CheckResult(
                 "Cognitive Complexity",
                 target_name,

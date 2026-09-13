@@ -29,12 +29,12 @@ from hexaqual.ports.pypi import PyPiClientPort
 console = Console()
 
 __all__ = [
+    "PackageMetadata",
     "build_all_packages",
     "build_main",
     "check_main",
     "check_pypi_version_exists",
     "get_workspace_packages_metadata",
-    "PackageMetadata",
     "publish_main",
     "publish_packages",
     "reproducible_main",
@@ -88,9 +88,7 @@ def build_all_packages(
 ) -> int:
     """Build distribution artifacts for all workspace packages."""
     bus = create_governance_bus()
-    report = bus.dispatch(
-        BuildPackagesCommand(target_dist=out_dir, package_name=package_name)
-    )
+    report = bus.dispatch(BuildPackagesCommand(target_dist=out_dir, package_name=package_name))
     if not report.results:
         return 1
     presenter = create_pypi_presenter(format_name, console=console)
@@ -241,9 +239,7 @@ def publish_main() -> None:
     if args.build:
         build_rc = build_all_packages(out_dir=args.dist_dir, format_name=args.format)
         if build_rc != 0:
-            console.print(
-                "[bold red]Failed to build all packages. Aborting publish.[/bold red]"
-            )
+            console.print("[bold red]Failed to build all packages. Aborting publish.[/bold red]")
             sys.exit(build_rc)
 
     sys.exit(
@@ -309,9 +305,7 @@ def reproducible_main() -> None:
     if args.package:
         packages = [p for p in packages if p.name == args.package]
         if not packages:
-            console.print(
-                f"[bold red]Package '{args.package}' not found in workspace.[/bold red]"
-            )
+            console.print(f"[bold red]Package '{args.package}' not found in workspace.[/bold red]")
             sys.exit(1)
 
     sys.exit(

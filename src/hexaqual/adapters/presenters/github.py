@@ -31,10 +31,10 @@ from hexaqual.domain.github import (
 from hexaqual.ports.github import GitHubPresenterPort
 
 __all__ = [
-    "create_github_presenter",
     "JsonGitHubPresenterAdapter",
     "MarkdownGitHubPresenterAdapter",
     "RichGitHubPresenterAdapter",
+    "create_github_presenter",
 ]
 
 
@@ -61,9 +61,7 @@ class RichGitHubPresenterAdapter(GitHubPresenterPort):
 
     def present_checks(self, report: ChecksReport) -> int:
         """Render CI check runs status table."""
-        present_checks(
-            list(report.check_runs), report.ref_or_pr, output_format=OutputFormat.RICH
-        )
+        present_checks(list(report.check_runs), report.ref_or_pr, output_format=OutputFormat.RICH)
         return 1 if report.has_failure else 0
 
     def present_repo_status(self, status: RepoStatus) -> int:
@@ -73,9 +71,7 @@ class RichGitHubPresenterAdapter(GitHubPresenterPort):
 
     def present_security_comments(self, report: SecurityCommentsReport) -> int:
         """Render PR review threads and security discussion comments."""
-        present_security_comments(
-            report.threads, report.pr_number, output_format=OutputFormat.RICH
-        )
+        present_security_comments(report.threads, report.pr_number, output_format=OutputFormat.RICH)
         return 0
 
     def present_code_scanning(self, report: CodeScanningReport) -> int:
@@ -127,9 +123,7 @@ class RichGitHubPresenterAdapter(GitHubPresenterPort):
             )
         self._console.print(table)
         if len(report.alerts) > 50:
-            self._console.print(
-                f"[dim]... and {len(report.alerts) - 50} more alerts[/dim]"
-            )
+            self._console.print(f"[dim]... and {len(report.alerts) - 50} more alerts[/dim]")
         return 0
 
 
@@ -222,9 +216,7 @@ class MarkdownGitHubPresenterAdapter(GitHubPresenterPort):
         ]
         for c in s.check_runs:
             c_icon = (
-                "✅"
-                if c.conclusion == "success"
-                else ("❌" if c.conclusion == "failure" else "⏳")
+                "✅" if c.conclusion == "success" else ("❌" if c.conclusion == "failure" else "⏳")
             )
             lines.append(
                 f"| {c.name} | {c.status} | {c_icon} {c.conclusion} | [View]({c.details_url}) |"
@@ -257,9 +249,7 @@ class MarkdownGitHubPresenterAdapter(GitHubPresenterPort):
         ]
         for c in report.check_runs:
             c_icon = (
-                "✅"
-                if c.conclusion == "success"
-                else ("❌" if c.conclusion == "failure" else "⏳")
+                "✅" if c.conclusion == "success" else ("❌" if c.conclusion == "failure" else "⏳")
             )
             lines.append(
                 f"| {c.name} | {c.status} | {c_icon} {c.conclusion} | [Details]({c.details_url}) |"
@@ -295,9 +285,7 @@ class MarkdownGitHubPresenterAdapter(GitHubPresenterPort):
             "",
         ]
         for t in report.threads:
-            lines.append(
-                f"### Thread `{t.id}` ({'Resolved' if t.is_resolved else 'Unresolved'})"
-            )
+            lines.append(f"### Thread `{t.id}` ({'Resolved' if t.is_resolved else 'Unresolved'})")
             for c in t.comments:
                 lines.append(f"- **@{c.author}** ({c.created_at}): {c.body[:200]}")
             lines.append("")

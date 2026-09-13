@@ -29,9 +29,7 @@ class DummyPyPiClient:
     ) -> tuple[bool, str]:
         return True, "built"
 
-    def publish_package(
-        self, files: list[Path], token: str | None = None
-    ) -> tuple[bool, str]:
+    def publish_package(self, files: list[Path], token: str | None = None) -> tuple[bool, str]:
         return True, "published"
 
     def get_git_commit_epoch(self) -> str | None:
@@ -74,17 +72,13 @@ def test_pypi_presenter_port_abstract_methods() -> None:
         pyproject_path=Path("/pkg/pyproject.toml"),
     )
 
-    check_rep = PyPiCheckReport(
-        checks=(PackageReleaseCheck(package=meta, exists=True),)
-    )
+    check_rep = PyPiCheckReport(checks=(PackageReleaseCheck(package=meta, exists=True),))
     build_rep = PyPiBuildReport(
         target_dist=Path("/dist"),
         results=(PackageBuildResult(package=meta, success=True),),
     )
     pub_rep = PyPiPublishReport(
-        results=(
-            PackagePublishResult(package=meta, outcome="published", is_success=True),
-        )
+        results=(PackagePublishResult(package=meta, outcome="published", is_success=True),)
     )
     repro_rep = ReproducibleBuildReport(
         epoch="1700000000",

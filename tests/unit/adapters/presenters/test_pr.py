@@ -99,9 +99,7 @@ def test_render_pr_summary_rich() -> None:
     render_pr_summary_rich(
         summary,
         show_details=True,
-        failed_logs={
-            "Linter": "AssertionError: Expected 200 got 500\nDetails on line 42"
-        },
+        failed_logs={"Linter": "AssertionError: Expected 200 got 500\nDetails on line 42"},
     )
 
 

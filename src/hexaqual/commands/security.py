@@ -39,9 +39,7 @@ def security(
         bus = create_governance_bus()
         report = bus.dispatch(InspectSecurityCommentsCommand(pr_number=pr_number))
 
-        present_security_comments(
-            report.threads, pr_number, output_format=output_format
-        )
+        present_security_comments(report.threads, pr_number, output_format=output_format)
     except Exception as exc:
         typer.secho(f"Error querying PR comments: {exc}", fg=typer.colors.RED, err=True)
         raise typer.Exit(code=1) from exc

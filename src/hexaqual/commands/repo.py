@@ -66,8 +66,8 @@ def main() -> None:
 
 
 __all__ = [
-    "app",
     "GitHubHttpAdapter",
+    "app",
     "main",
     "repo_status",
 ]

@@ -60,9 +60,7 @@ def run_local_codeql_scan(
         db_path = Path(tmp_db_dir) / "db"
         sarif_file = output_sarif or (Path(tmp_db_dir) / "results.sarif")
 
-        console.print(
-            f"[bold cyan]🔍 1. Creating CodeQL database at {db_path}...[/bold cyan]"
-        )
+        console.print(f"[bold cyan]🔍 1. Creating CodeQL database at {db_path}...[/bold cyan]")
 
         create_cmd = [
             codeql_bin,

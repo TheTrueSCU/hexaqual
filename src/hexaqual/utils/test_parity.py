@@ -37,9 +37,7 @@ def check_test_directories_inits(root_dir: Path) -> list[str]:
         List of missing __init__.py error descriptions.
     """
     errors: list[str] = []
-    packages_dir = (
-        root_dir / "packages" if (root_dir / "packages").is_dir() else root_dir
-    )
+    packages_dir = root_dir / "packages" if (root_dir / "packages").is_dir() else root_dir
 
     if packages_dir.name == "packages":
         pkg_dirs = [p for p in sorted(packages_dir.iterdir()) if p.is_dir()]
@@ -131,12 +129,8 @@ def check_package_parity(pkg_dir: Path, repo_root: Path) -> list[str]:
     unit_tests_dir = pkg_dir / "tests" / "unit"
 
     if src_dir.exists() and unit_tests_dir.exists():
-        errors.extend(
-            _check_package_src_symmetry(pkg_dir, repo_root, src_dir, unit_tests_dir)
-        )
-        errors.extend(
-            _check_package_test_symmetry(pkg_dir, repo_root, src_dir, unit_tests_dir)
-        )
+        errors.extend(_check_package_src_symmetry(pkg_dir, repo_root, src_dir, unit_tests_dir))
+        errors.extend(_check_package_test_symmetry(pkg_dir, repo_root, src_dir, unit_tests_dir))
 
     return errors
 
@@ -161,8 +155,12 @@ def check_src_to_test_symmetry(root_dir: Path) -> list[str]:
         module_dir = get_package_module_dir(root_dir)
         unit_tests_dir = root_dir / "tests" / "unit"
         if module_dir and module_dir.exists() and unit_tests_dir.exists():
-            errors.extend(_check_package_src_symmetry(root_dir, root_dir, module_dir, unit_tests_dir))
-            errors.extend(_check_package_test_symmetry(root_dir, root_dir, module_dir, unit_tests_dir))
+            errors.extend(
+                _check_package_src_symmetry(root_dir, root_dir, module_dir, unit_tests_dir)
+            )
+            errors.extend(
+                _check_package_test_symmetry(root_dir, root_dir, module_dir, unit_tests_dir)
+            )
         return errors
 
     for pkg in sorted(packages_dir.iterdir()):
@@ -175,11 +173,7 @@ def check_src_to_test_symmetry(root_dir: Path) -> list[str]:
         if not src_dir.exists() or not unit_tests_dir.exists():
             continue
 
-        errors.extend(
-            _check_package_src_symmetry(pkg, root_dir, src_dir, unit_tests_dir)
-        )
-        errors.extend(
-            _check_package_test_symmetry(pkg, root_dir, src_dir, unit_tests_dir)
-        )
+        errors.extend(_check_package_src_symmetry(pkg, root_dir, src_dir, unit_tests_dir))
+        errors.extend(_check_package_test_symmetry(pkg, root_dir, src_dir, unit_tests_dir))
 
     return errors

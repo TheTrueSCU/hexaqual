@@ -64,11 +64,7 @@ class RichAnalysisPresenterAdapter(AnalysisPresenterPort):
         table.add_column("Status", justify="center")
 
         for r in report.results:
-            status = (
-                "[bold green]PASS[/bold green]"
-                if r.passed
-                else "[bold red]FAIL[/bold red]"
-            )
+            status = "[bold green]PASS[/bold green]" if r.passed else "[bold red]FAIL[/bold red]"
             table.add_row(
                 r.target,
                 r.engine,
@@ -240,8 +236,8 @@ def create_analysis_presenter(
 
 
 __all__ = [
-    "create_analysis_presenter",
     "JsonAnalysisPresenterAdapter",
     "MarkdownAnalysisPresenterAdapter",
     "RichAnalysisPresenterAdapter",
+    "create_analysis_presenter",
 ]

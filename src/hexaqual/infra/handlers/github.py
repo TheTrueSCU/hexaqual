@@ -80,9 +80,7 @@ class ExaminePrHandler:
             ) from exc
         raise RuntimeError("Could not determine PR number from gh CLI output.")
 
-    def _fetch_failed_ci_logs(
-        self, check_runs: tuple[CheckRunFinding, ...]
-    ) -> dict[str, str]:
+    def _fetch_failed_ci_logs(self, check_runs: tuple[CheckRunFinding, ...]) -> dict[str, str]:
         """Extract failed CI logs from check runs.
 
         Args:
@@ -125,9 +123,7 @@ class ExaminePrHandler:
             Orchestrates fetching PR summary and enriching failures with workflow logs.
         """
         target_pr = (
-            command.pr_number
-            if command.pr_number is not None
-            else self._discover_current_pr()
+            command.pr_number if command.pr_number is not None else self._discover_current_pr()
         )
         summary = self._client.get_pr_summary(target_pr)
         failed_logs = self._fetch_failed_ci_logs(summary.check_runs)

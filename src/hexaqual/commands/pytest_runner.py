@@ -60,9 +60,7 @@ def _setup_example_target(example_name: str, sub_dir: str, root: Path) -> str:
         current_pypath = os.environ.get("PYTHONPATH", "")
         if src_path_str not in current_pypath.split(os.pathsep):
             os.environ["PYTHONPATH"] = (
-                f"{src_path_str}{os.pathsep}{current_pypath}"
-                if current_pypath
-                else src_path_str
+                f"{src_path_str}{os.pathsep}{current_pypath}" if current_pypath else src_path_str
             )
     target = ex_dir / sub_dir
     if target.is_dir():
@@ -128,12 +126,8 @@ def _resolve_test_targets(
 def run_main() -> None:
     """CLI entrypoint for pytest-run."""
     parser = argparse.ArgumentParser(description="Run pytest test suite.")
-    parser.add_argument(
-        "-p", "--package", dest="packages", action="append", choices=VALID_PACKAGES
-    )
-    parser.add_argument(
-        "-e", "--example", dest="examples", action="append", choices=VALID_EXAMPLES
-    )
+    parser.add_argument("-p", "--package", dest="packages", action="append", choices=VALID_PACKAGES)
+    parser.add_argument("-e", "--example", dest="examples", action="append", choices=VALID_EXAMPLES)
     parser.add_argument(
         "-a",
         "--all",

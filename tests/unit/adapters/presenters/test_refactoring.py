@@ -20,21 +20,11 @@ from hexaqual.domain.refactoring import (
 
 def test_create_refactoring_presenter_factory() -> None:
     """Verify create_refactoring_presenter instantiates correct adapter."""
-    assert isinstance(
-        create_refactoring_presenter("rich"), RichRefactoringPresenterAdapter
-    )
-    assert isinstance(
-        create_refactoring_presenter("table"), RichRefactoringPresenterAdapter
-    )
-    assert isinstance(
-        create_refactoring_presenter("json"), JsonRefactoringPresenterAdapter
-    )
-    assert isinstance(
-        create_refactoring_presenter("markdown"), MarkdownRefactoringPresenterAdapter
-    )
-    assert isinstance(
-        create_refactoring_presenter("md"), MarkdownRefactoringPresenterAdapter
-    )
+    assert isinstance(create_refactoring_presenter("rich"), RichRefactoringPresenterAdapter)
+    assert isinstance(create_refactoring_presenter("table"), RichRefactoringPresenterAdapter)
+    assert isinstance(create_refactoring_presenter("json"), JsonRefactoringPresenterAdapter)
+    assert isinstance(create_refactoring_presenter("markdown"), MarkdownRefactoringPresenterAdapter)
+    assert isinstance(create_refactoring_presenter("md"), MarkdownRefactoringPresenterAdapter)
 
 
 def test_rich_refactoring_presenter() -> None:

@@ -133,9 +133,7 @@ def _parse_article(text: str, path: Path) -> ArticlePayload:
     """
     match = _FRONT_MATTER_RE.match(text)
     if not match:
-        console.print(
-            "[red]Error:[/] No YAML front matter found (expected --- block at top)."
-        )
+        console.print("[red]Error:[/] No YAML front matter found (expected --- block at top).")
         sys.exit(1)
 
     raw_yaml = match.group(1)
@@ -162,9 +160,7 @@ def _parse_article(text: str, path: Path) -> ArticlePayload:
         medium_url=str(data.pop("medium_url", "") or ""),
         extra=data,
     )
-    return ArticlePayload(
-        front_matter=fm, body_markdown=body, slug=path.stem, path=path
-    )
+    return ArticlePayload(front_matter=fm, body_markdown=body, slug=path.stem, path=path)
 
 
 def _write_front_matter(payload: ArticlePayload) -> None:
@@ -200,9 +196,7 @@ def _write_front_matter(payload: ArticlePayload) -> None:
     if fm.medium_url:
         data["medium_url"] = fm.medium_url
 
-    yaml_block = yaml.dump(
-        data, default_flow_style=False, allow_unicode=True, sort_keys=False
-    )
+    yaml_block = yaml.dump(data, default_flow_style=False, allow_unicode=True, sort_keys=False)
     new_content = f"---\n{yaml_block}---\n{payload.body_markdown}"
     payload.path.write_text(new_content, encoding="utf-8")
 
@@ -300,9 +294,7 @@ def _resolve_article_path(slug: str) -> Path:
         if path.stem == name or path.name == name:
             return path
 
-    console.print(
-        f"[red]Error:[/] Cannot find article [bold]{slug!r}[/] under {medium_dir}"
-    )
+    console.print(f"[red]Error:[/] Cannot find article [bold]{slug!r}[/] under {medium_dir}")
     raise SystemExit(1)
 
 
@@ -418,9 +410,7 @@ def _devto_request(
     return resp.json()
 
 
-def _upload_draft(
-    payload: ArticlePayload, api_key: str, slug_map: dict[str, str]
-) -> dict:
+def _upload_draft(payload: ArticlePayload, api_key: str, slug_map: dict[str, str]) -> dict:
     """POST a new draft article to DEV.to.
 
     Args:
@@ -464,9 +454,7 @@ def _upload_draft(
     return _devto_request("POST", "/articles", api_key, json={"article": article})
 
 
-def _publish_draft(
-    payload: ArticlePayload, api_key: str, slug_map: dict[str, str]
-) -> dict:
+def _publish_draft(payload: ArticlePayload, api_key: str, slug_map: dict[str, str]) -> dict:
     """PATCH an existing draft to published state on DEV.to.
 
     Args:
@@ -543,17 +531,13 @@ def _update_docs_links(repo_root: Path, slug_map: dict[str, str]) -> int:
             continue
         text = md_file.read_text(encoding="utf-8")
         new_text = _DOCS_DEVTO_LINK_RE.sub(
-            lambda m: (
-                f"({slug_map[m.group(1)]})" if m.group(1) in slug_map else m.group(0)
-            ),
+            lambda m: f"({slug_map[m.group(1)]})" if m.group(1) in slug_map else m.group(0),
             text,
         )
         if new_text != text:
             md_file.write_text(new_text, encoding="utf-8")
             updated += 1
-            console.print(
-                f"  [dim]Updated links in {md_file.relative_to(repo_root)}[/]"
-            )
+            console.print(f"  [dim]Updated links in {md_file.relative_to(repo_root)}[/]")
     return updated
 
 
@@ -651,10 +635,7 @@ def _regenerate_blog_index(repo_root: Path, medium_dir: Path) -> None:
         medium = f"[Read →]({fm.medium_url})" if fm and fm.medium_url else "—"
         rows.append(f"| {num} | {title} | {devto} | {medium} |")
 
-    table = (
-        "| # | Title | DEV.to | Medium |\n"
-        "|---|-------|--------|--------|\n" + "\n".join(rows)
-    )
+    table = "| # | Title | DEV.to | Medium |\n|---|-------|--------|--------|\n" + "\n".join(rows)
 
     # Splice the table into the existing index, replacing the old one
     content = blog_index.read_text(encoding="utf-8")
@@ -724,9 +705,7 @@ def _update_readme_registry(medium_dir: Path) -> None:
     readme = readme_path.read_text(encoding="utf-8")
     if _README_REGISTRY_HEADER in readme:
         readme = _README_REGISTRY_RE.sub(
-            lambda m: (
-                new_registry + (m.group(3) if m.group(3).startswith("\n---") else "")
-            ),
+            lambda m: new_registry + (m.group(3) if m.group(3).startswith("\n---") else ""),
             readme,
         )
     else:
@@ -957,9 +936,7 @@ def run_main() -> None:
         console.print(f"Uploading [bold]{len(unposted)}[/] articles as drafts…")
         for payload in unposted:
             if args.dry_run:
-                console.print(
-                    f"  [dim]dry-run:[/] would upload [bold]{payload.slug}[/]"
-                )
+                console.print(f"  [dim]dry-run:[/] would upload [bold]{payload.slug}[/]")
                 continue
             result = _upload_draft(payload, api_key, slug_map)
             payload.front_matter.devto_id = result.get("id")
@@ -985,9 +962,7 @@ def run_main() -> None:
     table.add_row("Tags", ", ".join(_devto_tags(fm.tags)) or "—")
     table.add_row("DEV.to ID", str(fm.devto_id) if fm.devto_id else "[dim]not set[/]")
     table.add_row("DEV.to URL", fm.devto_url or "[dim]not set[/]")
-    table.add_row(
-        "Mode", "[blue]PUBLISH[/]" if args.publish else "[yellow]DRAFT UPLOAD[/]"
-    )
+    table.add_row("Mode", "[blue]PUBLISH[/]" if args.publish else "[yellow]DRAFT UPLOAD[/]")
     console.print(table)
 
     if args.dry_run:

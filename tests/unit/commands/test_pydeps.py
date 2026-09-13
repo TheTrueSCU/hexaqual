@@ -16,9 +16,7 @@ def test_pydeps_generate_main_dispatches_bus() -> None:
     mock_bus = MagicMock()
     mock_report = PydepsReport(
         results=(
-            PydepsDiagramResult(
-                name="core", path="docs/assets/pydeps/core.svg", success=True
-            ),
+            PydepsDiagramResult(name="core", path="docs/assets/pydeps/core.svg", success=True),
         ),
         is_successful=True,
     )

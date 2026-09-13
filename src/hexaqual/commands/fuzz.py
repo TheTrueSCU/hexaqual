@@ -53,9 +53,7 @@ def display_fuzz_results(results: list[dict[str, Any]]) -> int:
 
         crash_style = "bold green" if crashes == 0 else "bold red"
         viol_style = "bold green" if violations == 0 else "bold red"
-        status_badge = (
-            "[bold green]PASS[/bold green]" if passed else "[bold red]FAIL[/bold red]"
-        )
+        status_badge = "[bold green]PASS[/bold green]" if passed else "[bold red]FAIL[/bold red]"
 
         table.add_row(
             r.get("target", "unknown"),

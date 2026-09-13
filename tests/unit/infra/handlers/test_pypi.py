@@ -93,9 +93,7 @@ def test_find_package_dist_files(tmp_path: Path) -> None:
     assert other not in found
 
 
-def test_check_pypi_releases_handler(
-    mock_client: MagicMock, sample_workspace: Path
-) -> None:
+def test_check_pypi_releases_handler(mock_client: MagicMock, sample_workspace: Path) -> None:
     """Test CheckPyPiReleasesHandler with all packages and filtered by name."""
     mock_client.check_version_exists.side_effect = lambda name, ver: name == "pkg-a"
 
@@ -125,9 +123,7 @@ def test_build_packages_handler(
     handler = BuildPackagesHandler(mock_client, repo_root=sample_workspace)
     target_dist = tmp_path / "custom_dist"
 
-    report = handler.handle(
-        BuildPackagesCommand(target_dist=target_dist, package_name="pkg-a")
-    )
+    report = handler.handle(BuildPackagesCommand(target_dist=target_dist, package_name="pkg-a"))
     assert isinstance(report, PyPiBuildReport)
     assert report.has_failure is False
     assert len(report.results) == 1
@@ -152,9 +148,7 @@ def test_publish_packages_handler_full_flow(
     mock_client.publish_package.return_value = (True, "published")
 
     handler = PublishPackagesHandler(mock_client, repo_root=sample_workspace)
-    cmd = PublishPackagesCommand(
-        dist_dir=dist_dir, token="tok", delay=0.0, skip_existing=True
-    )
+    cmd = PublishPackagesCommand(dist_dir=dist_dir, token="tok", delay=0.0, skip_existing=True)
     report = handler.handle(cmd)
 
     assert isinstance(report, PyPiPublishReport)
@@ -182,42 +176,32 @@ def test_publish_packages_handler_skip_and_error_branches(
     # 1. Skip because check_version_exists returns True
     mock_client.check_version_exists.return_value = True
     rep_skip = handler.handle(
-        PublishPackagesCommand(
-            dist_dir=dist_dir, package_name="pkg-a", skip_existing=True
-        )
+        PublishPackagesCommand(dist_dir=dist_dir, package_name="pkg-a", skip_existing=True)
     )
     assert rep_skip.results[0].outcome == "skipped"
 
     # 2. Already exists outcome from upload
     mock_client.check_version_exists.return_value = False
     mock_client.publish_package.return_value = (False, "already_exists")
-    rep_exists = handler.handle(
-        PublishPackagesCommand(dist_dir=dist_dir, package_name="pkg-a")
-    )
+    rep_exists = handler.handle(PublishPackagesCommand(dist_dir=dist_dir, package_name="pkg-a"))
     assert rep_exists.results[0].outcome == "skipped"
 
     # 3. Rate limited outcome from upload
     mock_client.publish_package.return_value = (False, "rate_limited")
-    rep_rate = handler.handle(
-        PublishPackagesCommand(dist_dir=dist_dir, package_name="pkg-a")
-    )
+    rep_rate = handler.handle(PublishPackagesCommand(dist_dir=dist_dir, package_name="pkg-a"))
     assert rep_rate.results[0].outcome == "failed"
     assert "Rate Limited" in rep_rate.results[0].detail
 
     # 4. build_first fails
     mock_client.build_package.return_value = (False, "Build failed")
     rep_build_fail = handler.handle(
-        PublishPackagesCommand(
-            dist_dir=dist_dir, package_name="pkg-a", build_first=True
-        )
+        PublishPackagesCommand(dist_dir=dist_dir, package_name="pkg-a", build_first=True)
     )
     assert rep_build_fail.has_failure is True
     assert "Build failed before publish" in rep_build_fail.results[0].detail
 
 
-def test_verify_reproducible_build_handler(
-    mock_client: MagicMock, sample_workspace: Path
-) -> None:
+def test_verify_reproducible_build_handler(mock_client: MagicMock, sample_workspace: Path) -> None:
     """Test VerifyReproducibleBuildHandler comparing builds across temp directories."""
     handler = VerifyReproducibleBuildHandler(mock_client, repo_root=sample_workspace)
 
@@ -228,9 +212,7 @@ def test_verify_reproducible_build_handler(
         return True, "ok"
 
     mock_client.build_package.side_effect = fake_build
-    cmd = VerifyReproducibleBuildCommand(
-        package_name="pkg-a", source_date_epoch="1700000000"
-    )
+    cmd = VerifyReproducibleBuildCommand(package_name="pkg-a", source_date_epoch="1700000000")
     report = handler.handle(cmd)
 
     assert isinstance(report, ReproducibleBuildReport)

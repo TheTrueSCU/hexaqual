@@ -71,9 +71,7 @@ def test_pypi_publish_report() -> None:
     )
     r1 = PackagePublishResult(package=meta, outcome="published", is_success=True)
     r2 = PackagePublishResult(package=meta, outcome="skipped", is_success=False)
-    r3 = PackagePublishResult(
-        package=meta, outcome="failed", is_success=False, detail="429"
-    )
+    r3 = PackagePublishResult(package=meta, outcome="failed", is_success=False, detail="429")
 
     report = PyPiPublishReport(results=(r1, r2, r3))
     counts = report.counts

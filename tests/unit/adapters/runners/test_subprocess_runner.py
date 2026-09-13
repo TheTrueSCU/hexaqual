@@ -54,26 +54,20 @@ def test_run_ruff_success_and_failures(tmp_path: Path):
     assert skip_res.status == CheckStatus.SKIP
 
     # 2. Success
-    with patch(
-        "hexaqual.adapters.runners.subprocess_runner._execute_subprocess"
-    ) as mock_exec:
+    with patch("hexaqual.adapters.runners.subprocess_runner._execute_subprocess") as mock_exec:
         mock_exec.return_value = (0, "", "", 0.05)
         res = adapter.run_ruff((sample_file,), "pkg", fix=True)
         assert res.status == CheckStatus.PASS
 
     # 3. Lint failure
-    with patch(
-        "hexaqual.adapters.runners.subprocess_runner._execute_subprocess"
-    ) as mock_exec:
+    with patch("hexaqual.adapters.runners.subprocess_runner._execute_subprocess") as mock_exec:
         mock_exec.return_value = (1, "E501 line too long", "", 0.05)
         res = adapter.run_ruff((sample_file,), "pkg")
         assert res.status == CheckStatus.FAIL
         assert "Lint errors detected" in res.details
 
     # 4. Format failure
-    with patch(
-        "hexaqual.adapters.runners.subprocess_runner._execute_subprocess"
-    ) as mock_exec:
+    with patch("hexaqual.adapters.runners.subprocess_runner._execute_subprocess") as mock_exec:
         mock_exec.side_effect = [(0, "", "", 0.05), (1, "would reformat", "", 0.05)]
         res = adapter.run_ruff((sample_file,), "pkg")
         assert res.status == CheckStatus.FAIL
@@ -89,16 +83,12 @@ def test_run_ty_success_and_failure(tmp_path: Path):
     skip_res = adapter.run_ty((tmp_path / "nonexistent.py",), "pkg")
     assert skip_res.status == CheckStatus.SKIP
 
-    with patch(
-        "hexaqual.adapters.runners.subprocess_runner._execute_subprocess"
-    ) as mock_exec:
+    with patch("hexaqual.adapters.runners.subprocess_runner._execute_subprocess") as mock_exec:
         mock_exec.return_value = (0, "All checks passed", "", 0.1)
         res = adapter.run_ty((sample_file,), "pkg")
         assert res.status == CheckStatus.PASS
 
-    with patch(
-        "hexaqual.adapters.runners.subprocess_runner._execute_subprocess"
-    ) as mock_exec:
+    with patch("hexaqual.adapters.runners.subprocess_runner._execute_subprocess") as mock_exec:
         mock_exec.return_value = (1, "Type error on line 1", "", 0.1)
         res = adapter.run_ty((sample_file,), "pkg")
         assert res.status == CheckStatus.FAIL
@@ -114,9 +104,7 @@ def test_run_complexipy_violations(tmp_path: Path):
     assert skip_res.status == CheckStatus.SKIP
 
     cpx_output = "src/pkg/mod.py heavy_function 35\nsrc/pkg/mod.py simple_function 4\n"
-    with patch(
-        "hexaqual.adapters.runners.subprocess_runner._execute_subprocess"
-    ) as mock_exec:
+    with patch("hexaqual.adapters.runners.subprocess_runner._execute_subprocess") as mock_exec:
         mock_exec.return_value = (0, cpx_output, "", 0.15)
         res = adapter.run_complexipy((sample_file,), "pkg", max_complexity=25)
         assert res.status == CheckStatus.FAIL
@@ -164,9 +152,7 @@ def test_run_pytest_variations(tmp_path: Path):
     skip_res = adapter.run_pytest(pkg_target, tmp_path, skip=True)
     assert skip_res.status == CheckStatus.SKIP
 
-    with patch(
-        "hexaqual.adapters.runners.subprocess_runner._execute_subprocess"
-    ) as mock_exec:
+    with patch("hexaqual.adapters.runners.subprocess_runner._execute_subprocess") as mock_exec:
         mock_exec.return_value = (0, "10 passed", "", 0.5)
         pkg_res = adapter.run_pytest(pkg_target, tmp_path)
         assert pkg_res.status == CheckStatus.PASS

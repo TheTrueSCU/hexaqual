@@ -87,12 +87,8 @@ from hexaqual.ports.testing import TestingRunnerPort
 def test_create_governance_bus_wires_and_dispatches():
     """Verify that create_governance_bus correctly wires commands to handlers."""
     mock_runner = MagicMock(spec=ToolRunnerPort)
-    mock_runner.run_ruff.return_value = CheckResult(
-        "Ruff", "test-pkg", CheckStatus.PASS, 0.05
-    )
-    mock_runner.run_ty.return_value = CheckResult(
-        "Ty", "test-pkg", CheckStatus.PASS, 0.05
-    )
+    mock_runner.run_ruff.return_value = CheckResult("Ruff", "test-pkg", CheckStatus.PASS, 0.05)
+    mock_runner.run_ty.return_value = CheckResult("Ty", "test-pkg", CheckStatus.PASS, 0.05)
     mock_runner.run_complexipy.return_value = CheckResult(
         "Complexity", "test-pkg", CheckStatus.PASS, 0.05
     )
@@ -102,9 +98,7 @@ def test_create_governance_bus_wires_and_dispatches():
     mock_runner.run_test_parity.return_value = CheckResult(
         "Parity", "test-pkg", CheckStatus.PASS, 0.05
     )
-    mock_runner.run_pytest.return_value = CheckResult(
-        "Pytest", "test-pkg", CheckStatus.PASS, 0.05
-    )
+    mock_runner.run_pytest.return_value = CheckResult("Pytest", "test-pkg", CheckStatus.PASS, 0.05)
 
     mock_dep_auditor = MagicMock(spec=DependencyAuditorPort)
     mock_dep_auditor.audit_extras_parity.return_value = ExtrasAuditResult(
@@ -273,22 +267,16 @@ def test_create_governance_bus_wires_and_dispatches():
         codeql_res = bus.dispatch(ScanCodeQlCommand())
         assert isinstance(codeql_res, CodeQlScanReport)
 
-    with patch(
-        "hexaqual.infra.handlers.analysis.run_target_fuzz", return_value=[]
-    ):
+    with patch("hexaqual.infra.handlers.analysis.run_target_fuzz", return_value=[]):
         fuzz_res = bus.dispatch(FuzzRunCommand())
         assert isinstance(fuzz_res, FuzzRunReport)
 
-    with patch(
-        "hexaqual.utils.workspace.get_package_directories", return_value=[]
-    ):
+    with patch("hexaqual.utils.workspace.get_package_directories", return_value=[]):
         snap_res = bus.dispatch(UpdateInlineSnapshotsCommand())
         assert isinstance(snap_res, InlineSnapshotsReport)
 
     # 9. Test dispatching Refactoring commands
-    alpha_res = bus.dispatch(
-        AlphabetizeCodeCommand(targets=(Path("/tmp/nonexistent.py"),))
-    )
+    alpha_res = bus.dispatch(AlphabetizeCodeCommand(targets=(Path("/tmp/nonexistent.py"),)))
     assert isinstance(alpha_res, AlphabetizeCodeReport)
 
     medium_res = bus.dispatch(PublishMediumArticlesCommand())

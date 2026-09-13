@@ -19,19 +19,11 @@ def clean_help_output(output: str) -> str:
     capture = False
 
     for line in lines:
-        if (
-            "Usage:" in line
-            or "usage:" in line
-            or capture
-            or "╭─" in line
-            or "Commands" in line
-        ):
+        if "Usage:" in line or "usage:" in line or capture or "╭─" in line or "Commands" in line:
             capture = True
             filtered_lines.append(line.rstrip())
 
-    final_lines = (
-        filtered_lines if filtered_lines else [line.rstrip() for line in lines]
-    )
+    final_lines = filtered_lines if filtered_lines else [line.rstrip() for line in lines]
     return "\n".join(final_lines)
 
 

@@ -50,18 +50,14 @@ def _build_forbidden_contracts(
             continue
 
         active_disallowed = [d for d in disallowed if d in present_layers]
-        if layer in {"domain", "ports"} and all(
-            d in active_layers for d in active_disallowed
-        ):
+        if layer in {"domain", "ports"} and all(d in active_layers for d in active_disallowed):
             continue
 
         if not active_disallowed:
             continue
 
         source_module = f"{pkg_name}.{layer}"
-        forbidden_modules = "\n".join(
-            f'    "{pkg_name}.{d}",' for d in active_disallowed
-        )
+        forbidden_modules = "\n".join(f'    "{pkg_name}.{d}",' for d in active_disallowed)
 
         lines.extend(
             [
@@ -81,9 +77,7 @@ def _build_forbidden_contracts(
 def build_import_linter_toml(pkg_name: str, present_layers: set[str]) -> str:
     """Build the complete [tool.importlinter] TOML section string for a package."""
     active_layers = [
-        layer
-        for layer in ["infra", "adapters", "ports", "domain"]
-        if layer in present_layers
+        layer for layer in ["infra", "adapters", "ports", "domain"] if layer in present_layers
     ]
 
     header = [
@@ -92,9 +86,7 @@ def build_import_linter_toml(pkg_name: str, present_layers: set[str]) -> str:
         "",
     ]
     layers_contract = _build_layers_contract(pkg_name, active_layers)
-    forbidden_contracts = _build_forbidden_contracts(
-        pkg_name, present_layers, active_layers
-    )
+    forbidden_contracts = _build_forbidden_contracts(pkg_name, present_layers, active_layers)
 
     all_lines = header + layers_contract + forbidden_contracts
     return "\n".join(all_lines).strip()

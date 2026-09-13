@@ -23,10 +23,10 @@ from hexaqual.domain.testing import (
 from hexaqual.ports.testing import TestingPresenterPort
 
 __all__ = [
-    "create_testing_presenter",
     "JsonTestingPresenterAdapter",
     "MarkdownTestingPresenterAdapter",
     "RichTestingPresenterAdapter",
+    "create_testing_presenter",
 ]
 
 
@@ -44,14 +44,10 @@ class RichTestingPresenterAdapter(TestingPresenterPort):
     def present_mutation_summary(self, report: MutationAuditReport) -> int:
         """Render high-level mutation triage summary table across packages."""
         if not report.summaries:
-            self._console.print(
-                "[green]✨ No surviving mutants found in cache![/green]"
-            )
+            self._console.print("[green]✨ No surviving mutants found in cache![/green]")
             return 0
 
-        table = Table(
-            title="Surviving Mutants Triage Summary by Package", border_style="cyan"
-        )
+        table = Table(title="Surviving Mutants Triage Summary by Package", border_style="cyan")
         table.add_column("Package", style="bold white", justify="left")
         table.add_column("Total", justify="right", style="cyan")
         table.add_column("🔴 Critical", justify="right", style="bold red")
@@ -74,22 +70,16 @@ class RichTestingPresenterAdapter(TestingPresenterPort):
                 f"\n[bold red]Found {report.total_critical} critical surviving mutant(s). Run with -a to inspect.[/bold red]"
             )
             return 1
-        self._console.print(
-            "\n[bold green]Zero critical surviving mutants![/bold green]"
-        )
+        self._console.print("\n[bold green]Zero critical surviving mutants![/bold green]")
         return 0
 
     def present_actionable_mutants(self, report: MutationAuditReport) -> int:
         """Render detailed actionable/critical mutants table."""
         if not report.actionable_mutants:
-            self._console.print(
-                "[green]✨ Zero actionable critical mutants found![/green]"
-            )
+            self._console.print("[green]✨ Zero actionable critical mutants found![/green]")
             return 0
 
-        table = Table(
-            title="🔴 Actionable Surviving Mutants (Critical)", border_style="red"
-        )
+        table = Table(title="🔴 Actionable Surviving Mutants (Critical)", border_style="red")
         table.add_column("ID", style="dim", width=6)
         table.add_column("File:Line", style="cyan", width=36)
         table.add_column("Mutated Code", style="bold white", width=36)
@@ -98,9 +88,7 @@ class RichTestingPresenterAdapter(TestingPresenterPort):
 
         for m in report.actionable_mutants:
             covering_str = (
-                ", ".join(m.covering_tests[:2])
-                if m.covering_tests
-                else "[dim]Uncovered[/dim]"
+                ", ".join(m.covering_tests[:2]) if m.covering_tests else "[dim]Uncovered[/dim]"
             )
             if len(m.covering_tests) > 2:
                 covering_str += f" (+{len(m.covering_tests) - 2} more)"
@@ -174,9 +162,7 @@ class RichTestingPresenterAdapter(TestingPresenterPort):
     def present_impact_analysis(self, report: ImpactedTestsReport) -> int:
         """Render test impact analysis results or run status."""
         if not report.impacted_tests:
-            self._console.print(
-                "[green]✨ No tests impacted by modified lines.[/green]"
-            )
+            self._console.print("[green]✨ No tests impacted by modified lines.[/green]")
             return 0
 
         self._console.print(
@@ -317,9 +303,7 @@ class MarkdownTestingPresenterAdapter(TestingPresenterPort):
                 f"| `{m.id}` | `{m.filename}:{m.line_number}` | `{code_snippet}` | {m.rationale} |"
             )
 
-        lines.append(
-            f"\n**Total Actionable Mutants:** {len(report.actionable_mutants)}"
-        )
+        lines.append(f"\n**Total Actionable Mutants:** {len(report.actionable_mutants)}")
         self._console.print("\n".join(lines))
         return 1 if report.actionable_mutants else 0
 

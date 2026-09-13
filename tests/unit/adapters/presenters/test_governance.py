@@ -96,9 +96,7 @@ def test_rich_presenter_all_statements_and_parity():
     # Test parity errors
     buf.truncate(0)
     buf.seek(0)
-    code_par_err = presenter.present_test_parity(
-        ["missing __init__.py"], ["missing test"]
-    )
+    code_par_err = presenter.present_test_parity(["missing __init__.py"], ["missing test"])
     assert code_par_err == 1
     out_par = buf.getvalue()
     assert "Test Parity" in out_par
@@ -148,9 +146,7 @@ def test_markdown_presenter_all_methods():
     res_fail = CheckResult(
         "Ty", "core", CheckStatus.FAIL, 0.1, "Error", error_output="line 1: type error"
     )
-    report = SanityCheckReport(
-        results=(res_pass, res_fail), total_duration=0.15, exit_code=1
-    )
+    report = SanityCheckReport(results=(res_pass, res_fail), total_duration=0.15, exit_code=1)
 
     exit_code = presenter.present_sanity_dashboard(report)
     assert exit_code == 1
@@ -178,18 +174,10 @@ def test_markdown_presenter_all_methods():
 
 def test_create_governance_presenter_factory():
     """Verify create_governance_presenter creates correct instances and handles errors."""
-    assert isinstance(
-        create_governance_presenter("table"), RichGovernancePresenterAdapter
-    )
-    assert isinstance(
-        create_governance_presenter("json"), JsonGovernancePresenterAdapter
-    )
-    assert isinstance(
-        create_governance_presenter("markdown"), MarkdownGovernancePresenterAdapter
-    )
-    assert isinstance(
-        create_governance_presenter("md"), MarkdownGovernancePresenterAdapter
-    )
+    assert isinstance(create_governance_presenter("table"), RichGovernancePresenterAdapter)
+    assert isinstance(create_governance_presenter("json"), JsonGovernancePresenterAdapter)
+    assert isinstance(create_governance_presenter("markdown"), MarkdownGovernancePresenterAdapter)
+    assert isinstance(create_governance_presenter("md"), MarkdownGovernancePresenterAdapter)
 
     with pytest.raises(ValueError, match="Unsupported presenter format"):
         create_governance_presenter("unknown_format")

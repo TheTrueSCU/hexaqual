@@ -14,8 +14,8 @@ from pathlib import Path
 from hexaqual.utils.workspace import get_package_directories
 
 __all__ = [
-    "audit_extras_parity",
     "ExtraParityViolation",
+    "audit_extras_parity",
     "generate_extras_mermaid_diagram",
 ]
 
@@ -58,10 +58,7 @@ def _is_extra_forwarded(
     ):
         return True
 
-    if any(
-        expected_forward in r or (extra_name in r and pkg_name in r)
-        for r in all_umbrella_reqs
-    ):
+    if any(expected_forward in r or (extra_name in r and pkg_name in r) for r in all_umbrella_reqs):
         return True
 
     if extra_name == "all":
@@ -88,9 +85,7 @@ def _audit_package_extras(
     violations: list[ExtraParityViolation] = []
 
     for extra_name, reqs in pkg_extras.items():
-        if not _is_extra_forwarded(
-            pkg_name, extra_name, reqs, umbrella_extras, all_umbrella_reqs
-        ):
+        if not _is_extra_forwarded(pkg_name, extra_name, reqs, umbrella_extras, all_umbrella_reqs):
             expected_forward = f"{pkg_name}[{extra_name}]"
             violations.append(
                 ExtraParityViolation(
@@ -130,16 +125,18 @@ def audit_extras_parity(repo_root: Path) -> list[ExtraParityViolation]:
         umbrella_data = tomllib.load(f)
 
     umbrella_extras = umbrella_data.get("project", {}).get("optional-dependencies", {})
-    all_umbrella_reqs: set[str] = {
-        req for reqs in umbrella_extras.values() for req in reqs
-    }
+    all_umbrella_reqs: set[str] = {req for reqs in umbrella_extras.values() for req in reqs}
 
     violations: list[ExtraParityViolation] = []
     for pkg_dir in get_package_directories(repo_root):
-        if pkg_dir.name not in ("hexastack", "hexaqual", "hexastack_tools", "hexastack-tools", "hexastack_cli"):
-            violations.extend(
-                _audit_package_extras(pkg_dir, umbrella_extras, all_umbrella_reqs)
-            )
+        if pkg_dir.name not in (
+            "hexastack",
+            "hexaqual",
+            "hexastack_tools",
+            "hexastack-tools",
+            "hexastack_cli",
+        ):
+            violations.extend(_audit_package_extras(pkg_dir, umbrella_extras, all_umbrella_reqs))
 
     return violations
 
@@ -174,7 +171,13 @@ def generate_extras_mermaid_diagram(repo_root: Path) -> str:
 
     lines.append('    subgraph Subpackages ["Workspace Subpackages"]')
     for pkg_dir in get_package_directories(repo_root):
-        if pkg_dir.name in ("hexastack", "hexaqual", "hexastack_tools", "hexastack-tools", "hexastack_cli"):
+        if pkg_dir.name in (
+            "hexastack",
+            "hexaqual",
+            "hexastack_tools",
+            "hexastack-tools",
+            "hexastack_cli",
+        ):
             continue
         pyproject = pkg_dir / "pyproject.toml"
         if not pyproject.is_file():

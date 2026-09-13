@@ -22,10 +22,7 @@ def _find_all_nodes(tree: ast.Module) -> list[ast.Assign]:
         node
         for node in tree.body
         if isinstance(node, ast.Assign)
-        and any(
-            isinstance(target, ast.Name) and target.id == "__all__"
-            for target in node.targets
-        )
+        and any(isinstance(target, ast.Name) and target.id == "__all__" for target in node.targets)
     ]
 
 
@@ -66,9 +63,7 @@ def check_file_all(py_file: Path) -> list[str]:
             else:
                 seen.add(s)
         if duplicates:
-            errors.append(
-                f"{py_file}: Duplicate symbol(s) in __all__: {sorted(set(duplicates))}"
-            )
+            errors.append(f"{py_file}: Duplicate symbol(s) in __all__: {sorted(set(duplicates))}")
 
         if isinstance(node.value, (ast.List, ast.Tuple)):
             sorted_symbols = sorted(symbols, key=str.casefold)
@@ -110,9 +105,7 @@ def fix_file_all(py_file: Path) -> bool:
         formatted_list = "[\n" + "".join(f'    "{sym}",\n' for sym in deduped) + "]"
         node_src = ast.get_source_segment(content, node)
         if node_src:
-            new_content = new_content.replace(
-                node_src, f"__all__ = {formatted_list}", 1
-            )
+            new_content = new_content.replace(node_src, f"__all__ = {formatted_list}", 1)
             modified = True
 
     if modified:

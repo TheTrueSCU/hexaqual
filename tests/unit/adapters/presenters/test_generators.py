@@ -23,16 +23,10 @@ from hexaqual.domain.generators import (
 def test_create_generator_presenter_factory() -> None:
     """Verify create_generator_presenter instantiates correct adapter."""
     assert isinstance(create_generator_presenter("rich"), RichGeneratorPresenterAdapter)
-    assert isinstance(
-        create_generator_presenter("table"), RichGeneratorPresenterAdapter
-    )
+    assert isinstance(create_generator_presenter("table"), RichGeneratorPresenterAdapter)
     assert isinstance(create_generator_presenter("json"), JsonGeneratorPresenterAdapter)
-    assert isinstance(
-        create_generator_presenter("markdown"), MarkdownGeneratorPresenterAdapter
-    )
-    assert isinstance(
-        create_generator_presenter("md"), MarkdownGeneratorPresenterAdapter
-    )
+    assert isinstance(create_generator_presenter("markdown"), MarkdownGeneratorPresenterAdapter)
+    assert isinstance(create_generator_presenter("md"), MarkdownGeneratorPresenterAdapter)
 
 
 def test_rich_generator_presenter() -> None:

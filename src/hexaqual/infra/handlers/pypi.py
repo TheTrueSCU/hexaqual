@@ -43,10 +43,10 @@ from hexaqual.utils.workspace import get_package_directories, get_repo_root
 __all__ = [
     "BuildPackagesHandler",
     "CheckPyPiReleasesHandler",
-    "discover_workspace_packages",
-    "find_package_dist_files",
     "PublishPackagesHandler",
     "VerifyReproducibleBuildHandler",
+    "discover_workspace_packages",
+    "find_package_dist_files",
 ]
 
 
@@ -245,9 +245,7 @@ class PublishPackagesHandler:
         if is_success:
             if delay > 0:
                 time.sleep(delay)
-            return PackagePublishResult(
-                package=pkg, outcome="published", is_success=True
-            )
+            return PackagePublishResult(package=pkg, outcome="published", is_success=True)
         if outcome == "already_exists":
             return PackagePublishResult(
                 package=pkg,
@@ -351,9 +349,7 @@ class PublishPackagesHandler:
         """
         target_dist = command.dist_dir or (self._repo_root / "dist")
         auth_token = (
-            command.token
-            or os.environ.get("UV_PUBLISH_TOKEN")
-            or os.environ.get("PYPI_TOKEN")
+            command.token or os.environ.get("UV_PUBLISH_TOKEN") or os.environ.get("PYPI_TOKEN")
         )
 
         packages = (
@@ -451,9 +447,7 @@ class VerifyReproducibleBuildHandler:
             )
         return results
 
-    def handle(
-        self, command: VerifyReproducibleBuildCommand
-    ) -> ReproducibleBuildReport:
+    def handle(self, command: VerifyReproducibleBuildCommand) -> ReproducibleBuildReport:
         """Handle VerifyReproducibleBuildCommand.
 
         Args:

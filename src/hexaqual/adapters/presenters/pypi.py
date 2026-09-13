@@ -19,10 +19,10 @@ from hexaqual.domain.pypi import (
 from hexaqual.ports.pypi import PyPiPresenterPort
 
 __all__ = [
-    "create_pypi_presenter",
     "JsonPyPiPresenterAdapter",
     "MarkdownPyPiPresenterAdapter",
     "RichPyPiPresenterAdapter",
+    "create_pypi_presenter",
 ]
 
 
@@ -72,9 +72,7 @@ class RichPyPiPresenterAdapter(PyPiPresenterPort):
 
         for r in report.results:
             status = (
-                "[bold green]✓ Built[/bold green]"
-                if r.success
-                else "[bold red]✗ Failed[/bold red]"
+                "[bold green]✓ Built[/bold green]" if r.success else "[bold red]✗ Failed[/bold red]"
             )
             table.add_row(r.package.name, r.package.version, status)
 
@@ -129,9 +127,7 @@ class RichPyPiPresenterAdapter(PyPiPresenterPort):
                 else "[bold red]✗ Mismatch[/bold red]"
             )
             h_info = (
-                f"{r.hash1[:16]}..."
-                if r.is_reproducible
-                else f"{r.hash1[:8]} != {r.hash2[:8]}"
+                f"{r.hash1[:16]}..." if r.is_reproducible else f"{r.hash1[:8]} != {r.hash2[:8]}"
             )
             table.add_row(r.package_name, r.artifact_name, h_info, repro_styled)
 

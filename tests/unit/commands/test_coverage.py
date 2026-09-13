@@ -49,17 +49,13 @@ def test_get_changed_lines(mock_run: MagicMock, tmp_path: Path) -> None:
 
 def test_find_impacted_tests_nonexistent_cov(tmp_path: Path) -> None:
     """Verify empty test set returned when .coverage DB does not exist."""
-    res = find_impacted_tests(
-        {tmp_path / "foo.py": {1, 2}}, cov_path=tmp_path / ".coverage"
-    )
+    res = find_impacted_tests({tmp_path / "foo.py": {1, 2}}, cov_path=tmp_path / ".coverage")
     assert res == set()
 
 
 def test_get_tests_covering_line_nonexistent_cov(tmp_path: Path) -> None:
     """Verify empty test list returned when .coverage DB does not exist."""
-    res = get_tests_covering_line(
-        tmp_path / "foo.py", 1, cov_path=tmp_path / ".coverage"
-    )
+    res = get_tests_covering_line(tmp_path / "foo.py", 1, cov_path=tmp_path / ".coverage")
     assert res == []
 
 
@@ -92,9 +88,7 @@ def test_boundary_audit_main_json(
     mock_create_presenter.return_value = mock_presenter
     mock_presenter.present_boundary_audit.return_value = 0
 
-    with patch(
-        "sys.argv", ["pytest-boundary-audit", "--cov-file", str(cov_file), "-f", "json"]
-    ):
+    with patch("sys.argv", ["pytest-boundary-audit", "--cov-file", str(cov_file), "-f", "json"]):
         boundary_audit_main()
 
     mock_bus.return_value.dispatch.assert_called_once()

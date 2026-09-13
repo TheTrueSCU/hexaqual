@@ -51,14 +51,11 @@ def test_parse_github_url_variants() -> None:
     )
 
     # HTTPS with userinfo
-    assert (
-        _parse_github_url(
-            "https://user:token@github.com/TheTrueSCU/hexastack.git"  # pragma: allowlist secret
-        )
-        == (
-            "TheTrueSCU",
-            "hexastack",
-        )
+    assert _parse_github_url(
+        "https://user:token@github.com/TheTrueSCU/hexastack.git"  # pragma: allowlist secret
+    ) == (
+        "TheTrueSCU",
+        "hexastack",
     )
 
     # Non-GitHub host returns None

@@ -97,9 +97,7 @@ class TestingRunnerPort(ABC):
         """
 
     @abstractmethod
-    def audit_layer_boundary_leaks(
-        self, cov_path: Path | None = None
-    ) -> list[tuple[str, str]]:
+    def audit_layer_boundary_leaks(self, cov_path: Path | None = None) -> list[tuple[str, str]]:
         """Query .coverage database for domain tests executing infra/adapter files.
 
         Args:

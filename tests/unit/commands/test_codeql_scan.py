@@ -22,9 +22,7 @@ def test_codeql_scan_main_dispatches_bus() -> None:
     )
     mock_bus.dispatch.return_value = mock_report
 
-    with patch(
-        "hexaqual.infra.bootstrap.create_governance_bus", return_value=mock_bus
-    ):
+    with patch("hexaqual.infra.bootstrap.create_governance_bus", return_value=mock_bus):
         code = main(["--suite", "codeql/python-queries", "--format", "json"])
         assert code == 0
         assert mock_bus.dispatch.called

@@ -42,12 +42,8 @@ def test_read_mutmut_cache_with_sqlite(tmp_path: Path):
     db_file = tmp_path / ".mutmut-cache"
     con = sqlite3.connect(db_file)
     con.execute("CREATE TABLE SourceFile (id INTEGER PRIMARY KEY, filename TEXT)")
-    con.execute(
-        "CREATE TABLE Line (id INTEGER PRIMARY KEY, sourcefile INTEGER, line TEXT)"
-    )
-    con.execute(
-        "CREATE TABLE Mutant (id INTEGER PRIMARY KEY, line INTEGER, status TEXT)"
-    )
+    con.execute("CREATE TABLE Line (id INTEGER PRIMARY KEY, sourcefile INTEGER, line TEXT)")
+    con.execute("CREATE TABLE Mutant (id INTEGER PRIMARY KEY, line INTEGER, status TEXT)")
     con.execute("INSERT INTO SourceFile VALUES (1, 'packages/core/src/mod.py')")
     con.execute("INSERT INTO Line VALUES (1, 1, 'x = 1')")
     con.execute("INSERT INTO Mutant VALUES (10, 1, 'bad_survived')")
@@ -89,10 +85,6 @@ def test_execute_pytest(tmp_path: Path):
     adapter = SubprocessTestingRunnerAdapter()
     with patch("subprocess.run") as mock_run:
         mock_run.return_value = MagicMock(returncode=0)
-        res = adapter.execute_pytest(
-            ["test_a.py::test_1"], extra_args=["-v"], cwd=tmp_path
-        )
+        res = adapter.execute_pytest(["test_a.py::test_1"], extra_args=["-v"], cwd=tmp_path)
         assert res == 0
-        mock_run.assert_called_once_with(
-            ["pytest", "test_a.py::test_1", "-v"], cwd=tmp_path
-        )
+        mock_run.assert_called_once_with(["pytest", "test_a.py::test_1", "-v"], cwd=tmp_path)

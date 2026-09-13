@@ -77,9 +77,7 @@ def test_governance_commands():
     cmd_ty = RunTypecheckCommand(paths=target.src_paths, target_name="cqrs")
     assert cmd_ty.target_name == "cqrs"
 
-    cmd_cpx = AuditComplexityCommand(
-        paths=target.src_paths, target_name="cqrs", max_complexity=20
-    )
+    cmd_cpx = AuditComplexityCommand(paths=target.src_paths, target_name="cqrs", max_complexity=20)
     assert cmd_cpx.max_complexity == 20
 
     cmd_all = CheckAllStatementsCommand(paths=target.src_paths, target_name="cqrs")

@@ -22,10 +22,10 @@ from hexaqual.domain.governance import (
 from hexaqual.ports.governance import GovernancePresenterPort
 
 __all__ = [
-    "create_governance_presenter",
     "JsonGovernancePresenterAdapter",
     "MarkdownGovernancePresenterAdapter",
     "RichGovernancePresenterAdapter",
+    "create_governance_presenter",
 ]
 
 
@@ -214,9 +214,7 @@ class JsonGovernancePresenterAdapter(GovernancePresenterPort):
                 {
                     "check": r.check_name,
                     "target": r.target_name,
-                    "status": r.status.value
-                    if hasattr(r.status, "value")
-                    else str(r.status),
+                    "status": r.status.value if hasattr(r.status, "value") else str(r.status),
                     "duration": round(r.duration, 4),
                     "details": r.details,
                     "error_output": r.error_output or None,

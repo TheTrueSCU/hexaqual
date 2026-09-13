@@ -22,10 +22,10 @@ from hexaqual.domain.dependencies import (
 from hexaqual.ports.dependencies import DependencyPresenterPort
 
 __all__ = [
-    "create_dependency_presenter",
     "JsonDependencyPresenterAdapter",
     "MarkdownDependencyPresenterAdapter",
     "RichDependencyPresenterAdapter",
+    "create_dependency_presenter",
 ]
 
 
@@ -70,9 +70,7 @@ class RichDependencyPresenterAdapter(DependencyPresenterPort):
             deps_preview = ", ".join(v.dependencies[:2])
             if len(v.dependencies) > 2:
                 deps_preview += f" (+{len(v.dependencies) - 2} more)"
-            table.add_row(
-                v.subpackage, f"[{v.extra_name}]", deps_preview, v.suggested_fix
-            )
+            table.add_row(v.subpackage, f"[{v.extra_name}]", deps_preview, v.suggested_fix)
 
         self._console.print(table)
         self._console.print(
@@ -95,9 +93,7 @@ class RichDependencyPresenterAdapter(DependencyPresenterPort):
             if r.passed:
                 table.add_row(r.package_name, "[bold green]PASSED[/bold green]", "")
             else:
-                table.add_row(
-                    r.package_name, "[bold red]FAILED[/bold red]", r.error_output
-                )
+                table.add_row(r.package_name, "[bold red]FAILED[/bold red]", r.error_output)
 
         self._console.print(table)
         if report.exit_code != 0:
@@ -131,9 +127,7 @@ class RichDependencyPresenterAdapter(DependencyPresenterPort):
             if r.passed:
                 table.add_row(r.package_name, "[bold green]PASSED[/bold green]", "")
             else:
-                table.add_row(
-                    r.package_name, "[bold red]FAILED[/bold red]", r.error_output
-                )
+                table.add_row(r.package_name, "[bold red]FAILED[/bold red]", r.error_output)
 
         self._console.print(table)
         return report.exit_code
@@ -148,9 +142,7 @@ class RichDependencyPresenterAdapter(DependencyPresenterPort):
         table.add_column("Status", width=12)
 
         for item in report.items:
-            status = (
-                "[green]✅ Passed[/green]" if item.passed else "[red]❌ Failed[/red]"
-            )
+            status = "[green]✅ Passed[/green]" if item.passed else "[red]❌ Failed[/red]"
             table.add_row(item.check_name, status)
 
         self._console.print(table)

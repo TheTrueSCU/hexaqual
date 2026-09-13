@@ -96,9 +96,7 @@ def test_standalone_single_package_workspace_discovery() -> None:
     """Verify workspace tools function in a standalone single-package repo."""
     with tempfile.TemporaryDirectory() as tmpdir:
         root = Path(tmpdir)
-        (root / "pyproject.toml").write_text(
-            '[project]\nname = "my-service"\n', encoding="utf-8"
-        )
+        (root / "pyproject.toml").write_text('[project]\nname = "my-service"\n', encoding="utf-8")
         src_dir = root / "src" / "my_service" / "domain"
         src_dir.mkdir(parents=True)
         (src_dir / "models.py").write_text("# domain model", encoding="utf-8")
@@ -132,9 +130,7 @@ members = [
         for s in ("hq_server", "hq_worker"):
             pkg_path = root / "services" / s
             (pkg_path / "src" / s / "domain").mkdir(parents=True)
-            (pkg_path / "pyproject.toml").write_text(
-                f'[project]\nname = "{s}"\n', encoding="utf-8"
-            )
+            (pkg_path / "pyproject.toml").write_text(f'[project]\nname = "{s}"\n', encoding="utf-8")
 
         discovered_dirs = get_package_directories(repo_root=root)
         assert len(discovered_dirs) == 2
@@ -155,23 +151,15 @@ def test_resolve_affected_packages(tmp_path: Path) -> None:
     assert resolve_affected_packages(["uv.lock"], repo_root=tmp_path) is None
 
     # 3. .github impacts all (None)
-    assert (
-        resolve_affected_packages([".github/workflows/ci.yml"], repo_root=tmp_path)
-        is None
-    )
+    assert resolve_affected_packages([".github/workflows/ci.yml"], repo_root=tmp_path) is None
 
     # 4. examples directory changes do NOT impact packages
     assert (
-        resolve_affected_packages(
-            ["examples/financial-ledger/Dockerfile"], repo_root=tmp_path
-        )
+        resolve_affected_packages(["examples/financial-ledger/Dockerfile"], repo_root=tmp_path)
         == set()
     )
 
     # 5. docs changes do NOT impact packages
     assert (
-        resolve_affected_packages(
-            ["docs/assets/pydeps/hexaqual.svg"], repo_root=tmp_path
-        )
-        == set()
+        resolve_affected_packages(["docs/assets/pydeps/hexaqual.svg"], repo_root=tmp_path) == set()
     )

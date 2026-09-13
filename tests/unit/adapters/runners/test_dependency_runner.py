@@ -96,9 +96,7 @@ def test_generate_config_and_tool_avail(tmp_path: Path):
     ):
         assert adapter.generate_import_linter_config(tmp_path) is True
 
-    with patch(
-        "hexaqual.adapters.runners.dependency_runner.generate_all_diagrams"
-    ) as mock_diag:
+    with patch("hexaqual.adapters.runners.dependency_runner.generate_all_diagrams") as mock_diag:
         adapter.generate_architecture_diagrams(tmp_path)
         mock_diag.assert_called_once_with(tmp_path)
 

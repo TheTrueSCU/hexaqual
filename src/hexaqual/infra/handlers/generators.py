@@ -265,9 +265,7 @@ class GeneratePydepsHandler:
         overview_path = generate_overview_diagram(self._root)
         if overview_path:
             results.append(
-                PydepsDiagramResult(
-                    name="Monorepo Overview", path=overview_path, success=True
-                )
+                PydepsDiagramResult(name="Monorepo Overview", path=overview_path, success=True)
             )
 
         if not self._parallel:
@@ -428,9 +426,7 @@ class GenerateArchonTestsHandler:
                 skipped.append(pkg_name)
                 continue
 
-            target_file.write_text(
-                "\n".join(test_lines).strip() + "\n", encoding="utf-8"
-            )
+            target_file.write_text("\n".join(test_lines).strip() + "\n", encoding="utf-8")
             generated.append(str(target_file.relative_to(self._root)))
 
         return ArchonReport(
@@ -443,10 +439,10 @@ class GenerateArchonTestsHandler:
 __all__ = [
     "_TARGET_GENERATORS",
     "_TOOLS_SECTION_MAP",
-    "build_tools_usage_markdown",
-    "build_umbrella_usage_markdown",
     "GenerateArchonTestsHandler",
     "GeneratePydepsHandler",
     "GenerateUsageDocsHandler",
+    "build_tools_usage_markdown",
+    "build_umbrella_usage_markdown",
     "resolve_impacted_usage_targets",
 ]

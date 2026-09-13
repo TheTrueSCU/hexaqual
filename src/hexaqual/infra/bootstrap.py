@@ -151,9 +151,7 @@ class _LazyGitHubClient(GitHubApiPort):
             self._client = GitHubHttpAdapter()
         return self._client
 
-    def get_repo_status(
-        self, owner: str | None = None, repo: str | None = None
-    ) -> RepoStatus:
+    def get_repo_status(self, owner: str | None = None, repo: str | None = None) -> RepoStatus:
         return self._get_client().get_repo_status(owner=owner, repo=repo)
 
     def get_pr_summary(self, pr_number: int) -> PrSummary:
@@ -176,9 +174,7 @@ class _LazyGitHubClient(GitHubApiPort):
     def get_failed_run_logs(self, run_id: int | str) -> str | None:
         return self._get_client().get_failed_run_logs(run_id)
 
-    def get_workflow_runs(
-        self, branch: str | None = None, limit: int = 5
-    ) -> list[dict[str, Any]]:
+    def get_workflow_runs(self, branch: str | None = None, limit: int = 5) -> list[dict[str, Any]]:
         return self._get_client().get_workflow_runs(branch=branch, limit=limit)
 
 
@@ -286,12 +282,8 @@ def create_governance_bus(
     inspect_repo_handler = InspectRepoHandler(actual_github_client)
     registry.register(InspectRepoCommand, inspect_repo_handler.handle)
 
-    inspect_security_comments_handler = InspectSecurityCommentsHandler(
-        actual_github_client
-    )
-    registry.register(
-        InspectSecurityCommentsCommand, inspect_security_comments_handler.handle
-    )
+    inspect_security_comments_handler = InspectSecurityCommentsHandler(actual_github_client)
+    registry.register(InspectSecurityCommentsCommand, inspect_security_comments_handler.handle)
 
     # 6. Register PyPI release handlers
     check_pypi_handler = CheckPyPiReleasesHandler(actual_pypi_client)

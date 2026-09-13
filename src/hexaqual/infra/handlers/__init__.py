@@ -63,9 +63,7 @@ __all__ = [
     "CheckAllStatementsHandler",
     "CheckPyPiReleasesHandler",
     "CheckTestParityHandler",
-    "discover_workspace_packages",
     "ExaminePrHandler",
-    "find_package_dist_files",
     "FuzzRunHandler",
     "GenerateArchonTestsHandler",
     "GenerateImportLinterConfigHandler",
@@ -90,4 +88,6 @@ __all__ = [
     "ScanCodeQlHandler",
     "UpdateInlineSnapshotsHandler",
     "VerifyReproducibleBuildHandler",
+    "discover_workspace_packages",
+    "find_package_dist_files",
 ]

@@ -81,9 +81,7 @@ def test_commands_instantiation(tmp_path: Path):
     c2 = RunDeptryAuditCommand(repo_root=tmp_path)
     assert c2.repo_root == tmp_path
 
-    c3 = RunImportLinterCommand(
-        repo_root=tmp_path, packages=(tmp_path,), all_packages=False
-    )
+    c3 = RunImportLinterCommand(repo_root=tmp_path, packages=(tmp_path,), all_packages=False)
     assert len(c3.packages) == 1
 
     c4 = GenerateImportLinterConfigCommand(repo_root=tmp_path)

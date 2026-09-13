@@ -54,13 +54,9 @@ class FunctionAndMethodAlphabetizerCST(cst.CSTTransformer):
 
         sorted_methods = sorted(methods, key=lambda m: m.name.value.lower())
         new_body = non_methods + dunders + sorted_methods
-        return updated_node.with_changes(
-            body=updated_node.body.with_changes(body=new_body)
-        )
+        return updated_node.with_changes(body=updated_node.body.with_changes(body=new_body))
 
-    def leave_Module(
-        self, original_node: cst.Module, updated_node: cst.Module
-    ) -> cst.Module:
+    def leave_Module(self, original_node: cst.Module, updated_node: cst.Module) -> cst.Module:
         module_header = []
         functions = []
         trailing_statements = []
@@ -118,9 +114,7 @@ class AlphabetizeCodeHandler:
         self._root = root or get_repo_root()
 
     def _resolve_target_files(self, targets: tuple[Path, ...]) -> list[Path]:
-        target_paths = (
-            [Path(p) for p in targets] if targets else [self._root / "packages"]
-        )
+        target_paths = [Path(p) for p in targets] if targets else [self._root / "packages"]
         files: list[Path] = []
         for tp in target_paths:
             if tp.is_file() and tp.suffix == ".py":

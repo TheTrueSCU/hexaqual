@@ -70,13 +70,9 @@ def _apply_changes(proj: Any, changes: Any, dry_run: bool = False) -> None:
         dry_run: If True, print changes without modifying disk.
     """
     if dry_run:
-        console.print(
-            "\n[bold yellow]--- Dry Run Refactoring Preview ---[/bold yellow]"
-        )
+        console.print("\n[bold yellow]--- Dry Run Refactoring Preview ---[/bold yellow]")
         console.print(changes.get_description() or "No changes produced.")
-        console.print(
-            "[bold yellow]-----------------------------------[/bold yellow]\n"
-        )
+        console.print("[bold yellow]-----------------------------------[/bold yellow]\n")
     else:
         proj.do(changes)
 
@@ -99,9 +95,7 @@ def handle_change_signature(args: argparse.Namespace) -> None:
         normalizer = changer.get_args()
 
         if args.removals:
-            for idx in sorted(
-                [int(x.strip()) for x in args.removals.split(",")], reverse=True
-            ):
+            for idx in sorted([int(x.strip()) for x in args.removals.split(",")], reverse=True):
                 normalizer.remove(idx)
 
         if args.order:
@@ -167,9 +161,7 @@ def handle_extract_var(args: argparse.Namespace) -> None:
         extractor = ExtractVariable(proj, res, start, end)
         changes = extractor.get_changes(args.name)
         _apply_changes(proj, changes, getattr(args, "dry_run", False))
-        console.print(
-            f"[green]✓ Extracted expression into variable '{args.name}'.[/green]"
-        )
+        console.print(f"[green]✓ Extracted expression into variable '{args.name}'.[/green]")
     finally:
         proj.close()
 
@@ -450,17 +442,13 @@ def run_main() -> int:
     p_inl.add_argument("--col", type=int, required=True)
 
     # move-module
-    p_mm = subparsers.add_parser(
-        "move-module", help="Move module/package to another folder"
-    )
+    p_mm = subparsers.add_parser("move-module", help="Move module/package to another folder")
     p_mm.add_argument("--source-path", required=True, help="Module file or package dir")
     p_mm.add_argument("--dest-folder", required=True, help="Destination directory")
     p_mm.add_argument("--new-name", default=None, help="Optional rename for module")
 
     # move-symbol
-    p_ms = subparsers.add_parser(
-        "move-symbol", help="Move function/class to another file"
-    )
+    p_ms = subparsers.add_parser("move-symbol", help="Move function/class to another file")
     p_ms.add_argument("--source-file", required=True)
     p_ms.add_argument("--line", type=int, required=True)
     p_ms.add_argument("--col", type=int, required=True)
@@ -474,9 +462,7 @@ def run_main() -> int:
     p_ren.add_argument("--new-name", required=True)
 
     # sort-methods
-    p_sort = subparsers.add_parser(
-        "sort-methods", help="Alphabetize class methods in a file"
-    )
+    p_sort = subparsers.add_parser("sort-methods", help="Alphabetize class methods in a file")
     p_sort.add_argument("--file", required=True)
 
     # use-function
@@ -498,9 +484,7 @@ def run_main() -> int:
         "move-symbol": handle_move_symbol,
         "move-module": handle_move_module,
         "rename": handle_rename,
-        "sort-methods": lambda a: _handle_sort_methods(
-            a.file, Path(a.root) if a.root else None
-        ),
+        "sort-methods": lambda a: _handle_sort_methods(a.file, Path(a.root) if a.root else None),
         "use-function": handle_use_function,
     }
 
@@ -533,17 +517,15 @@ def _handle_sort_methods(file_path: str | Path, root_dir: Path | None = None) ->
     changed = sort_python_file(path)
     display_path = path.relative_to(root_dir) if root_dir else path
     if changed:
-        console.print(
-            f"[green]✓ Alphabetized methods & functions in: {display_path}[/green]"
-        )
+        console.print(f"[green]✓ Alphabetized methods & functions in: {display_path}[/green]")
     else:
         console.print(f"[dim]No ordering changes needed for: {display_path}[/dim]")
     return changed
 
 
 __all__ = [
-    "alphabetize_main",
     "FunctionAndMethodAlphabetizerCST",
+    "alphabetize_main",
     "get_line_offsets",
     "get_offset",
     "handle_change_signature",

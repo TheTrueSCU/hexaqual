@@ -115,13 +115,11 @@ class PrSummary:
         if self.mergeable.lower() in ("dirty", "false", "conflicting"):
             return False
         checks_ok = all(
-            c.conclusion.lower() in ("success", "skipped", "neutral")
-            for c in self.check_runs
+            c.conclusion.lower() in ("success", "skipped", "neutral") for c in self.check_runs
         )
         threads_ok = all(t.is_resolved for t in self.review_threads)
         alerts_ok = not any(
-            a.severity.lower() in ("critical", "high", "error")
-            for a in self.security_alerts
+            a.severity.lower() in ("critical", "high", "error") for a in self.security_alerts
         )
         return checks_ok and threads_ok and alerts_ok
 

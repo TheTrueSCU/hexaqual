@@ -26,9 +26,7 @@ def test_create_analysis_presenter_factory() -> None:
     assert isinstance(create_analysis_presenter("rich"), RichAnalysisPresenterAdapter)
     assert isinstance(create_analysis_presenter("table"), RichAnalysisPresenterAdapter)
     assert isinstance(create_analysis_presenter("json"), JsonAnalysisPresenterAdapter)
-    assert isinstance(
-        create_analysis_presenter("markdown"), MarkdownAnalysisPresenterAdapter
-    )
+    assert isinstance(create_analysis_presenter("markdown"), MarkdownAnalysisPresenterAdapter)
     assert isinstance(create_analysis_presenter("md"), MarkdownAnalysisPresenterAdapter)
 
 

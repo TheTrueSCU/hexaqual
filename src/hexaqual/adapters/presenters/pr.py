@@ -276,9 +276,7 @@ def present_pr_summary(
         sys.stdout.write(render_pr_summary_plain(summary) + "\n")
         sys.stdout.flush()
     else:
-        render_pr_summary_rich(
-            summary, show_details=show_details, failed_logs=failed_logs
-        )
+        render_pr_summary_rich(summary, show_details=show_details, failed_logs=failed_logs)
 
 
 __all__ = [

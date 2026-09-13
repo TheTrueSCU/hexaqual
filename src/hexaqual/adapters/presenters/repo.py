@@ -89,9 +89,7 @@ def build_repo_status_table(status: RepoStatus) -> Table:
     )
 
     # Environments
-    envs_val = (
-        ", ".join(status.environments) if status.environments else "[dim]None[/dim]"
-    )
+    envs_val = ", ".join(status.environments) if status.environments else "[dim]None[/dim]"
     table.add_row(
         "Environments",
         envs_val,

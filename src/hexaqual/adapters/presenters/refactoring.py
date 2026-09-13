@@ -66,9 +66,7 @@ class RichRefactoringPresenterAdapter(RefactoringPresenterPort):
             else "[bold red]❌ Article publication encountered errors.[/bold red]"
         )
         self.console.print(
-            Panel.fit(
-                status_msg, border_style="green" if report.is_successful else "red"
-            )
+            Panel.fit(status_msg, border_style="green" if report.is_successful else "red")
         )
         return 0 if report.is_successful else 1
 
@@ -160,8 +158,8 @@ def create_refactoring_presenter(
 
 
 __all__ = [
-    "create_refactoring_presenter",
     "JsonRefactoringPresenterAdapter",
     "MarkdownRefactoringPresenterAdapter",
     "RichRefactoringPresenterAdapter",
+    "create_refactoring_presenter",
 ]

@@ -33,9 +33,7 @@ def main_check(
     Returns:
         0 if valid, 1 if violations found.
     """
-    parser = HexastackScriptArgumentParser(
-        description="Verify __all__ is deduplicated and sorted."
-    )
+    parser = HexastackScriptArgumentParser(description="Verify __all__ is deduplicated and sorted.")
     parser.add_argument(
         "-f",
         "--format",

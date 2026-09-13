@@ -6,6 +6,6 @@ from hexaqual.adapters.github.client import (
 )
 
 __all__ = [
-    "get_github_token",
     "GitHubHttpAdapter",
+    "get_github_token",
 ]

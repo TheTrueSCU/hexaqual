@@ -46,9 +46,7 @@ def checks(
     except typer.Exit:
         raise
     except Exception as exc:
-        typer.secho(
-            f"Error querying GitHub checks: {exc}", fg=typer.colors.RED, err=True
-        )
+        typer.secho(f"Error querying GitHub checks: {exc}", fg=typer.colors.RED, err=True)
         raise typer.Exit(code=1) from exc
 
 

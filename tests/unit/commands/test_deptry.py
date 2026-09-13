@@ -18,9 +18,7 @@ def test_deptry_main_callable() -> None:
 
 def test_run_deptry_on_package(tmp_path: Path) -> None:
     """Verify run_deptry_on_package invokes adapter."""
-    with patch(
-        "hexaqual.commands.deptry.SubprocessDependencyAuditorAdapter"
-    ) as mock_cls:
+    with patch("hexaqual.commands.deptry.SubprocessDependencyAuditorAdapter") as mock_cls:
         mock_instance = MagicMock()
         mock_cls.return_value = mock_instance
         mock_instance.run_deptry.return_value = MagicMock(passed=True, error_output="")
@@ -55,6 +53,4 @@ def test_deptry_main_dispatches_and_presents() -> None:
         mock_bus.dispatch.assert_called_once()
         cmd = mock_bus.dispatch.call_args[0][0]
         assert isinstance(cmd, RunDeptryAuditCommand)
-        mock_presenter.present_deptry_audit.assert_called_once_with(
-            mock_bus.dispatch.return_value
-        )
+        mock_presenter.present_deptry_audit.assert_called_once_with(mock_bus.dispatch.return_value)

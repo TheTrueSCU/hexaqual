@@ -15,9 +15,9 @@ from hexaqual.adapters.runners.testing_runner import (
 )
 
 __all__ = [
-    "find_executable",
     "SubprocessDependencyAuditorAdapter",
     "SubprocessPyPiRunnerAdapter",
     "SubprocessTestingRunnerAdapter",
     "SubprocessToolRunnerAdapter",
+    "find_executable",
 ]

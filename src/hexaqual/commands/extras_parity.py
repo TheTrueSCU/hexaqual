@@ -18,8 +18,8 @@ from hexaqual.utils.extras_parity import (
 from hexaqual.utils.workspace import get_repo_root
 
 __all__ = [
-    "audit_extras_parity",
     "ExtraParityViolation",
+    "audit_extras_parity",
     "generate_extras_mermaid_diagram",
     "main",
 ]

@@ -94,9 +94,7 @@ def test_resolve_targets_explicit_file(tmp_path: Path) -> None:
 
 def test_detect_git_targets(tmp_path: Path) -> None:
     """Verify _detect_git_targets parses porcelain git status output."""
-    git_stdout = (
-        " M packages/hexastack_cqrs/src/mod.py\n?? examples/trip-booking/src/app.py\n"
-    )
+    git_stdout = " M packages/hexastack_cqrs/src/mod.py\n?? examples/trip-booking/src/app.py\n"
     mock_proc = MagicMock(stdout=git_stdout)
 
     with (

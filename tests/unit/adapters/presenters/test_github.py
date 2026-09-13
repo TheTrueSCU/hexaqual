@@ -41,9 +41,7 @@ def _make_dummy_pr_summary(clean: bool = True) -> PrSummary:
         ),
     )
     threads = (
-        ReviewThread(
-            "thread-1", True, (ReviewComment("c1", "alice", "LGTM", "2026-09-01"),)
-        ),
+        ReviewThread("thread-1", True, (ReviewComment("c1", "alice", "LGTM", "2026-09-01"),)),
     )
     return PrSummary(
         number=42,
@@ -83,9 +81,7 @@ def test_create_github_presenter():
     assert isinstance(create_github_presenter("table"), RichGitHubPresenterAdapter)
     assert isinstance(create_github_presenter("rich"), RichGitHubPresenterAdapter)
     assert isinstance(create_github_presenter("json"), JsonGitHubPresenterAdapter)
-    assert isinstance(
-        create_github_presenter("markdown"), MarkdownGitHubPresenterAdapter
-    )
+    assert isinstance(create_github_presenter("markdown"), MarkdownGitHubPresenterAdapter)
 
 
 def test_rich_github_presenter():

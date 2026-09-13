@@ -150,18 +150,14 @@ def show_summary(con: sqlite3.Connection) -> None:
         package_stats[pkg]["total"] += 1
         package_stats[pkg][category.value.lower()] += 1
 
-    table = Table(
-        title="Surviving Mutants Triage Summary by Package", border_style="cyan"
-    )
+    table = Table(title="Surviving Mutants Triage Summary by Package", border_style="cyan")
     table.add_column("Package", style="bold white", justify="left")
     table.add_column("Total", justify="right", style="cyan")
     table.add_column("🔴 Critical", justify="right", style="bold red")
     table.add_column("🟡 Equivalent", justify="right", style="yellow")
     table.add_column("🟢 Ignorable", justify="right", style="green")
 
-    for pkg, stats in sorted(
-        package_stats.items(), key=lambda x: x[1]["critical"], reverse=True
-    ):
+    for pkg, stats in sorted(package_stats.items(), key=lambda x: x[1]["critical"], reverse=True):
         table.add_row(
             pkg,
             str(stats["total"]),
@@ -208,15 +204,11 @@ def _render_mutant_detail(
     if correlate_coverage:
         covering_tests = get_tests_covering_line(row[1], row[2])
         if covering_tests:
-            console.print(
-                f"     [bold cyan]Covered by tests ({len(covering_tests)}):[/bold cyan]"
-            )
+            console.print(f"     [bold cyan]Covered by tests ({len(covering_tests)}):[/bold cyan]")
             for t in covering_tests[:5]:
                 console.print(f"       [magenta]•[/magenta] {t}")
             if len(covering_tests) > 5:
-                console.print(
-                    f"       [dim]... (+{len(covering_tests) - 5} more tests)[/dim]"
-                )
+                console.print(f"       [dim]... (+{len(covering_tests) - 5} more tests)[/dim]")
         else:
             console.print(
                 "     [dim yellow]No tests executed this line (uncovered in .coverage)[/dim yellow]"
@@ -316,9 +308,7 @@ def clear_package_cache(package: str) -> int:
         mutant_ids = [r[0] for r in mutant_rows]
         if mutant_ids:
             m_placeholders = ",".join("?" for _ in mutant_ids)
-            cur.execute(
-                f"DELETE FROM Mutant WHERE id IN ({m_placeholders})", mutant_ids
-            )
+            cur.execute(f"DELETE FROM Mutant WHERE id IN ({m_placeholders})", mutant_ids)
         cur.execute(f"DELETE FROM Line WHERE sourcefile IN ({placeholders})", file_ids)
         cur.execute(f"DELETE FROM SourceFile WHERE id IN ({placeholders})", file_ids)
         con.commit()
@@ -363,17 +353,13 @@ def run_mutmut_on_package(pkg_dir: Path) -> int:
     if not src_dir.is_dir():
         return 0
 
-    rel_src = (
-        src_dir.relative_to(ROOT_DIR) if src_dir.is_relative_to(ROOT_DIR) else src_dir
-    )
+    rel_src = src_dir.relative_to(ROOT_DIR) if src_dir.is_relative_to(ROOT_DIR) else src_dir
     tests_dir = pkg_dir / "tests"
     cmd = ["mutmut", "run", "--paths-to-mutate", str(rel_src)]
 
     if tests_dir.is_dir():
         rel_tests = (
-            tests_dir.relative_to(ROOT_DIR)
-            if tests_dir.is_relative_to(ROOT_DIR)
-            else tests_dir
+            tests_dir.relative_to(ROOT_DIR) if tests_dir.is_relative_to(ROOT_DIR) else tests_dir
         )
         cmd.extend(
             [
@@ -435,9 +421,7 @@ def run_main() -> None:
                 pkg_dirs = get_package_directories(ROOT_DIR)
                 for pkg_dir in pkg_dirs:
                     clear_package_cache(pkg_dir.name)
-                console.print(
-                    "[yellow]Cleared all cached mutants across packages.[/yellow]"
-                )
+                console.print("[yellow]Cleared all cached mutants across packages.[/yellow]")
 
         if args.package:
             pkg_dir = get_package_directory(args.package, ROOT_DIR)
@@ -569,11 +553,11 @@ def inspect_main() -> None:
 
 
 __all__ = [
+    "MutantCategory",
     "classify_mutant_line",
     "clear_package_cache",
     "get_db_connection",
     "inspect_main",
-    "MutantCategory",
     "run_main",
     "run_mutmut_on_package",
     "show_file_mutants",

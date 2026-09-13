@@ -67,9 +67,7 @@ def get_repo_root(start_path: Path | None = None) -> Path:
         if (candidate / "pyproject.toml").is_file():
             return candidate
 
-    raise RuntimeError(
-        f"Could not determine repository root starting from '{current}'."
-    )
+    raise RuntimeError(f"Could not determine repository root starting from '{current}'.")
 
 
 def get_packages_directory(repo_root: Path | None = None) -> Path:
@@ -134,7 +132,16 @@ def get_valid_package_names(repo_root: Path | None = None) -> list[str]:
     names: set[str] = set()
     for p in get_package_directories(root):
         names.add(p.name)
-        for prefix in ("hexastack_", "hexastack-", "hexaqueue_", "hexaqueue-", "hexaqual_", "hexaqual-", "hexaflow_", "hexaflow-"):
+        for prefix in (
+            "hexastack_",
+            "hexastack-",
+            "hexaqueue_",
+            "hexaqueue-",
+            "hexaqual_",
+            "hexaqual-",
+            "hexaflow_",
+            "hexaflow-",
+        ):
             if p.name.startswith(prefix):
                 names.add(p.name[len(prefix) :])
     return sorted(names)
@@ -242,9 +249,7 @@ def get_package_module_dir(pkg_path: Path) -> Path | None:
         return normalized
 
     # 2. Pick the first top-level package directory inside src/
-    subdirs = [
-        p for p in src_dir.iterdir() if p.is_dir() and not p.name.startswith(".")
-    ]
+    subdirs = [p for p in src_dir.iterdir() if p.is_dir() and not p.name.startswith(".")]
     if subdirs:
         return sorted(subdirs)[0]
 
@@ -260,8 +265,6 @@ def get_present_layers(pkg_path: Path) -> set[str]:
 
 
 class HexaqualScriptArgumentParser(argparse.ArgumentParser):
-
-
     """Standardized CLI argument parser for Hexastack maintenance tools."""
 
     def __init__(self, description: str, **kwargs: Any) -> None:
@@ -294,9 +297,7 @@ class HexaqualScriptArgumentParser(argparse.ArgumentParser):
 
 def _find_py_files_in_dir(directory: Path) -> list[Path]:
     """Find all .py files in directory recursively."""
-    return (
-        [p.resolve() for p in directory.glob("**/*.py")] if directory.is_dir() else []
-    )
+    return [p.resolve() for p in directory.glob("**/*.py")] if directory.is_dir() else []
 
 
 def _resolve_explicit_paths(paths: list[str], root: Path) -> list[Path]:
@@ -425,11 +426,7 @@ def _resolve_file_impact(
 
     if parts[0] == "packages" and len(parts) > 1:
         raw_pkg = parts[1]
-        clean_pkg = (
-            "hexastack"
-            if raw_pkg == "hexastack"
-            else raw_pkg.removeprefix("hexastack_")
-        )
+        clean_pkg = "hexastack" if raw_pkg == "hexastack" else raw_pkg.removeprefix("hexastack_")
 
         if len(parts) == 2 and parts[1] == "pyproject.toml":
             return False, {
@@ -515,9 +512,7 @@ def ensure_tool_installed(
 
     is_ok, err = check_tool_availability(import_name, cli_command)
     if not is_ok:
-        extra_hint = (
-            f" or install 'hexaqual[{extra_name}]'" if extra_name else ""
-        )
+        extra_hint = f" or install 'hexaqual[{extra_name}]'" if extra_name else ""
         sys.stderr.write(
             f"\n❌ Tool Dependency Missing: {err}\n"
             f"💡 To install: 'uv add --dev {import_name}'{extra_hint}\n\n"
@@ -526,6 +521,12 @@ def ensure_tool_installed(
 
 
 __all__ = [
+    "HEX_LAYERS",
+    "LAYER_RESTRICTIONS",
+    "PACKAGES_DIR",
+    "VALID_EXAMPLES",
+    "VALID_PACKAGES",
+    "HexastackScriptArgumentParser",
     "check_tool_availability",
     "ensure_tool_installed",
     "get_downstream_dependents",
@@ -541,14 +542,8 @@ __all__ = [
     "get_valid_example_names",
     "get_valid_package_names",
     "get_workspace_dependency_graph",
-    "HEX_LAYERS",
-    "HexastackScriptArgumentParser",
-    "LAYER_RESTRICTIONS",
-    "PACKAGES_DIR",
     "resolve_affected_packages",
     "resolve_target_python_files",
-    "VALID_EXAMPLES",
-    "VALID_PACKAGES",
 ]
 
 HexastackScriptArgumentParser = HexaqualScriptArgumentParser

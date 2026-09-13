@@ -110,9 +110,7 @@ def test_publish_package_outcomes() -> None:
 
     # Generic failure
     with patch("subprocess.run") as mock_run:
-        mock_run.return_value = MagicMock(
-            returncode=1, stdout="", stderr="Invalid auth token"
-        )
+        mock_run.return_value = MagicMock(returncode=1, stdout="", stderr="Invalid auth token")
         ok, outcome = adapter.publish_package(files)
         assert ok is False
         assert outcome == "failed"

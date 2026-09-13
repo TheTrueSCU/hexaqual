@@ -80,9 +80,7 @@ def examine_pr(
     presenter = create_github_presenter(output_format=output_format.value)
 
     while True:
-        report = bus.dispatch(
-            ExaminePrCommand(pr_number=pr_number, show_details=show_details)
-        )
+        report = bus.dispatch(ExaminePrCommand(pr_number=pr_number, show_details=show_details))
         if output_format == OutputFormat.RICH and watch:
             console.clear()
 
@@ -209,9 +207,7 @@ def runs(
         runs_list = client.get_workflow_runs(branch=target_branch, limit=limit)
 
     if not runs_list:
-        console.print(
-            f"[yellow]No workflow runs found for branch '{target_branch}'.[/yellow]"
-        )
+        console.print(f"[yellow]No workflow runs found for branch '{target_branch}'.[/yellow]")
         return
 
     from rich.table import Table

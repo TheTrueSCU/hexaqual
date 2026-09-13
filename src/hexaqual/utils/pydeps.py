@@ -124,8 +124,7 @@ def generate_all_diagrams(root: Path) -> list[tuple[str, str]]:
 
     with ProcessPoolExecutor() as executor:
         futures = {
-            executor.submit(generate_package_diagram, pkg, root): pkg.name
-            for pkg in packages
+            executor.submit(generate_package_diagram, pkg, root): pkg.name for pkg in packages
         }
         for future in futures:
             pkg_name = futures[future]

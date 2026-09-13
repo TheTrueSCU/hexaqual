@@ -101,9 +101,7 @@ class SubprocessTestingRunnerAdapter(TestingRunnerPort):
         if base_ref:
             cmd.append(base_ref)
 
-        result = subprocess.run(
-            cmd, cwd=repo_root, capture_output=True, text=True, check=False
-        )
+        result = subprocess.run(cmd, cwd=repo_root, capture_output=True, text=True, check=False)
         return parse_git_diff_hunks(result.stdout, repo_root)
 
     def find_impacted_tests(
@@ -167,9 +165,7 @@ class SubprocessTestingRunnerAdapter(TestingRunnerPort):
 
         return []
 
-    def audit_layer_boundary_leaks(
-        self, cov_path: Path | None = None
-    ) -> list[tuple[str, str]]:
+    def audit_layer_boundary_leaks(self, cov_path: Path | None = None) -> list[tuple[str, str]]:
         """Query .coverage database for domain tests executing infra/adapter files.
 
         Args:

@@ -40,9 +40,7 @@ def test_rich_dependency_presenter_all():
     # 1. Extras parity clean & violation
     v = ExtraParityViolation("db", "sqlite", ("aiosqlite",), "Fix me")
     assert (
-        presenter.present_extras_parity(
-            ExtrasAuditResult(violations=(), total_packages_checked=5)
-        )
+        presenter.present_extras_parity(ExtrasAuditResult(violations=(), total_packages_checked=5))
         == 0
     )
     assert "properly forwarded" in buf.getvalue()
@@ -62,9 +60,7 @@ def test_rich_dependency_presenter_all():
     assert presenter.present_deptry_audit(d_ok) == 0
 
     # 3. Import linter
-    il = ImportLinterReport(
-        results=(ImportLinterPackageResult("cqrs", True),), exit_code=0
-    )
+    il = ImportLinterReport(results=(ImportLinterPackageResult("cqrs", True),), exit_code=0)
     assert presenter.present_import_linter(il) == 0
 
     # 4. Unified audit
@@ -112,18 +108,10 @@ def test_markdown_dependency_presenter_all():
 
 def test_create_dependency_presenter_factory():
     """Verify create_dependency_presenter factory."""
-    assert isinstance(
-        create_dependency_presenter("table"), RichDependencyPresenterAdapter
-    )
-    assert isinstance(
-        create_dependency_presenter("json"), JsonDependencyPresenterAdapter
-    )
-    assert isinstance(
-        create_dependency_presenter("markdown"), MarkdownDependencyPresenterAdapter
-    )
-    assert isinstance(
-        create_dependency_presenter("md"), MarkdownDependencyPresenterAdapter
-    )
+    assert isinstance(create_dependency_presenter("table"), RichDependencyPresenterAdapter)
+    assert isinstance(create_dependency_presenter("json"), JsonDependencyPresenterAdapter)
+    assert isinstance(create_dependency_presenter("markdown"), MarkdownDependencyPresenterAdapter)
+    assert isinstance(create_dependency_presenter("md"), MarkdownDependencyPresenterAdapter)
 
     with pytest.raises(ValueError, match="Unsupported dependency presenter format"):
         create_dependency_presenter("invalid")

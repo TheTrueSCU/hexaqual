@@ -174,9 +174,7 @@ class RunUnifiedDepsAuditHandler:
         """
         self._auditor = auditor
 
-    def handle(
-        self, command: RunUnifiedDepsAuditCommand
-    ) -> UnifiedDependencyAuditReport:
+    def handle(self, command: RunUnifiedDepsAuditCommand) -> UnifiedDependencyAuditReport:
         """Execute unified dependency, extras, and architecture checks.
 
         Args:
@@ -194,9 +192,7 @@ class RunUnifiedDepsAuditHandler:
             for import_name, desc, cli_cmd in _EXPECTED_TOOLS:
                 ok, err = self._auditor.check_tool_availability(import_name, cli_cmd)
                 if not ok:
-                    tool_errors.append(
-                        f"Tools Environment: Missing dependency for {desc} -> {err}"
-                    )
+                    tool_errors.append(f"Tools Environment: Missing dependency for {desc} -> {err}")
             items.append(
                 DependencyAuditItem(
                     check_name="Tool Environment Readiness",

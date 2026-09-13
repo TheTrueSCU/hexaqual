@@ -37,16 +37,12 @@ def test_audit_extras_parity_handler(tmp_path: Path):
     auditor.audit_extras_parity.return_value = ExtrasAuditResult(
         violations=(), total_packages_checked=1
     )
-    res = handler.handle(
-        AuditExtrasParityCommand(repo_root=tmp_path, generate_diagram=False)
-    )
+    res = handler.handle(AuditExtrasParityCommand(repo_root=tmp_path, generate_diagram=False))
     assert res.is_healthy is True
 
     # 2. Diagram generation
     auditor.generate_extras_diagram.return_value = "graph LR"
-    diagram = handler.handle(
-        AuditExtrasParityCommand(repo_root=tmp_path, generate_diagram=True)
-    )
+    diagram = handler.handle(AuditExtrasParityCommand(repo_root=tmp_path, generate_diagram=True))
     assert diagram == "graph LR"
 
 
@@ -55,9 +51,7 @@ def test_run_deptry_audit_handler(tmp_path: Path):
     auditor = MagicMock(spec=DependencyAuditorPort)
     handler = RunDeptryAuditHandler(auditor)
 
-    auditor.run_deptry.return_value = DeptryPackageResult(
-        package_name="core", passed=True
-    )
+    auditor.run_deptry.return_value = DeptryPackageResult(package_name="core", passed=True)
     with patch(
         "hexaqual.infra.handlers.dependencies.get_package_directories",
         return_value=[tmp_path],
@@ -82,9 +76,7 @@ def test_run_import_linter_handler(tmp_path: Path):
     auditor.run_import_linter.return_value = ImportLinterPackageResult(
         package_name="core", passed=True
     )
-    report = handler.handle(
-        RunImportLinterCommand(repo_root=tmp_path, packages=(tmp_path,))
-    )
+    report = handler.handle(RunImportLinterCommand(repo_root=tmp_path, packages=(tmp_path,)))
     assert report.exit_code == 0
 
 
@@ -95,9 +87,7 @@ def test_generate_import_linter_config_handler(tmp_path: Path):
 
     auditor.generate_import_linter_config.return_value = True
     assert (
-        handler.handle(
-            GenerateImportLinterConfigCommand(repo_root=tmp_path, packages=(tmp_path,))
-        )
+        handler.handle(GenerateImportLinterConfigCommand(repo_root=tmp_path, packages=(tmp_path,)))
         is True
     )
 

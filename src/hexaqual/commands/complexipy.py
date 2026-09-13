@@ -12,9 +12,7 @@ from rich.table import Table
 console = Console()
 
 
-def _parse_complexipy_output(
-    raw_output: str, max_complexity: int
-) -> list[tuple[str, str, int]]:
+def _parse_complexipy_output(raw_output: str, max_complexity: int) -> list[tuple[str, str, int]]:
     """Parse raw plain complexipy output into list of violations."""
     violations: list[tuple[str, str, int]] = []
     current_file = ""
@@ -39,9 +37,7 @@ def _parse_complexipy_output(
     return violations
 
 
-def _render_violations(
-    violations: list[tuple[str, str, int]], max_complexity: int
-) -> int:
+def _render_violations(violations: list[tuple[str, str, int]], max_complexity: int) -> int:
     """Display table of violations and return exit code 1."""
     table = Table(
         title=f"[bold red]Cognitive Complexity Violations (> {max_complexity})[/bold red]",
@@ -52,9 +48,7 @@ def _render_violations(
     table.add_column("Function / Method", style="bold yellow")
     table.add_column("Complexity Score", justify="right", style="bold red")
 
-    for file_path, func_name, score in sorted(
-        violations, key=lambda x: x[2], reverse=True
-    ):
+    for file_path, func_name, score in sorted(violations, key=lambda x: x[2], reverse=True):
         table.add_row(file_path, func_name, str(score))
 
     console.print(table)
@@ -97,9 +91,7 @@ def run_complexipy(
     proc = subprocess.run(cmd, capture_output=True, text=True, check=False)
     if proc.returncode != 0 and not proc.stdout.strip():
         if proc.stderr:
-            console.print(
-                f"[bold red]complexipy error:[/bold red] {proc.stderr.strip()}"
-            )
+            console.print(f"[bold red]complexipy error:[/bold red] {proc.stderr.strip()}")
         return proc.returncode
 
     violations = _parse_complexipy_output(proc.stdout.strip(), max_complexity)

@@ -59,9 +59,7 @@ def test_boundary_audit_report():
     assert clean_report.is_healthy is True
 
     leaky_report = BoundaryAuditReport(
-        leaks=(
-            BoundaryAuditItem("tests.unit.test_domain", "packages/core/infra/db.py"),
-        )
+        leaks=(BoundaryAuditItem("tests.unit.test_domain", "packages/core/infra/db.py"),)
     )
     assert leaky_report.is_healthy is False
 
