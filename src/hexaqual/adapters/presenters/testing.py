@@ -23,10 +23,10 @@ from hexaqual.domain.testing import (
 from hexaqual.ports.testing import TestingPresenterPort
 
 __all__ = [
+    "create_testing_presenter",
     "JsonTestingPresenterAdapter",
     "MarkdownTestingPresenterAdapter",
     "RichTestingPresenterAdapter",
-    "create_testing_presenter",
 ]
 
 

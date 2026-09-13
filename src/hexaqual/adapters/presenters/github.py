@@ -31,10 +31,10 @@ from hexaqual.domain.github import (
 from hexaqual.ports.github import GitHubPresenterPort
 
 __all__ = [
+    "create_github_presenter",
     "JsonGitHubPresenterAdapter",
     "MarkdownGitHubPresenterAdapter",
     "RichGitHubPresenterAdapter",
-    "create_github_presenter",
 ]
 
 

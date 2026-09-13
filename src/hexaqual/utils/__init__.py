@@ -29,11 +29,6 @@ from hexaqual.utils.workspace import (
 )
 
 __all__ = [
-    "HEX_LAYERS",
-    "LAYER_RESTRICTIONS",
-    "PACKAGES_DIR",
-    "VALID_PACKAGES",
-    "HexastackScriptArgumentParser",
     "check_file_all",
     "check_package_parity",
     "check_test_directories_inits",
@@ -48,6 +43,11 @@ __all__ = [
     "get_repo_root",
     "get_valid_package_names",
     "get_workspace_dependency_graph",
+    "HEX_LAYERS",
+    "HexastackScriptArgumentParser",
+    "LAYER_RESTRICTIONS",
+    "PACKAGES_DIR",
     "resolve_affected_packages",
     "resolve_target_python_files",
+    "VALID_PACKAGES",
 ]

@@ -158,8 +158,8 @@ def create_refactoring_presenter(
 
 
 __all__ = [
+    "create_refactoring_presenter",
     "JsonRefactoringPresenterAdapter",
     "MarkdownRefactoringPresenterAdapter",
     "RichRefactoringPresenterAdapter",
-    "create_refactoring_presenter",
 ]

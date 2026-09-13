@@ -27,8 +27,8 @@ from hexaqual.utils.all_statements import (
 from hexaqual.utils.test_parity import check_package_parity
 
 __all__ = [
-    "SubprocessToolRunnerAdapter",
     "find_executable",
+    "SubprocessToolRunnerAdapter",
 ]
 
 

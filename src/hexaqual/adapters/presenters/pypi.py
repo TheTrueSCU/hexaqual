@@ -19,10 +19,10 @@ from hexaqual.domain.pypi import (
 from hexaqual.ports.pypi import PyPiPresenterPort
 
 __all__ = [
+    "create_pypi_presenter",
     "JsonPyPiPresenterAdapter",
     "MarkdownPyPiPresenterAdapter",
     "RichPyPiPresenterAdapter",
-    "create_pypi_presenter",
 ]
 
 

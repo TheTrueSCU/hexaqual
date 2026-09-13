@@ -439,10 +439,10 @@ class GenerateArchonTestsHandler:
 __all__ = [
     "_TARGET_GENERATORS",
     "_TOOLS_SECTION_MAP",
+    "build_tools_usage_markdown",
+    "build_umbrella_usage_markdown",
     "GenerateArchonTestsHandler",
     "GeneratePydepsHandler",
     "GenerateUsageDocsHandler",
-    "build_tools_usage_markdown",
-    "build_umbrella_usage_markdown",
     "resolve_impacted_usage_targets",
 ]

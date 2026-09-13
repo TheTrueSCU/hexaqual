@@ -236,8 +236,8 @@ def create_analysis_presenter(
 
 
 __all__ = [
+    "create_analysis_presenter",
     "JsonAnalysisPresenterAdapter",
     "MarkdownAnalysisPresenterAdapter",
     "RichAnalysisPresenterAdapter",
-    "create_analysis_presenter",
 ]

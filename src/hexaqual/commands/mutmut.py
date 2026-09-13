@@ -552,11 +552,11 @@ def inspect_main() -> None:
 
 
 __all__ = [
-    "MutantCategory",
     "classify_mutant_line",
     "clear_package_cache",
     "get_db_connection",
     "inspect_main",
+    "MutantCategory",
     "run_main",
     "run_mutmut_on_package",
     "show_file_mutants",

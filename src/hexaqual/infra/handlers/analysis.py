@@ -332,8 +332,8 @@ class UpdateInlineSnapshotsHandler:
 
 __all__ = [
     "FuzzRunHandler",
-    "ScanCodeQlHandler",
-    "UpdateInlineSnapshotsHandler",
     "run_snapshot_update_for_dir",
     "run_target_fuzz",
+    "ScanCodeQlHandler",
+    "UpdateInlineSnapshotsHandler",
 ]

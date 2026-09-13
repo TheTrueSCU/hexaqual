@@ -22,10 +22,10 @@ from hexaqual.domain.governance import (
 from hexaqual.ports.governance import GovernancePresenterPort
 
 __all__ = [
+    "create_governance_presenter",
     "JsonGovernancePresenterAdapter",
     "MarkdownGovernancePresenterAdapter",
     "RichGovernancePresenterAdapter",
-    "create_governance_presenter",
 ]
 
 

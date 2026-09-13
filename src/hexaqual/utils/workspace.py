@@ -521,12 +521,6 @@ def ensure_tool_installed(
 
 
 __all__ = [
-    "HEX_LAYERS",
-    "LAYER_RESTRICTIONS",
-    "PACKAGES_DIR",
-    "VALID_EXAMPLES",
-    "VALID_PACKAGES",
-    "HexastackScriptArgumentParser",
     "check_tool_availability",
     "ensure_tool_installed",
     "get_downstream_dependents",
@@ -542,8 +536,14 @@ __all__ = [
     "get_valid_example_names",
     "get_valid_package_names",
     "get_workspace_dependency_graph",
+    "HEX_LAYERS",
+    "HexastackScriptArgumentParser",
+    "LAYER_RESTRICTIONS",
+    "PACKAGES_DIR",
     "resolve_affected_packages",
     "resolve_target_python_files",
+    "VALID_EXAMPLES",
+    "VALID_PACKAGES",
 ]
 
 HexastackScriptArgumentParser = HexaqualScriptArgumentParser

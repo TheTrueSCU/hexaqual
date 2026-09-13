@@ -244,8 +244,8 @@ def create_generator_presenter(
 
 
 __all__ = [
+    "create_generator_presenter",
     "JsonGeneratorPresenterAdapter",
     "MarkdownGeneratorPresenterAdapter",
     "RichGeneratorPresenterAdapter",
-    "create_generator_presenter",
 ]

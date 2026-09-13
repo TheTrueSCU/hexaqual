@@ -43,10 +43,10 @@ from hexaqual.utils.workspace import get_package_directories, get_repo_root
 __all__ = [
     "BuildPackagesHandler",
     "CheckPyPiReleasesHandler",
-    "PublishPackagesHandler",
-    "VerifyReproducibleBuildHandler",
     "discover_workspace_packages",
     "find_package_dist_files",
+    "PublishPackagesHandler",
+    "VerifyReproducibleBuildHandler",
 ]
 
 

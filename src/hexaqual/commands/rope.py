@@ -524,8 +524,8 @@ def _handle_sort_methods(file_path: str | Path, root_dir: Path | None = None) ->
 
 
 __all__ = [
-    "FunctionAndMethodAlphabetizerCST",
     "alphabetize_main",
+    "FunctionAndMethodAlphabetizerCST",
     "get_line_offsets",
     "get_offset",
     "handle_change_signature",

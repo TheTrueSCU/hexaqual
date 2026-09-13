@@ -14,8 +14,8 @@ from pathlib import Path
 from hexaqual.utils.workspace import get_package_directories
 
 __all__ = [
-    "ExtraParityViolation",
     "audit_extras_parity",
+    "ExtraParityViolation",
     "generate_extras_mermaid_diagram",
 ]
 

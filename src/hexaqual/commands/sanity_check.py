@@ -39,10 +39,10 @@ from hexaqual.utils.workspace import (
 
 __all__ = [
     "CheckResult",
-    "SanityTarget",
     "main",
     "resolve_targets",
     "run_sanity_check",
+    "SanityTarget",
 ]
 
 

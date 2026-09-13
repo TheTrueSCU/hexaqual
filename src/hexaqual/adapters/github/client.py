@@ -513,6 +513,6 @@ class GitHubHttpAdapter(GitHubApiPort):
 
 
 __all__ = [
-    "GitHubHttpAdapter",
     "get_github_token",
+    "GitHubHttpAdapter",
 ]

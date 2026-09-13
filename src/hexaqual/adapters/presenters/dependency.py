@@ -22,10 +22,10 @@ from hexaqual.domain.dependencies import (
 from hexaqual.ports.dependencies import DependencyPresenterPort
 
 __all__ = [
+    "create_dependency_presenter",
     "JsonDependencyPresenterAdapter",
     "MarkdownDependencyPresenterAdapter",
     "RichDependencyPresenterAdapter",
-    "create_dependency_presenter",
 ]
 
 
