@@ -39,3 +39,29 @@ repos:
         language: system
         types: [python]
         pass_filenames: false
+
+      - id: check-all-statements
+        name: __all__ integrity (check-all-statements)
+        entry: uv run check-all-statements
+        language: system
+        types: [python]
+        pass_filenames: false
+
+      - id: check-test-parity
+        name: test symmetry (check-test-parity)
+        entry: uv run check-test-parity
+        language: system
+        pass_filenames: false
+
+      - id: complexipy-run
+        name: cognitive complexity (complexipy-run)
+        entry: uv run complexipy-run src --max-complexity-allowed 25
+        language: system
+        types: [python]
+        pass_filenames: false
+
+      - id: import-linter
+        name: hexagonal layer boundaries (lint-imports)
+        entry: uv run lint-imports
+        language: system
+        pass_filenames: false
