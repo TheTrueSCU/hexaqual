@@ -13,7 +13,7 @@ def test_cli_version() -> None:
     """Test hexaqual version subcommand."""
     res = runner.invoke(app, ["version"])
     assert res.exit_code == 0
-    assert "0.0.0" in res.stdout
+    assert "0.1.0" in res.stdout
 
 
 def test_cli_check() -> None:
