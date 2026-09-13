@@ -57,29 +57,28 @@ def test_classify_mutant_line() -> None:
     assert cat == MutantCategory.CRITICAL
 
 
-@patch(
-    "hexaqual.commands.mutmut.get_package_directory", return_value=Path("packages/hexastack_core")
-)
 @patch("subprocess.run")
 @patch("sys.exit")
 @patch("sys.argv", ["mutmut-run", "-p", "core"])
-def test_mutmut_run_with_package(
-    mock_exit: MagicMock, mock_run: MagicMock, mock_get_pkg: MagicMock
-) -> None:
+def test_mutmut_run_with_package(mock_exit: MagicMock, mock_run: MagicMock, tmp_path: Path) -> None:
     """Verify mutmut run_main invokes mutmut run with targeted package path and runner."""
-    mock_run.return_value.returncode = 0
-    run_main()
-    mock_run.assert_called_once()
-    call_args = mock_run.call_args[0][0]
-    assert call_args[0] == "mutmut"
-    assert call_args[1] == "run"
-    assert "--paths-to-mutate" in call_args
-    idx = call_args.index("--paths-to-mutate")
-    assert "hexastack_core/src" in call_args[idx + 1]
-    assert "--runner" in call_args
-    runner_idx = call_args.index("--runner")
-    assert "hexastack_core/tests" in call_args[runner_idx + 1]
-    mock_exit.assert_called_once_with(0)
+    pkg_dir = tmp_path / "packages" / "hexastack_core"
+    (pkg_dir / "src").mkdir(parents=True)
+    (pkg_dir / "tests").mkdir(parents=True)
+    with patch("hexaqual.commands.mutmut.get_package_directory", return_value=pkg_dir):
+        mock_run.return_value.returncode = 0
+        run_main()
+        mock_run.assert_called_once()
+        call_args = mock_run.call_args[0][0]
+        assert call_args[0] == "mutmut"
+        assert call_args[1] == "run"
+        assert "--paths-to-mutate" in call_args
+        idx = call_args.index("--paths-to-mutate")
+        assert "hexastack_core/src" in call_args[idx + 1]
+        assert "--runner" in call_args
+        runner_idx = call_args.index("--runner")
+        assert "hexastack_core/tests" in call_args[runner_idx + 1]
+        mock_exit.assert_called_once_with(0)
 
 
 @patch("hexaqual.commands.mutmut.clear_package_cache")
@@ -87,34 +86,39 @@ def test_mutmut_run_with_package(
 @patch("sys.exit")
 @patch("sys.argv", ["mutmut-run", "-p", "core", "-r"])
 def test_mutmut_run_with_refresh(
-    mock_exit: MagicMock, mock_run: MagicMock, mock_clear: MagicMock
+    mock_exit: MagicMock, mock_run: MagicMock, mock_clear: MagicMock, tmp_path: Path
 ) -> None:
     """Verify mutmut run_main with -r clears package cache before running."""
-    mock_clear.return_value = 5
-    mock_run.return_value.returncode = 0
-    run_main()
-    mock_clear.assert_called_once_with("core")
-    mock_run.assert_called_once()
-    mock_exit.assert_called_once_with(0)
+    pkg_dir = tmp_path / "packages" / "hexastack_core"
+    (pkg_dir / "src").mkdir(parents=True)
+    with patch("hexaqual.commands.mutmut.get_package_directory", return_value=pkg_dir):
+        mock_clear.return_value = 5
+        mock_run.return_value.returncode = 0
+        run_main()
+        mock_clear.assert_called_once_with("core")
+        mock_run.assert_called_once()
+        mock_exit.assert_called_once_with(0)
 
 
 @patch("subprocess.run")
 @patch("sys.exit")
 @patch("sys.argv", ["mutmut-run", "-a"])
-def test_mutmut_run_all_packages(mock_exit: MagicMock, mock_run: MagicMock) -> None:
+def test_mutmut_run_all_packages(mock_exit: MagicMock, mock_run: MagicMock, tmp_path: Path) -> None:
     """Verify mutmut run_main with -a executes sequentially per package."""
-    mock_run.return_value.returncode = 0
-    run_main()
-    assert mock_run.call_count >= 1
-    # Check that individual calls isolate paths-to-mutate to a single package
-    for call in mock_run.call_args_list:
-        args = call[0][0]
-        assert args[0] == "mutmut"
-        assert args[1] == "run"
-        assert "--paths-to-mutate" in args
-        idx = args.index("--paths-to-mutate")
-        assert ":" not in args[idx + 1]
-    mock_exit.assert_called_once_with(0)
+    pkg_dir = tmp_path / "packages" / "hexastack_core"
+    (pkg_dir / "src").mkdir(parents=True)
+    with patch("hexaqual.commands.mutmut.get_package_directories", return_value=[pkg_dir]):
+        mock_run.return_value.returncode = 0
+        run_main()
+        assert mock_run.call_count >= 1
+        for call in mock_run.call_args_list:
+            args = call[0][0]
+            assert args[0] == "mutmut"
+            assert args[1] == "run"
+            assert "--paths-to-mutate" in args
+            idx = args.index("--paths-to-mutate")
+            assert ":" not in args[idx + 1]
+        mock_exit.assert_called_once_with(0)
 
 
 @patch("hexaqual.commands.mutmut.get_db_connection")
@@ -198,11 +202,15 @@ def test_mutmut_keyboard_interrupt(
     mock_exit: MagicMock,
     mock_run: MagicMock,
     mock_revert: MagicMock,
+    tmp_path: Path,
 ) -> None:
     """Verify mutmut run_main handles KeyboardInterrupt cleanly by reverting disk mutations."""
-    run_main()
-    assert mock_revert.called
-    mock_exit.assert_called_once_with(130)
+    pkg_dir = tmp_path / "packages" / "hexastack_core"
+    (pkg_dir / "src").mkdir(parents=True)
+    with patch("hexaqual.commands.mutmut.get_package_directory", return_value=pkg_dir):
+        run_main()
+        assert mock_revert.called
+        mock_exit.assert_called_once_with(130)
 
 
 @patch("hexaqual.commands.mutmut.create_governance_bus")
