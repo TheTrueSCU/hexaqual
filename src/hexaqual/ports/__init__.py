@@ -1,10 +1,47 @@
-"""Abstract port interfaces for runners, reporters, and analyzers in Hexaqual.
+"""Ports package exports for hexaqual."""
 
-Notes/Architectural Intent:
-    Defines abstract interfaces (APIs) separating domain business logic from concrete
-    external execution environments and tooling binaries.
-"""
+from hexaqual.ports.analysis import (
+    AnalysisPresenterPort,
+)
+from hexaqual.ports.dependencies import (
+    DependencyAuditorPort,
+    DependencyPresenterPort,
+)
+from hexaqual.ports.generators import (
+    GeneratorPresenterPort,
+)
+from hexaqual.ports.github import (
+    GitHubApiPort,
+    GitHubPresenterPort,
+)
+from hexaqual.ports.governance import (
+    GovernancePresenterPort,
+    ToolRunnerPort,
+)
+from hexaqual.ports.pypi import (
+    PyPiClientPort,
+    PyPiPresenterPort,
+)
+from hexaqual.ports.refactoring import (
+    RefactoringPresenterPort,
+)
+from hexaqual.ports.testing import (
+    TestingPresenterPort,
+    TestingRunnerPort,
+)
 
-from __future__ import annotations
-
-__all__: list[str] = []
+__all__ = [
+    "AnalysisPresenterPort",
+    "DependencyAuditorPort",
+    "DependencyPresenterPort",
+    "GeneratorPresenterPort",
+    "GitHubApiPort",
+    "GitHubPresenterPort",
+    "GovernancePresenterPort",
+    "PyPiClientPort",
+    "PyPiPresenterPort",
+    "RefactoringPresenterPort",
+    "TestingPresenterPort",
+    "TestingRunnerPort",
+    "ToolRunnerPort",
+]

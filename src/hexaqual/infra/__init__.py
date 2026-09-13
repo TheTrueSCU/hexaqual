@@ -1,9 +1,7 @@
-"""Infrastructure orchestration, workflow definitions, and bootstrap wiring for Hexaqual.
+"""Infra package exports for hexaqual."""
 
-Notes/Architectural Intent:
-    Wires ports and adapters into Hexaflow DAG workflows and provides lifecycle hooks.
-"""
+from hexaqual.infra.bootstrap import create_governance_bus
 
-from __future__ import annotations
-
-__all__: list[str] = []
+__all__ = [
+    "create_governance_bus",
+]

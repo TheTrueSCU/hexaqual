@@ -1,0 +1,34 @@
+- id: hexaqual-statements
+  name: hexaqual-statements
+  description: Verify and auto-format __all__ statements
+  entry: check-all-statements
+  language: system
+  files: \.py$
+
+- id: hexaqual-parity
+  name: hexaqual-parity
+  description: Verify 1:1 symmetry between src modules and unit tests
+  entry: check-test-parity
+  language: system
+  pass_filenames: false
+
+- id: hexaqual-complexity
+  name: hexaqual-complexity
+  description: Audit cognitive complexity across functions (<= 25)
+  entry: complexipy-run
+  language: system
+  pass_filenames: false
+
+- id: hexaqual-architecture
+  name: hexaqual-architecture
+  description: Verify hexagonal layer boundaries and import contracts
+  entry: lint-imports
+  language: system
+  pass_filenames: false
+
+- id: hexaqual-sanity
+  name: hexaqual-sanity
+  description: Fast scoped sanity check runner
+  entry: sanity-check
+  language: system
+  pass_filenames: false
