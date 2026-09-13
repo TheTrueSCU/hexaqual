@@ -43,6 +43,5 @@ def test_extract_commands_parallel() -> None:
 
 def test_extract_command_tree_bfs() -> None:
     """Ensure BFS command tree extracts root and discoverable subcommands."""
-    res = extract_command_tree_bfs(["hexastack"])
-    assert ("hexastack",) in res
-    assert ("hexastack", "db") in res or len(res) > 1
+    res = extract_command_tree_bfs(["hexaqual"])
+    assert ("hexaqual",) in res

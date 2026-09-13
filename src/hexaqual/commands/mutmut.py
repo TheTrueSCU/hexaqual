@@ -19,7 +19,6 @@ from hexaqual.adapters.presenters.testing import create_testing_presenter
 from hexaqual.domain.testing import InspectMutationCacheCommand
 from hexaqual.infra.bootstrap import create_governance_bus
 from hexaqual.utils.workspace import (
-    VALID_PACKAGES,
     ensure_tool_installed,
     get_package_directories,
     get_package_directory,
@@ -394,7 +393,7 @@ def run_main() -> None:
     ensure_tool_installed("mutmut", cli_command="mutmut", extra_name="mutmut")
 
     parser = argparse.ArgumentParser(description="Run mutation tests.")
-    parser.add_argument("-p", "--package", choices=VALID_PACKAGES)
+    parser.add_argument("-p", "--package", help="Target package name.")
     parser.add_argument("-a", "--all", action="store_true")
     parser.add_argument(
         "-r",

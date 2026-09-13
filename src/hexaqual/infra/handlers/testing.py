@@ -27,7 +27,7 @@ from hexaqual.domain.testing import (
 from hexaqual.ports.testing import TestingRunnerPort
 from hexaqual.utils.mutmut import classify_mutant_line
 from hexaqual.utils.workspace import (
-    VALID_PACKAGES,
+    get_package_directories,
     get_package_directory,
 )
 
@@ -66,8 +66,7 @@ class RunMutationTestsHandler:
 
         if command.all_packages:
             exit_code = 0
-            for pkg_name in sorted(VALID_PACKAGES):
-                pkg_dir = get_package_directory(pkg_name)
+            for pkg_dir in get_package_directories():
                 code = self._runner.run_mutmut(pkg_dir, reset_cache=command.reset_cache)
                 if code != 0:
                     exit_code = code

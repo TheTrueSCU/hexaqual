@@ -36,6 +36,7 @@ def test_audit_extras_parity_passes_on_current_workspace() -> None:
 
 def test_audit_extras_parity_flags_missing_umbrella_file(tmp_path: Path) -> None:
     """Verify validator flags missing umbrella pyproject.toml."""
+    (tmp_path / "packages").mkdir()
     violations = audit_extras_parity(tmp_path)
     assert len(violations) == 1
     assert violations[0].extra_name == "<root>"

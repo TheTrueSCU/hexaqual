@@ -110,7 +110,11 @@ def audit_extras_parity(repo_root: Path) -> list[ExtraParityViolation]:
     Returns:
         List of ExtraParityViolation instances found.
     """
-    umbrella_toml = repo_root / "packages" / "hexastack" / "pyproject.toml"
+    packages_dir = repo_root / "packages"
+    if not packages_dir.is_dir():
+        return []
+
+    umbrella_toml = packages_dir / "hexastack" / "pyproject.toml"
     if not umbrella_toml.is_file():
         return [
             ExtraParityViolation(

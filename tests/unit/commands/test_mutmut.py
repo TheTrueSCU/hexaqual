@@ -1,3 +1,4 @@
+from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 from hexaqual.commands.mutmut import (
@@ -56,10 +57,15 @@ def test_classify_mutant_line() -> None:
     assert cat == MutantCategory.CRITICAL
 
 
+@patch(
+    "hexaqual.commands.mutmut.get_package_directory", return_value=Path("packages/hexastack_core")
+)
 @patch("subprocess.run")
 @patch("sys.exit")
 @patch("sys.argv", ["mutmut-run", "-p", "core"])
-def test_mutmut_run_with_package(mock_exit: MagicMock, mock_run: MagicMock) -> None:
+def test_mutmut_run_with_package(
+    mock_exit: MagicMock, mock_run: MagicMock, mock_get_pkg: MagicMock
+) -> None:
     """Verify mutmut run_main invokes mutmut run with targeted package path and runner."""
     mock_run.return_value.returncode = 0
     run_main()

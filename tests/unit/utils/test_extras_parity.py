@@ -15,6 +15,7 @@ from hexaqual.utils.extras_parity import (
 
 def test_audit_extras_parity_missing_umbrella_toml(tmp_path: Path):
     """Verify handling when umbrella pyproject.toml is missing."""
+    (tmp_path / "packages").mkdir()
     violations = audit_extras_parity(tmp_path)
     assert len(violations) == 1
     assert violations[0].extra_name == "<root>"

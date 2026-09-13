@@ -44,52 +44,73 @@ def test_get_repo_root() -> None:
     assert (root / "pyproject.toml").is_file()
 
 
-def test_get_packages_directory() -> None:
+def test_get_packages_directory(tmp_path: Path) -> None:
     """Verify packages directory resolution."""
     pkg_dir = get_packages_directory()
     assert pkg_dir.is_dir()
-    assert pkg_dir.name == "packages"
+
+    pkgs = tmp_path / "packages"
+    pkgs.mkdir()
+    assert get_packages_directory(tmp_path) == pkgs
 
 
-def test_get_package_directory() -> None:
+def test_get_package_directory(tmp_path: Path) -> None:
     """Verify individual package path resolution."""
-    core_dir = get_package_directory("core")
+    pkg_dir = tmp_path / "packages" / "hexastack_core"
+    pkg_dir.mkdir(parents=True)
+    core_dir = get_package_directory("core", tmp_path)
     assert core_dir.name == "hexastack_core"
     assert core_dir.is_dir()
 
 
-def test_get_package_directories() -> None:
+def test_get_package_directories(tmp_path: Path) -> None:
     """Verify list of package directories contains known packages."""
-    dirs = get_package_directories()
+    pkg_dir = tmp_path / "packages" / "hexastack_core"
+    pkg_dir.mkdir(parents=True)
+    (pkg_dir / "pyproject.toml").write_text("[project]\nname='hexastack-core'\n")
+    dirs = get_package_directories(tmp_path)
     names = {d.name for d in dirs}
     assert "hexastack_core" in names
-    # verify known packages in workspace
     assert len(dirs) >= 1
 
 
-def test_get_valid_package_names() -> None:
+def test_get_valid_package_names(tmp_path: Path) -> None:
     """Verify dynamic valid package name enumeration."""
-    names = get_valid_package_names()
+    pkg_dir = tmp_path / "packages" / "hexastack_core"
+    pkg_dir.mkdir(parents=True)
+    (pkg_dir / "pyproject.toml").write_text("[project]\nname='hexastack-core'\n")
+    names = get_valid_package_names(tmp_path)
     assert "core" in names
     assert "hexastack_core" in names
-    assert "tools" in names
 
 
-def test_get_package_module_dir() -> None:
+def test_get_package_module_dir(tmp_path: Path) -> None:
     """Verify detection of internal module directory under src/."""
-    core_dir = get_package_directory("core")
-    mod_dir = get_package_module_dir(core_dir)
+    pkg_dir = tmp_path / "packages" / "hexastack_core"
+    mod = pkg_dir / "src" / "hexastack_core"
+    mod.mkdir(parents=True)
+    mod_dir = get_package_module_dir(pkg_dir)
     assert mod_dir is not None
     assert mod_dir.name == "hexastack_core"
 
 
-def test_get_present_layers() -> None:
+def test_get_present_layers(tmp_path: Path) -> None:
     """Verify detection of hexagonal layers."""
-    core_dir = get_package_directory("core")
-    layers = get_present_layers(core_dir)
+    pkg_dir = tmp_path / "packages" / "hexastack_core"
+    for layer in ("domain", "ports", "adapters"):
+        (pkg_dir / "src" / "hexastack_core" / layer).mkdir(parents=True)
+    layers = get_present_layers(pkg_dir)
     assert "domain" in layers
     assert "ports" in layers
     assert "adapters" in layers
+
+    # Single-package root with src
+    single_dir = tmp_path / "single_pkg"
+    for layer in ("domain", "ports"):
+        (single_dir / "src" / "single_pkg" / layer).mkdir(parents=True)
+    single_layers = get_present_layers(single_dir)
+    assert "domain" in single_layers
+    assert "ports" in single_layers
 
 
 def test_standalone_single_package_workspace_discovery() -> None:

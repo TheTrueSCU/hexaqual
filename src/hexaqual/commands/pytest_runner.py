@@ -9,8 +9,6 @@ import sys
 from pathlib import Path
 
 from hexaqual.utils.workspace import (
-    VALID_EXAMPLES,
-    VALID_PACKAGES,
     HexastackScriptArgumentParser,
     get_example_directory,
     get_package_directories,
@@ -126,8 +124,12 @@ def _resolve_test_targets(
 def run_main() -> None:
     """CLI entrypoint for pytest-run."""
     parser = argparse.ArgumentParser(description="Run pytest test suite.")
-    parser.add_argument("-p", "--package", dest="packages", action="append", choices=VALID_PACKAGES)
-    parser.add_argument("-e", "--example", dest="examples", action="append", choices=VALID_EXAMPLES)
+    parser.add_argument(
+        "-p", "--package", dest="packages", action="append", help="Target package name."
+    )
+    parser.add_argument(
+        "-e", "--example", dest="examples", action="append", help="Target example project."
+    )
     parser.add_argument(
         "-a",
         "--all",
