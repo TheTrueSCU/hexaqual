@@ -13,10 +13,10 @@ def test_build_tools_usage_markdown_contains_sections() -> None:
     """Ensure generated tools markdown contains expected sections and headers."""
     root = get_repo_root()
     content = build_tools_usage_markdown(root)
-    assert "# Hexastack Developer Tools & Usage Guide" in content
-    assert "gh-pr-examine" in content
-    assert "check-test-parity" in content
-    assert "pytest-run" in content
+    assert "# Hexaqual Quality Suite & CLI Catalog" in content
+    assert "hexaqual" in content
+    assert "sanity" in content
+    assert "parity" in content
 
 
 def test_build_umbrella_usage_markdown_contains_sections() -> None:

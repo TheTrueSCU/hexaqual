@@ -47,8 +47,12 @@ def test_generate_usage_docs_handler_check_and_fix(tmp_path: Path) -> None:
     handler = GenerateUsageDocsHandler(root=tmp_path)
     with (
         patch(
-            "hexaqual.infra.handlers.generators._TARGET_GENERATORS",
-            {"test": ("USAGE.md", lambda r: "New content\n")},
+            "hexaqual.infra.handlers.generators.discover_usage_targets",
+            return_value={"test": usage_file},
+        ),
+        patch(
+            "hexaqual.infra.handlers.generators.build_tools_usage_markdown",
+            return_value="New content\n",
         ),
         patch(
             "hexaqual.infra.handlers.generators.resolve_impacted_usage_targets",

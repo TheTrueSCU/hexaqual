@@ -26,14 +26,26 @@ venv/
 ENV/
 
 # Testing & Quality
+.cache/
 .coverage
 .coverage.*
 htmlcov/
+coverage.xml
+junit.xml
+nosetests.xml
+*.xml
+*.cover
 .pytest_cache/
 .hypothesis/
 .ruff_cache/
 .mypy_cache/
 .ty_cache/
+.import_linter_cache/
+.mutmut-cache
+*.mutmut-cache
+.ropeproject/
+logs/
+*.log
 
 # Hexaflow state & artifacts
 .hexaflow/

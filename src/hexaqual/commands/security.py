@@ -45,9 +45,13 @@ def security(
         raise typer.Exit(code=1) from exc
 
 
-def main() -> None:
+def main(argv: list[str] | None = None) -> int:
     """CLI entrypoint for gh-security command."""
-    app()
+    try:
+        app(args=argv, standalone_mode=False)
+        return 0
+    except SystemExit as exc:
+        return exc.code if isinstance(exc.code, int) else (1 if exc.code else 0)
 
 
 __all__ = ["app", "main", "security"]

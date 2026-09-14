@@ -6,6 +6,7 @@ import pytest
 from hexaqual.utils.workspace import (
     check_tool_availability,
     ensure_tool_installed,
+    get_canonical_scripts,
     get_package_directories,
     get_package_directory,
     get_package_module_dir,
@@ -13,6 +14,8 @@ from hexaqual.utils.workspace import (
     get_present_layers,
     get_repo_root,
     get_valid_package_names,
+    get_workspace_scripts,
+    group_scripts_by_entrypoint,
     resolve_affected_packages,
 )
 
@@ -184,3 +187,48 @@ def test_resolve_affected_packages(tmp_path: Path) -> None:
     assert (
         resolve_affected_packages(["docs/assets/pydeps/hexaqual.svg"], repo_root=tmp_path) == set()
     )
+
+
+def test_get_workspace_scripts(tmp_path: Path) -> None:
+    """Verify get_workspace_scripts extracts scripts from root pyproject.toml."""
+    pyproj = tmp_path / "pyproject.toml"
+    pyproj.write_text(
+        '[project.scripts]\nhexaqual = "hexaqual.cli.main:app"\n',
+        encoding="utf-8",
+    )
+    scripts = get_workspace_scripts(tmp_path)
+    assert scripts == {
+        "hexaqual": "hexaqual.cli.main:app",
+    }
+
+    # Non-existent pyproject returns empty dict
+    assert get_workspace_scripts(tmp_path / "nonexistent") == {}
+
+
+def test_group_scripts_by_entrypoint() -> None:
+    """Verify grouping scripts by target entrypoint string."""
+    scripts = {
+        "alphabetizer": "hexaqual.commands.rope:alphabetize_main",
+        "rope-alphabetizer": "hexaqual.commands.rope:alphabetize_main",
+        "sanity-check": "hexaqual.commands.sanity_check:main",
+    }
+    grouped = group_scripts_by_entrypoint(scripts)
+    assert grouped["hexaqual.commands.rope:alphabetize_main"] == [
+        "alphabetizer",
+        "rope-alphabetizer",
+    ]
+    assert grouped["hexaqual.commands.sanity_check:main"] == ["sanity-check"]
+
+
+def test_get_canonical_scripts() -> None:
+    """Verify resolving canonical scripts and detecting aliases."""
+    scripts = {
+        "hexaqual": "hexaqual.cli.main:app",
+        "sanity-check": "hexaqual.commands.sanity_check:main",
+        "alphabetizer": "hexaqual.commands.rope:alphabetize_main",
+        "rope-alphabetizer": "hexaqual.commands.rope:alphabetize_main",
+    }
+    canonical = get_canonical_scripts(scripts)
+    assert canonical["hexaqual"] == []
+    assert canonical["alphabetizer"] == ["rope-alphabetizer"]
+    assert canonical["sanity-check"] == []

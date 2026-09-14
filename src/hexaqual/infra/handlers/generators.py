@@ -10,7 +10,6 @@ from __future__ import annotations
 import difflib
 import subprocess
 import tomllib
-from collections.abc import Callable
 from concurrent.futures import ProcessPoolExecutor
 from pathlib import Path
 
@@ -25,7 +24,6 @@ from hexaqual.domain.generators import (
 )
 from hexaqual.utils.help_extractor import (
     extract_command_tree_bfs,
-    extract_commands_parallel,
     extract_subcommands_from_help,
 )
 from hexaqual.utils.import_linter import get_present_layers
@@ -34,77 +32,139 @@ from hexaqual.utils.pydeps import (
     generate_package_diagram,
 )
 from hexaqual.utils.workspace import (
+    get_canonical_scripts,
     get_package_directories,
     get_package_directory,
     get_repo_root,
+    get_workspace_scripts,
     resolve_affected_packages,
 )
 
-_TOOLS_SECTION_MAP: dict[str, list[str]] = {
-    "🔍 GitHub & PR Examination Tools": [
-        "gh-pr-examine",
-        "gh-checks",
-        "gh-repo",
-        "gh-security",
-        "gh-code-scanning",
-    ],
-    "🛡️ Security & Code Quality Gateways": [
-        "codeql-scan",
-        "check-test-parity",
-        "check-all-statements",
-        "fix-all-statements",
-        "import-linter-run",
-        "import-linter-generate",
-        "deptry-run",
-        "generate-usage-docs",
-    ],
-    "🧪 Test Execution, Contracts & Mutation": [
-        "pytest-run",
-        "pytest-archon-generate",
-        "inline-snapshot-update",
-        "mutmut-run",
-        "mutmut-inspect",
-    ],
-    "📦 Code Architecture & Distribution": [
-        "pydeps-generate",
-        "pypi-check",
-        "pypi-build",
-        "pypi-publish",
-        "alphabetizer",
-        "rope-run",
-    ],
-}
+
+def _resolve_workspace_commands(root: Path) -> dict[str, list[str]]:
+    """Resolve commands and their aliases from workspace pyproject.toml."""
+    scripts = get_workspace_scripts(root)
+    if not scripts:
+        candidates = [
+            root / "pyproject.toml",
+            root / "packages" / "hexaqual" / "pyproject.toml",
+        ]
+        pyproject_path = next((c for c in candidates if c.is_file()), root / "pyproject.toml")
+        if pyproject_path.is_file():
+            try:
+                data = tomllib.loads(pyproject_path.read_text(encoding="utf-8"))
+                scripts = data.get("project", {}).get("scripts", {})
+            except Exception:
+                pass
+
+    commands_map = get_canonical_scripts(scripts)
+    if not commands_map:
+        name = root.name
+        pyproj = root / "pyproject.toml"
+        if pyproj.is_file():
+            try:
+                data = tomllib.loads(pyproj.read_text(encoding="utf-8"))
+                name = data.get("project", {}).get("name", root.name)
+            except Exception:
+                pass
+        commands_map = {name: []}
+    return commands_map
+
+
+def _append_single_command_tree(
+    primary_cmd: str,
+    aliases: list[str],
+    root: Path,
+    lines: list[str],
+) -> None:
+    """Append unrolled command tree for a single primary entrypoint."""
+    alias_str = f" / `{aliases[0]}`" if aliases else ""
+    alias_badge = f" (alias: `{'`, `'.join(aliases)}`)" if aliases else ""
+    lines[0] = f"# Hexaqual Quality Suite & CLI Catalog (`{primary_cmd}`{alias_str})"
+
+    tree = extract_command_tree_bfs([primary_cmd], cwd=root)
+    root_help = tree.get((primary_cmd,), "")
+
+    lines.extend(
+        [
+            "",
+            f"## 🚀 Unified Root Entrypoint (`{primary_cmd}`{alias_badge})",
+            "",
+            "```text",
+            root_help,
+            "```",
+            "",
+            "---",
+            "",
+            "## 🛠️ Complete Subcommand Tree Reference",
+            "",
+        ]
+    )
+
+    subcommand_keys = [k for k in sorted(tree.keys()) if len(k) > 1]
+    for key in subcommand_keys:
+        cmd_str = " ".join(key)
+        depth = len(key)
+        heading = "#" * min(depth + 1, 5)
+        lines.append(f"{heading} `{cmd_str}`\n")
+        lines.append("```text")
+        lines.append(tree[key])
+        lines.append("```\n")
+
+
+def _append_multi_command_tree(
+    commands_map: dict[str, list[str]],
+    root: Path,
+    lines: list[str],
+) -> None:
+    """Append unrolled command trees for multiple canonical scripts."""
+    lines.extend(
+        [
+            "",
+            "## 🛠️ Complete Command & Subcommand Reference",
+            "",
+        ]
+    )
+    for cmd_name, aliases in sorted(commands_map.items()):
+        alias_badge = f" (aliases: `{'`, `'.join(aliases)}`)" if aliases else ""
+        tree = extract_command_tree_bfs([cmd_name], cwd=root)
+        cmd_help = tree.get((cmd_name,), "")
+        lines.append(f"### `{cmd_name}`{alias_badge}\n")
+        lines.append("```text")
+        lines.append(cmd_help)
+        lines.append("```\n")
+
+        subcommand_keys = [k for k in sorted(tree.keys()) if len(k) > 1]
+        for key in subcommand_keys:
+            cmd_str = " ".join(key)
+            depth = len(key)
+            heading = "#" * min(depth + 2, 5)
+            lines.append(f"{heading} `{cmd_str}`\n")
+            lines.append("```text")
+            lines.append(tree[key])
+            lines.append("```\n")
 
 
 def build_tools_usage_markdown(root: Path) -> str:
-    """Generate canonical USAGE.md for hexastack-tools using parallel command help extraction."""
-    candidates = [
-        root / "pyproject.toml",
-        root / "packages" / "hexaqual" / "pyproject.toml",
-        root / "packages" / "hexastack_tools" / "pyproject.toml",
-    ]
-    pyproject_path = next((c for c in candidates if c.is_file()), root / "pyproject.toml")
-    data = tomllib.loads(pyproject_path.read_text(encoding="utf-8"))
-    scripts: dict[str, str] = data.get("project", {}).get("scripts", {})
-
-    all_cmds = [[cmd] for cmd in sorted(scripts.keys())]
-    help_map = extract_commands_parallel(all_cmds)
+    """Generate canonical USAGE.md by unrolling the complete command hierarchy via BFS."""
+    commands_map = _resolve_workspace_commands(root)
 
     lines: list[str] = [
-        "# Hexastack Developer Tools & Usage Guide (`hexastack-tools`)",
+        "# Hexaqual Quality Suite & CLI Catalog",
         "",
-        "> Canonical developer command reference and CLI catalog automatically generated from tool entrypoints.",
+        "> Canonical developer command reference and CLI catalog automatically generated from the complete command hierarchy.",
         "",
         "---",
         "",
         "## 🏛️ Dogfooding Hexagonal Architecture",
         "",
-        "`hexastack-tools` is built strictly according to Hexastack's hexagonal design principles:",
+        "`hexaqual` is built strictly according to Hexagonal Architecture design principles:",
         "- **`domain/`**: Pure data contracts (`PrSummary`, `CheckRunFinding`, `ReviewThread`, `OutputFormat`).",
-        "- **`ports/`**: Clean interface contracts (`GitHubApiPort`).",
-        "- **`adapters/`**: Pluggable presenters (`rich`, `json`, `plain`) and GitHub API REST/GraphQL clients.",
-        "- **`commands/`**: High-performance Typer/Argparse CLI applications with pipe auto-detection.",
-        "- **`utils/`**: Shared monorepo workspace discovery and package graph resolvers.",
+        "- **`ports/`**: Clean interface contracts (`GitHubApiPort`, `GovernancePresenterPort`, `ToolRunnerPort`, `PyPiClientPort`).",
+        "- **`adapters/`**: Pluggable presenters (`rich`, `json`, `plain`), subcommands, and runners.",
+        "- **`cli/`**: Unified Typer CLI driving adapter (`hexaqual`).",
+        "- **`infra/`**: Command dispatchers, handlers, and execution orchestration.",
+        "- **`utils/`**: Workspace discovery, AST parsing, and package graph resolvers.",
         "",
         "---",
         "",
@@ -117,41 +177,20 @@ def build_tools_usage_markdown(root: Path) -> str:
         "- **`plain`**: Machine-readable TSV stream.",
         "",
         "---",
-        "",
-        "## 🛠️ CLI Commands & Usage Catalog",
-        "",
     ]
 
-    documented_cmds: set[str] = set()
-
-    for section_title, cmd_list in _TOOLS_SECTION_MAP.items():
-        lines.append(f"### {section_title}\n")
-        for cmd in cmd_list:
-            if cmd not in scripts:
-                continue
-            documented_cmds.add(cmd)
-            help_text = help_map.get((cmd,), "")
-            lines.append(f"#### `{cmd}`\n")
-            lines.append("```text")
-            lines.append(help_text)
-            lines.append("```\n")
-
-    unmapped = sorted(set(scripts.keys()) - documented_cmds)
-    if unmapped:
-        lines.append("### 🔧 Additional Workspace Tools\n")
-        for cmd in unmapped:
-            help_text = help_map.get((cmd,), "")
-            lines.append(f"#### `{cmd}`\n")
-            lines.append("```text")
-            lines.append(help_text)
-            lines.append("```\n")
+    if len(commands_map) == 1:
+        primary_cmd, aliases = next(iter(commands_map.items()))
+        _append_single_command_tree(primary_cmd, aliases, root, lines)
+    else:
+        _append_multi_command_tree(commands_map, root, lines)
 
     return "\n".join(lines).strip() + "\n"
 
 
 def build_umbrella_usage_markdown(root: Path) -> str:
     """Generate canonical USAGE.md for the umbrella hexastack package using BFS command tree traversal."""
-    tree = extract_command_tree_bfs(["hexastack"])
+    tree = extract_command_tree_bfs(["hexastack"], cwd=root)
     main_help = tree.get(("hexastack",), "")
     subcommands = extract_subcommands_from_help(main_help)
 
@@ -184,16 +223,74 @@ def build_umbrella_usage_markdown(root: Path) -> str:
     return "\n".join(lines).strip() + "\n"
 
 
-_TARGET_GENERATORS: dict[str, tuple[str, Callable[[Path], str]]] = {
-    "tools": (
-        "packages/hexaqual/USAGE.md",
-        build_tools_usage_markdown,
-    ),
-    "hexastack": (
-        "packages/hexastack/USAGE.md",
-        build_umbrella_usage_markdown,
-    ),
-}
+def resolve_usage_target_rel_path(target_key: str, root: Path) -> str:
+    """Resolve relative file path for a usage documentation target.
+
+    Args:
+        target_key: Target key identifier (e.g. package name or root project name).
+        root: Workspace root path.
+
+    Returns:
+        Relative file path string for USAGE.md.
+
+    Notes/Architectural Intent:
+        Dynamically cross-references discovered usage targets or packages directory
+        without hardcoded literal maps or package names.
+    """
+    targets = discover_usage_targets(root)
+    if target_key in targets:
+        target_path = targets[target_key]
+        try:
+            return str(target_path.relative_to(root))
+        except ValueError:
+            return str(target_path)
+
+    pkg_dir = root / "packages" / target_key
+    if pkg_dir.is_dir():
+        return f"packages/{target_key}/USAGE.md"
+
+    return "USAGE.md"
+
+
+def discover_usage_targets(root: Path) -> dict[str, Path]:
+    """Discover all packages or root defining [project.scripts].
+
+    Args:
+        root: Workspace root directory.
+
+    Returns:
+        Mapping of target name -> Path to its USAGE.md destination.
+
+    Notes/Architectural Intent:
+        Dynamically checks root and packages/ directories for pyproject.toml files
+        containing CLI scripts. Zero hardcoded package names.
+    """
+    targets: dict[str, Path] = {}
+
+    root_pyproject = root / "pyproject.toml"
+    if root_pyproject.is_file():
+        try:
+            data = tomllib.loads(root_pyproject.read_text(encoding="utf-8"))
+            if data.get("project", {}).get("scripts"):
+                name = data.get("project", {}).get("name", root.name)
+                targets[name] = root / "USAGE.md"
+        except Exception:
+            pass
+
+    packages_dir = root / "packages"
+    if packages_dir.is_dir():
+        for pkg_dir in sorted(packages_dir.iterdir()):
+            pyproj = pkg_dir / "pyproject.toml"
+            if pyproj.is_file():
+                try:
+                    data = tomllib.loads(pyproj.read_text(encoding="utf-8"))
+                    if data.get("project", {}).get("scripts"):
+                        name = data.get("project", {}).get("name", pkg_dir.name)
+                        targets[name] = pkg_dir / "USAGE.md"
+                except Exception:
+                    pass
+
+    return targets
 
 
 def _get_changed_files_for_git() -> list[str]:
@@ -212,22 +309,31 @@ def _get_changed_files_for_git() -> list[str]:
 
 
 def resolve_impacted_usage_targets(root: Path) -> list[str]:
-    """Resolve targets based on git changes, or all if no changes detected."""
+    """Resolve target names impacted by git diff changes.
+
+    Args:
+        root: Workspace root directory.
+
+    Returns:
+        List of target names to process.
+
+    Notes/Architectural Intent:
+        Dynamically cross-references changed files with discovered target directories.
+    """
+    targets = discover_usage_targets(root)
+    if not (root / "packages").is_dir():
+        return list(targets.keys())
+
     changed = _get_changed_files_for_git()
     if not changed:
-        return list(_TARGET_GENERATORS.keys())
+        return list(targets.keys())
 
     affected = resolve_affected_packages(changed, root)
     if affected is None:
-        return list(_TARGET_GENERATORS.keys())
+        return list(targets.keys())
 
-    targets: list[str] = []
-    if "tools" in affected:
-        targets.append("tools")
-    if "hexastack" in affected or "cli" in affected:
-        targets.append("hexastack")
-
-    return targets or list(_TARGET_GENERATORS.keys())
+    matched = [t for t in targets if t in affected or any(t.endswith(a) for a in affected)]
+    return matched or list(targets.keys())
 
 
 class GeneratePydepsHandler:
@@ -299,6 +405,104 @@ class GeneratePydepsHandler:
         return PydepsReport(results=tuple(results), is_successful=all_ok)
 
 
+def _filter_target_map(
+    all_targets: dict[str, Path],
+    root: Path,
+    package: str | None,
+    affected_only: bool,
+) -> dict[str, Path]:
+    """Filter discovered usage targets based on package or impact criteria.
+
+    Args:
+        all_targets: Mapping of discovered target names to USAGE.md paths.
+        root: Workspace repository root directory.
+        package: Optional specific package name to filter for.
+        affected_only: Whether to restrict to packages impacted by git diff.
+
+    Returns:
+        Filtered dictionary mapping target names to their USAGE.md file paths.
+
+    Notes/Architectural Intent:
+        Extracted from GenerateUsageDocsHandler to maintain strict cognitive
+        complexity compliance under 25.
+    """
+    if package and package != "all":
+        if package in all_targets:
+            return {package: all_targets[package]}
+        target_map = {
+            k: v for k, v in all_targets.items() if k == package or v.parent.name == package
+        }
+        if target_map:
+            return target_map
+        pkg_dir = root / "packages" / package
+        if pkg_dir.is_dir():
+            return {package: pkg_dir / "USAGE.md"}
+        return {}
+
+    if affected_only:
+        impacted = resolve_impacted_usage_targets(root)
+        target_map = {k: all_targets[k] for k in impacted if k in all_targets}
+        if target_map or (root / "packages").is_dir():
+            return target_map
+        return all_targets
+
+    return all_targets
+
+
+def _process_target_file(
+    usage_file: Path,
+    root: Path,
+    check_only: bool,
+    fix: bool,
+) -> tuple[str, str, str | None]:
+    """Process a single USAGE.md file for currency or updates.
+
+    Args:
+        usage_file: Target USAGE.md file path.
+        root: Workspace repository root directory.
+        check_only: Whether to only audit without modifying files.
+        fix: Whether to write updated markdown to disk.
+
+    Returns:
+        Tuple of (status, relative_path, diff_content_if_any).
+        Status is one of 'stale', 'up_to_date', or 'updated'.
+
+    Notes/Architectural Intent:
+        Extracted from GenerateUsageDocsHandler to isolate diff computation
+        and file I/O operations from target orchestration.
+    """
+    pyproject_path = usage_file.parent / "pyproject.toml"
+    if not pyproject_path.is_file():
+        pyproject_path = root / "pyproject.toml"
+    new_content = build_tools_usage_markdown(pyproject_path.parent)
+
+    try:
+        rel_path = str(usage_file.relative_to(root))
+    except ValueError:
+        rel_path = str(usage_file)
+
+    if check_only and not fix:
+        if not usage_file.is_file():
+            return "stale", rel_path, f"File {rel_path} does not exist."
+
+        current_content = usage_file.read_text(encoding="utf-8")
+        if current_content.strip() != new_content.strip():
+            diff_lines = list(
+                difflib.unified_diff(
+                    current_content.splitlines(),
+                    new_content.splitlines(),
+                    fromfile=f"a/{rel_path}",
+                    tofile=f"b/{rel_path}",
+                    lineterm="",
+                )
+            )
+            return "stale", rel_path, "\n".join(diff_lines)
+        return "up_to_date", rel_path, None
+
+    usage_file.write_text(new_content, encoding="utf-8")
+    return "updated", rel_path, None
+
+
 class GenerateUsageDocsHandler:
     """Handler evaluating or updating USAGE.md catalog files."""
 
@@ -307,7 +511,7 @@ class GenerateUsageDocsHandler:
         self._root = root or get_repo_root()
 
     def handle(self, command: GenerateUsageDocsCommand) -> UsageDocsReport:
-        """Audit or regenerate USAGE.md documentation.
+        """Audit or regenerate USAGE.md documentation across discovered targets.
 
         Args:
             command: GenerateUsageDocsCommand specifying check or fix behavior.
@@ -316,60 +520,40 @@ class GenerateUsageDocsHandler:
             UsageDocsReport detailing updated, up-to-date, or stale files.
 
         Notes/Architectural Intent:
-            Delegates markdown generation to target builders, producing diffs
-            for any file differing from generated output.
+            Dynamically discovers all packages with scripts, groups by entrypoint
+            to eliminate alias redundancy, and validates/generates USAGE.md.
         """
-        if command.package and command.package != "all":
-            targets = [command.package]
-        elif command.package == "all":
-            targets = list(_TARGET_GENERATORS.keys())
-        elif command.affected_only:
-            targets = resolve_impacted_usage_targets(self._root)
-        else:
-            targets = list(_TARGET_GENERATORS.keys())
+        all_targets = discover_usage_targets(self._root)
+        target_map = _filter_target_map(
+            all_targets, self._root, command.package, command.affected_only
+        )
+        if not target_map:
+            target_map = {self._root.name: self._root / "USAGE.md"}
 
         up_to_date: list[str] = []
         updated: list[str] = []
         stale: list[str] = []
         diffs: list[tuple[str, str]] = []
 
-        for target_key in targets:
-            rel_path, generator_fn = _TARGET_GENERATORS[target_key]
-            usage_file = self._root / rel_path
-            new_content = generator_fn(self._root)
-
-            if command.check_only and not command.fix:
-                if not usage_file.is_file():
-                    stale.append(rel_path)
-                    diffs.append((rel_path, f"File {rel_path} does not exist."))
-                    continue
-
-                current_content = usage_file.read_text(encoding="utf-8")
-                if current_content.strip() != new_content.strip():
-                    stale.append(rel_path)
-                    diff_lines = list(
-                        difflib.unified_diff(
-                            current_content.splitlines(),
-                            new_content.splitlines(),
-                            fromfile=f"a/{rel_path}",
-                            tofile=f"b/{rel_path}",
-                            lineterm="",
-                        )
-                    )
-                    diffs.append((rel_path, "\n".join(diff_lines)))
-                else:
-                    up_to_date.append(rel_path)
+        for usage_file in target_map.values():
+            status, rel_path, diff = _process_target_file(
+                usage_file, self._root, command.check_only, command.fix
+            )
+            if status == "stale":
+                stale.append(rel_path)
+                if diff:
+                    diffs.append((rel_path, diff))
+            elif status == "up_to_date":
+                up_to_date.append(rel_path)
             else:
-                usage_file.write_text(new_content, encoding="utf-8")
                 updated.append(rel_path)
 
-        is_valid = len(stale) == 0
         return UsageDocsReport(
             up_to_date_files=tuple(up_to_date),
             updated_files=tuple(updated),
             stale_files=tuple(stale),
             diffs=tuple(diffs),
-            is_valid=is_valid,
+            is_valid=len(stale) == 0,
         )
 
 
@@ -437,12 +621,12 @@ class GenerateArchonTestsHandler:
 
 
 __all__ = [
-    "_TARGET_GENERATORS",
-    "_TOOLS_SECTION_MAP",
     "build_tools_usage_markdown",
     "build_umbrella_usage_markdown",
+    "discover_usage_targets",
     "GenerateArchonTestsHandler",
     "GeneratePydepsHandler",
     "GenerateUsageDocsHandler",
     "resolve_impacted_usage_targets",
+    "resolve_usage_target_rel_path",
 ]

@@ -146,10 +146,14 @@ def test_run_sanity_check_with_bus_and_presenter(tmp_path: Path) -> None:
 
 def test_parser_and_main(tmp_path: Path) -> None:
     """Verify argument parser and main entrypoint flow."""
-    parser = _build_parser()
-    parsed = parser.parse_args(
-        ["-p", "cqrs", "--fix", "--skip-tests", "-mx", "20", "--format", "json"]
-    )
+    with patch(
+        "hexaqual.commands.sanity_check.get_valid_package_names",
+        return_value=["cqrs"],
+    ):
+        parser = _build_parser()
+        parsed = parser.parse_args(
+            ["-p", "cqrs", "--fix", "--skip-tests", "-mx", "20", "--format", "json"]
+        )
     assert parsed.packages == ["cqrs"]
     assert parsed.fix is True
     assert parsed.skip_tests is True

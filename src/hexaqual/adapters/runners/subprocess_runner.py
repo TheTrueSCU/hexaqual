@@ -384,15 +384,15 @@ class SubprocessToolRunnerAdapter(ToolRunnerPort):
                 "Skipped via --skip-tests",
             )
 
-        pytest_bin = find_executable("pytest")
-        if target.kind == "package":
-            cmd = ["uv", "run", "pytest-run", "-p", target.name]
+        if target.kind == "package" and (repo_root / "packages").is_dir():
+            cmd = ["uv", "run", "hexaqual", "test", "run", "-p", target.name]
             code, out, err, dur = _execute_subprocess(cmd, cwd=repo_root)
         elif target.kind == "example":
-            cmd = ["uv", "run", "pytest-run", "-e", target.name]
+            cmd = ["uv", "run", "hexaqual", "test", "run", "-e", target.name]
             code, out, err, dur = _execute_subprocess(cmd, cwd=repo_root)
         else:
-            cmd = [pytest_bin, str(target.path), "-q"]
+            test_path = target.path / "tests" if (target.path / "tests").is_dir() else target.path
+            cmd = ["uv", "run", "pytest", str(test_path), "-q"]
             code, out, err, dur = _execute_subprocess(cmd, cwd=repo_root)
 
         if code != 0:

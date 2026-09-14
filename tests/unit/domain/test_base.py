@@ -24,10 +24,10 @@ def test_domain_model_immutability() -> None:
     """Verify domain models are frozen."""
     model = SampleModel(name="test")
     with pytest.raises(ValidationError):
-        model.name = "updated"  # type: ignore[misc]
+        setattr(model, "name", "updated")  # noqa: B010
 
 
 def test_command_forbids_extra_fields() -> None:
     """Verify commands forbid extra undeclared attributes."""
     with pytest.raises(ValidationError):
-        SampleCommand(action="run", extra_arg="forbidden")  # type: ignore[call-arg]
+        SampleCommand(**{"action": "run", "extra_arg": "forbidden"})

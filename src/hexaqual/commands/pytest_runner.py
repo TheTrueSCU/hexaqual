@@ -121,7 +121,7 @@ def _resolve_test_targets(
     return _resolve_package_targets(packages, affected, sub_dir, root)
 
 
-def run_main() -> None:
+def run_main(argv: list[str] | None = None) -> int:
     """CLI entrypoint for pytest-run."""
     parser = argparse.ArgumentParser(description="Run pytest test suite.")
     parser.add_argument(
@@ -145,7 +145,7 @@ def run_main() -> None:
         action="store_true",
         help="Capture test function contexts in .coverage for Test Impact Analysis and boundary audits (disables xdist).",
     )
-    args, unknown = parser.parse_known_args()
+    args, unknown = parser.parse_known_args(argv)
 
     root = get_repo_root()
     test_paths, active_pkgs = _resolve_test_targets(
@@ -182,7 +182,9 @@ def run_main() -> None:
 
     call_args = test_paths + cov_args + (unknown or [])
     res = subprocess.run([sys.executable, "-m", "pytest", *call_args])
-    sys.exit(res.returncode)
+    if argv is None:
+        sys.exit(res.returncode)
+    return res.returncode
 
 
 def archon_generate_main(argv: list[str] | None = None) -> int:

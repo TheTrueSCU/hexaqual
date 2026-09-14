@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import argparse
 import tomllib
+from collections.abc import Sequence
 from pathlib import Path
 from typing import Any
 
@@ -68,6 +69,39 @@ def get_repo_root(start_path: Path | None = None) -> Path:
             return candidate
 
     raise RuntimeError(f"Could not determine repository root starting from '{current}'.")
+
+
+def is_multipackage_workspace(repo_root: Path | None = None) -> bool:
+    """Check if the repository is a multi-package workspace (has packages/ subdirectory).
+
+    Args:
+        repo_root: Optional root directory of workspace.
+
+    Returns:
+        True if packages/ directory exists and is a directory.
+
+    Notes/Architectural Intent:
+        Enables tools to differentiate between multi-package monorepos and
+        single-package repositories.
+    """
+    root = repo_root or get_repo_root()
+    return (root / PACKAGES_DIR).is_dir()
+
+
+def has_examples(repo_root: Path | None = None) -> bool:
+    """Check if the repository has an examples directory.
+
+    Args:
+        repo_root: Optional root directory of workspace.
+
+    Returns:
+        True if examples/ directory exists and is a directory.
+
+    Notes/Architectural Intent:
+        Enables commands to dynamically present or omit -e/--example options.
+    """
+    root = repo_root or get_repo_root()
+    return (root / "examples").is_dir()
 
 
 def get_packages_directory(repo_root: Path | None = None) -> Path:
@@ -313,28 +347,124 @@ def _resolve_explicit_paths(paths: list[str], root: Path) -> list[Path]:
 
 
 def resolve_target_python_files(
-    args: argparse.Namespace,
+    args: Any = None,
     repo_root: Path | None = None,
+    files: Sequence[str | Path] | None = None,
+    packages: list[str] | None = None,
 ) -> list[Path]:
-    """Resolve target Python source files based on standard CLI arguments."""
+    """Resolve target Python source files based on standard CLI arguments or direct parameters.
+
+    Args:
+        args: Optional legacy parsed command-line arguments.
+        repo_root: Optional repository root path.
+        files: Optional explicit list of files or directories.
+        packages: Optional list of package names.
+
+    Returns:
+        Sorted list of resolved Path objects.
+
+    Notes/Architectural Intent:
+        Dynamically scopes source files to explicitly targeted files, packages
+        in a multi-package workspace, or the root package in a single-package project.
+    """
     root = repo_root or get_repo_root()
 
-    explicit = (args.files or []) + (args.custom_paths or [])
-    if explicit:
-        return _resolve_explicit_paths(explicit, root)
+    explicit_list: list[str | Path] = []
+    if files:
+        explicit_list.extend(files)
+    if args is not None:
+        explicit_list.extend(getattr(args, "files", None) or [])
+        explicit_list.extend(getattr(args, "custom_paths", None) or [])
+        if packages is None:
+            packages = getattr(args, "packages", None)
 
-    if args.packages:
+    if explicit_list:
+        return _resolve_explicit_paths([str(p) for p in explicit_list], root)
+
+    if packages and is_multipackage_workspace(root):
         resolved_pkg: set[Path] = set()
-        for pkg_name in args.packages:
-            resolved_pkg.update(
-                _find_py_files_in_dir(get_package_directory(pkg_name, root) / "src")
-            )
+        for pkg_name in packages:
+            pkg_d = get_package_directory(pkg_name, root)
+            src_d = pkg_d / "src"
+            resolved_pkg.update(_find_py_files_in_dir(src_d if src_d.is_dir() else pkg_d))
         return sorted(resolved_pkg)
 
     resolved_all: set[Path] = set()
     for pkg_dir in get_package_directories(root):
-        resolved_all.update(_find_py_files_in_dir(pkg_dir / "src"))
+        src_dir = pkg_dir / "src"
+        if src_dir.is_dir():
+            resolved_all.update(_find_py_files_in_dir(src_dir))
+        else:
+            resolved_all.update(_find_py_files_in_dir(pkg_dir))
     return sorted(resolved_all)
+
+
+def get_workspace_scripts(repo_root: Path | None = None) -> dict[str, str]:
+    """Extract project.scripts dictionary from workspace root pyproject.toml.
+
+    Args:
+        repo_root: Optional root directory of workspace or project.
+
+    Returns:
+        Mapping of script names to their target entrypoint string.
+
+    Notes/Architectural Intent:
+        Reads root pyproject.toml as canonical source of truth for CLI commands.
+    """
+    root = repo_root or get_repo_root()
+    pyproject_path = root / "pyproject.toml"
+    if not pyproject_path.is_file():
+        return {}
+    try:
+        data = tomllib.loads(pyproject_path.read_text(encoding="utf-8"))
+        scripts: dict[str, str] = data.get("project", {}).get("scripts", {})
+        return scripts
+    except (OSError, tomllib.TOMLDecodeError):
+        return {}
+
+
+def group_scripts_by_entrypoint(scripts: dict[str, str]) -> dict[str, list[str]]:
+    """Group script names by their target entrypoint string preserving declaration order.
+
+    Args:
+        scripts: Mapping of script_name -> entrypoint_string.
+
+    Returns:
+        Mapping of entrypoint_string -> list of script names in declaration order.
+
+    Notes/Architectural Intent:
+        Identifies command aliases pointing to identical entrypoints.
+    """
+    by_entry: dict[str, list[str]] = {}
+    for name, ep in scripts.items():
+        by_entry.setdefault(ep, []).append(name)
+    return by_entry
+
+
+def get_canonical_scripts(scripts: dict[str, str]) -> dict[str, list[str]]:
+    """Resolve commands and their aliases purely by grouping identical entrypoints.
+
+    Args:
+        scripts: Mapping of script_name -> entrypoint_string from [project.scripts].
+
+    Returns:
+        Mapping of primary_command_name -> sorted list of alias names.
+
+    Notes/Architectural Intent:
+        Identifies aliases purely by matching identical entrypoint targets in
+        [project.scripts] without any hardcoded framework or package names.
+        The first script declared for an entrypoint is treated as primary, and any
+        subsequent scripts sharing that entrypoint are recorded as aliases.
+    """
+    by_entry = group_scripts_by_entrypoint(scripts)
+    commands: dict[str, list[str]] = {}
+
+    for names in by_entry.values():
+        primary = names[0]
+        aliases = sorted(names[1:])
+        commands[primary] = aliases
+
+    return dict(sorted(commands.items()))
 
 
 def get_package_dependencies(pkg_dir: Path) -> set[str]:
@@ -523,6 +653,7 @@ def ensure_tool_installed(
 __all__ = [
     "check_tool_availability",
     "ensure_tool_installed",
+    "get_canonical_scripts",
     "get_downstream_dependents",
     "get_example_directories",
     "get_example_directory",
@@ -536,8 +667,12 @@ __all__ = [
     "get_valid_example_names",
     "get_valid_package_names",
     "get_workspace_dependency_graph",
+    "get_workspace_scripts",
+    "group_scripts_by_entrypoint",
+    "has_examples",
     "HEX_LAYERS",
     "HexastackScriptArgumentParser",
+    "is_multipackage_workspace",
     "LAYER_RESTRICTIONS",
     "PACKAGES_DIR",
     "resolve_affected_packages",

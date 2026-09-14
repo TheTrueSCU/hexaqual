@@ -7,6 +7,7 @@ import concurrent.futures
 import os
 import re
 import subprocess
+from pathlib import Path
 
 
 def clean_help_output(output: str) -> str:
@@ -27,8 +28,20 @@ def clean_help_output(output: str) -> str:
     return "\n".join(final_lines)
 
 
-def extract_command_help(cmd: list[str], timeout: int = 30) -> str:
-    """Execute a command with --help and capture formatted text output."""
+def extract_command_help(cmd: list[str], timeout: int = 30, cwd: Path | str | None = None) -> str:
+    """Execute a command with --help and capture formatted text output.
+
+    Args:
+        cmd: Command and arguments tokens.
+        timeout: Subprocess execution timeout in seconds.
+        cwd: Optional working directory for command execution.
+
+    Returns:
+        Cleaned help text output string.
+
+    Notes/Architectural Intent:
+        Executes uv run <cmd> --help in target directory and strips ANSI codes.
+    """
     env = dict(os.environ, NO_COLOR="1", TERM="dumb")
     try:
         res = subprocess.run(
@@ -37,6 +50,7 @@ def extract_command_help(cmd: list[str], timeout: int = 30) -> str:
             text=True,
             env=env,
             timeout=timeout,
+            cwd=str(cwd) if cwd else None,
         )
         raw = res.stdout if res.stdout.strip() else res.stderr
         return clean_help_output(raw)
@@ -48,6 +62,7 @@ def extract_command_help(cmd: list[str], timeout: int = 30) -> str:
                 text=True,
                 env=env,
                 timeout=60,
+                cwd=str(cwd) if cwd else None,
             )
             raw = res.stdout if res.stdout.strip() else res.stderr
             return clean_help_output(raw)
@@ -80,6 +95,7 @@ def extract_command_tree_bfs(
     root_cmd: list[str],
     max_workers: int = 8,
     timeout: int = 30,
+    cwd: Path | str | None = None,
 ) -> dict[tuple[str, ...], str]:
     """Traverse CLI command hierarchy using Breadth-First Search (BFS) in parallel."""
     results: dict[tuple[str, ...], str] = {}
@@ -93,7 +109,7 @@ def extract_command_tree_bfs(
                 current_level_cmds.append(queue.popleft())
 
             future_to_cmd = {
-                executor.submit(extract_command_help, cmd, timeout): cmd
+                executor.submit(extract_command_help, cmd, timeout, cwd): cmd
                 for cmd in current_level_cmds
             }
 
@@ -117,12 +133,13 @@ def extract_commands_parallel(
     cmd_list: list[list[str]],
     max_workers: int = 8,
     timeout: int = 30,
+    cwd: Path | str | None = None,
 ) -> dict[tuple[str, ...], str]:
     """Extract help text for a batch of independent commands in parallel."""
     results: dict[tuple[str, ...], str] = {}
     with concurrent.futures.ThreadPoolExecutor(max_workers=max_workers) as executor:
         future_to_cmd = {
-            executor.submit(extract_command_help, cmd, timeout): cmd for cmd in cmd_list
+            executor.submit(extract_command_help, cmd, timeout, cwd): cmd for cmd in cmd_list
         }
         for future in concurrent.futures.as_completed(future_to_cmd):
             cmd = future_to_cmd[future]

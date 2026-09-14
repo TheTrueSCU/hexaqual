@@ -241,7 +241,10 @@ def test_create_governance_bus_wires_and_dispatches():
         assert isinstance(pydeps_res, PydepsReport)
 
     with (
-        patch("hexaqual.infra.handlers.generators._TARGET_GENERATORS", {}),
+        patch(
+            "hexaqual.infra.handlers.generators.discover_usage_targets",
+            return_value={},
+        ),
         patch(
             "hexaqual.infra.handlers.generators.resolve_impacted_usage_targets",
             return_value=[],

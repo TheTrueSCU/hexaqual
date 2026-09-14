@@ -12,6 +12,7 @@ import argparse
 import subprocess
 import sys
 from pathlib import Path
+from typing import Any
 
 from rich.console import Console
 
@@ -35,6 +36,9 @@ from hexaqual.utils.workspace import (
     get_package_directories,
     get_package_directory,
     get_repo_root,
+    get_valid_example_names,
+    get_valid_package_names,
+    is_multipackage_workspace,
 )
 
 __all__ = [
@@ -168,31 +172,63 @@ def _resolve_fallback_targets(repo_root: Path) -> list[SanityTarget]:
     return [_create_package_target(p.name, p) for p in get_package_directories(repo_root)]
 
 
-def resolve_targets(args: argparse.Namespace, repo_root: Path) -> list[SanityTarget]:
-    """Resolve target list based on CLI arguments and git diff heuristics.
+def resolve_targets(
+    args: Any = None,
+    repo_root: Path | None = None,
+    packages: list[str] | None = None,
+    examples: list[str] | None = None,
+    files: list[str] | None = None,
+    all_targets: bool = False,
+) -> list[SanityTarget]:
+    """Resolve target list based on CLI arguments and workspace layout.
 
     Args:
-        args: Parsed command-line arguments.
+        args: Optional legacy parsed command-line arguments.
         repo_root: Root path of the repository.
+        packages: Optional sequence of package names.
+        examples: Optional sequence of example project names.
+        files: Optional sequence of explicit files.
+        all_targets: Whether to target all packages unconditionally.
 
     Returns:
         List of SanityTarget objects to audit.
 
     Notes/Architectural Intent:
-        Resolves explicit package/example/file requests first, falling back to
-        git-modified components or all packages if no arguments are provided.
+        Resolves explicit package/example/file requests first. If in a multi-package
+        workspace, -p filters packages. If in a singular package repository, defaults
+        to the root package. If an examples directory exists, -e adds examples.
     """
-    targets: list[SanityTarget] = []
-    targets.extend(_resolve_package_targets(args.packages, repo_root))
-    targets.extend(_resolve_example_targets(args.examples, repo_root))
-    targets.extend(_resolve_file_targets(args.files, repo_root))
+    root = repo_root or get_repo_root()
 
-    if args.all_targets and not targets:
-        for p in get_package_directories(repo_root):
-            targets.append(_create_package_target(p.name, p))
+    if args is not None:
+        packages = getattr(args, "packages", None)
+        examples = getattr(args, "examples", None)
+        files = getattr(args, "files", None)
+        all_targets = getattr(args, "all_targets", False)
+
+    targets: list[SanityTarget] = []
+
+    if packages:
+        targets.extend(_resolve_package_targets(packages, root))
+
+    if examples:
+        targets.extend(_resolve_example_targets(examples, root))
+
+    if files:
+        targets.extend(_resolve_file_targets(files, root))
+
+    if all_targets:
+        if is_multipackage_workspace(root):
+            for p in get_package_directories(root):
+                targets.append(_create_package_target(p.name, p))
+        else:
+            targets.append(_create_package_target(root.name, root))
 
     if not targets:
-        targets.extend(_resolve_fallback_targets(repo_root))
+        if is_multipackage_workspace(root):
+            targets.extend(_resolve_fallback_targets(root))
+        else:
+            targets.append(_create_package_target(root.name, root))
 
     return targets
 
@@ -248,74 +284,40 @@ def run_sanity_check(
     return actual_presenter.present_sanity_dashboard(report)
 
 
-def _build_parser() -> argparse.ArgumentParser:
+def _build_parser(repo_root: Path | None = None) -> argparse.ArgumentParser:
     """Construct argument parser with target choices and execution flags."""
+    root = repo_root or get_repo_root()
     parser = argparse.ArgumentParser(
         prog="sanity-check",
-        description="Fast scoped sanity check runner for Hexastack packages, examples, and files.",
+        description="Fast scoped sanity check runner for workspace packages, examples, and files.",
     )
-    valid_packages = [
-        "all",
-        "ai",
-        "auth",
-        "cli",
-        "core",
-        "cqrs",
-        "db",
-        "events",
-        "fastapi",
-        "flags",
-        "flow",
-        "graphql",
-        "grpc",
-        "hexastack",
-        "hexastack_ai",
-        "hexastack_auth",
-        "hexastack_cli",
-        "hexastack_core",
-        "hexastack_cqrs",
-        "hexastack_db",
-        "hexastack_events",
-        "hexastack_fastapi",
-        "hexastack_flags",
-        "hexastack_flow",
-        "hexastack_graphql",
-        "hexastack_grpc",
-        "hexastack_logging",
-        "hexastack_mcp",
-        "hexastack_otel",
-        "hexaqual",
-        "hexastack_ui",
-        "logging",
-        "mcp",
-        "otel",
-        "tools",
-        "ui",
-    ]
-    valid_examples = [
-        "financial-ledger",
-        "financial_ledger",
-        "todo-app",
-        "todo_app",
-        "trip-booking",
-        "trip_booking",
-    ]
+    valid_packages = ["all", *get_valid_package_names(root)]
+    valid_examples = get_valid_example_names(root)
     parser.add_argument(
         "-p",
         "--package",
         dest="packages",
         action="append",
-        choices=valid_packages,
+        choices=valid_packages if len(valid_packages) > 1 else None,
         help="Target package(s) (e.g. -p cqrs -p events).",
     )
-    parser.add_argument(
-        "-e",
-        "--example",
-        dest="examples",
-        action="append",
-        choices=valid_examples,
-        help="Target example project(s) (e.g. -e trip-booking).",
-    )
+    if valid_examples:
+        parser.add_argument(
+            "-e",
+            "--example",
+            dest="examples",
+            action="append",
+            choices=valid_examples,
+            help="Target example project(s) (e.g. -e trip-booking).",
+        )
+    else:
+        parser.add_argument(
+            "-e",
+            "--example",
+            dest="examples",
+            action="append",
+            help="Target example project(s).",
+        )
     parser.add_argument(
         "-a",
         "--all",
@@ -361,9 +363,9 @@ def _build_parser() -> argparse.ArgumentParser:
 
 def main() -> None:
     """CLI entrypoint for sanity-check."""
-    parser = _build_parser()
-    args = parser.parse_args()
     repo_root = get_repo_root()
+    parser = _build_parser(repo_root)
+    args = parser.parse_args()
     targets = resolve_targets(args, repo_root)
 
     exit_code = run_sanity_check(

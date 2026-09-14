@@ -10,10 +10,10 @@ from pathlib import Path
 from rich.console import Console
 
 from hexaqual.infra.handlers.generators import (
-    _TARGET_GENERATORS,
     build_tools_usage_markdown,
     build_umbrella_usage_markdown,
     resolve_impacted_usage_targets,
+    resolve_usage_target_rel_path,
 )
 
 console = Console()
@@ -26,10 +26,13 @@ def process_package_usage(
     fix: bool,
 ) -> bool:
     """Process USAGE.md for a given target package. Returns True if in sync / fixed."""
-    rel_path, generator_fn = _TARGET_GENERATORS[target_key]
+    rel_path = resolve_usage_target_rel_path(target_key, root)
     usage_file = root / rel_path
 
-    new_content = generator_fn(root)
+    pyproject_path = usage_file.parent / "pyproject.toml"
+    if not pyproject_path.is_file():
+        pyproject_path = root / "pyproject.toml"
+    new_content = build_tools_usage_markdown(pyproject_path.parent)
 
     if verify and not fix:
         if not usage_file.is_file():
@@ -80,7 +83,6 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument(
         "-p",
         "--package",
-        choices=["tools", "hexastack", "all"],
         default=None,
         help="Target package to process (default: auto-detected based on git changes or all)",
     )
@@ -109,6 +111,12 @@ def main(argv: list[str] | None = None) -> int:
         default="table",
         help="Output presentation format (default: table).",
     )
+    parser.add_argument(
+        "--root",
+        type=Path,
+        default=None,
+        help="Root path of repository (default: auto-detected).",
+    )
     args = parser.parse_args(argv)
 
     from hexaqual.adapters.presenters.generators import (
@@ -116,8 +124,10 @@ def main(argv: list[str] | None = None) -> int:
     )
     from hexaqual.domain.generators import GenerateUsageDocsCommand
     from hexaqual.infra.bootstrap import create_governance_bus
+    from hexaqual.utils.workspace import get_repo_root
 
-    bus = create_governance_bus()
+    repo_root = args.root or get_repo_root()
+    bus = create_governance_bus(repo_root=repo_root)
     presenter = create_generator_presenter(args.format)
 
     cmd = GenerateUsageDocsCommand(

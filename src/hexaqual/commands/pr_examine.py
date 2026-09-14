@@ -245,9 +245,13 @@ def runs(
     console.print(table)
 
 
-def main() -> None:
+def main(argv: list[str] | None = None) -> int:
     """CLI entrypoint for gh-pr-examine command."""
-    app()
+    try:
+        app(args=argv, standalone_mode=False)
+        return 0
+    except SystemExit as exc:
+        return exc.code if isinstance(exc.code, int) else (1 if exc.code else 0)
 
 
 __all__ = [

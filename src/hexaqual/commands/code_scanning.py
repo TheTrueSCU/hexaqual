@@ -117,7 +117,7 @@ def inspect_and_bucket_alerts(
     return exit_code
 
 
-def main() -> int:
+def main(argv: list[str] | None = None) -> int:
     """CLI entrypoint for gh-code-scanning."""
     parser = argparse.ArgumentParser(
         description="Bucket and inspect GitHub CodeQL security & quality code-scanning alerts."
@@ -172,7 +172,7 @@ def main() -> int:
         default=False,
         help="Print detailed contextual panels for all matching alerts.",
     )
-    args = parser.parse_args()
+    args = parser.parse_args(argv)
 
     try:
         if args.alert is not None:
