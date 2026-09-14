@@ -102,19 +102,19 @@ Rather than executing checks in a rigid, monolithic sequence or maintaining ad-h
 
 ```mermaid
 graph LR
-    subgraph Stage 1: Leaf Static Checks
-        Lint[Ruff Lint & Format]
-        Statements[__all__ Integrity]
-        Parity[1:1 Test Symmetry]
+    subgraph stage1 ["Stage 1: Leaf Static Checks"]
+        Lint["Ruff Lint & Format"]
+        Statements["__all__ Integrity"]
+        Parity["1:1 Test Symmetry"]
     end
 
-    subgraph Stage 2: Static Analysis
-        Typecheck[Ty Typecheck]
-        Complexity[Cognitive Complexity <= 25]
+    subgraph stage2 ["Stage 2: Static Analysis"]
+        Typecheck["Ty Typecheck"]
+        Complexity["Cognitive Complexity <= 25"]
     end
 
-    subgraph Stage 3: Dynamic Verification
-        Pytest[Pytest Test Suites]
+    subgraph stage3 ["Stage 3: Dynamic Verification"]
+        Pytest["Pytest Test Suites"]
     end
 
     Lint --> Typecheck

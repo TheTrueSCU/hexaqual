@@ -10,36 +10,36 @@ The system is organized into concentric layers with strict inbound dependency ru
 
 ```mermaid
 graph TD
-    subgraph Driving Adapters [Primary / Driving Adapters]
-        CLI[Typer CLI / hexaqual.cli.*]
-        Hooks[Pre-Commit Hooks]
+    subgraph driving_adapters ["Primary / Driving Adapters"]
+        CLI["Typer CLI / hexaqual.cli.*"]
+        Hooks["Pre-Commit Hooks"]
     end
 
-    subgraph Infrastructure [Infra / Orchestration Layer]
-        Dispatcher[CommandDispatcher / CQRS Bus]
-        Handlers[CQRS Command Handlers]
-        Bootstrap[Bootstrap Factory]
+    subgraph infra ["Infra / Orchestration Layer"]
+        Dispatcher["CommandDispatcher / CQRS Bus"]
+        Handlers["CQRS Command Handlers"]
+        Bootstrap["Bootstrap Factory"]
     end
 
-    subgraph Domain Core [Domain Core - Zero External Dependencies]
-        DomainModels[Domain Models / Entities]
-        Commands[Domain Commands]
-        Reports[Domain Reports & Enums]
+    subgraph domain_core ["Domain Core - Zero External Dependencies"]
+        DomainModels["Domain Models / Entities"]
+        Commands["Domain Commands"]
+        Reports["Domain Reports & Enums"]
     end
 
-    subgraph Ports [Abstract Ports / SPI Interfaces]
-        GovPort[GovernancePresenterPort]
-        RunnerPort[ToolRunnerPort]
-        GhPort[GitHubApiPort]
-        PyPiPort[PyPiClientPort]
-        DepPort[DependencyAuditorPort]
+    subgraph ports ["Abstract Ports / SPI Interfaces"]
+        GovPort["GovernancePresenterPort"]
+        RunnerPort["ToolRunnerPort"]
+        GhPort["GitHubApiPort"]
+        PyPiPort["PyPiClientPort"]
+        DepPort["DependencyAuditorPort"]
     end
 
-    subgraph Driven Adapters [Secondary / Driven Adapters]
-        RichPres[Rich / JSON / Markdown Presenters]
-        Subproc[Subprocess Tool Runner]
-        GhClient[GitHub CLI / REST Client]
-        PyPiClient[PyPI Release Client]
+    subgraph driven_adapters ["Secondary / Driven Adapters"]
+        RichPres["Rich / JSON / Markdown Presenters"]
+        Subproc["Subprocess Tool Runner"]
+        GhClient["GitHub CLI / REST Client"]
+        PyPiClient["PyPI Release Client"]
     end
 
     CLI --> Dispatcher
@@ -47,10 +47,10 @@ graph TD
     Dispatcher --> Handlers
     Handlers --> Commands
     Handlers --> DomainModels
-    Handlers --> Ports
-    Ports --> DomainModels
-    Driven Adapters -.->|Implements| Ports
-    Handlers --> Driven Adapters
+    Handlers --> ports
+    ports --> DomainModels
+    driven_adapters -.->|Implements| ports
+    Handlers --> driven_adapters
     Bootstrap --> Dispatcher
 ```
 
