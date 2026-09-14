@@ -11,6 +11,7 @@ import typer
 
 __all__ = [
     "parity_app",
+    "parity_architecture",
     "parity_extras",
     "parity_test",
 ]
@@ -85,5 +86,36 @@ def parity_extras(
     res = bus.dispatch(AuditExtrasParityCommand(repo_root=root, generate_diagram=diagram))
     presenter = create_dependency_presenter(format_type=format_type)
     exit_code = presenter.present_extras_parity(res)
+    if exit_code != 0:
+        raise typer.Exit(code=exit_code)
+
+
+@parity_app.command("architecture")
+def parity_architecture(
+    format_type: str = typer.Option(
+        "table", "-f", "--format", help="Output format (table, json, markdown)."
+    ),
+) -> None:
+    """Audit architecture tests and boundary test parity across packages.
+
+    Args:
+        format_type: Output presentation format.
+
+    Raises:
+        typer.Exit: If architecture parity violations are found.
+
+    Notes/Architectural Intent:
+        Driving adapter verifying tests/architecture/test_hexagonal_boundaries.py
+        and test directory inits exist across all workspace packages.
+    """
+    from hexaqual.adapters.presenters.governance import create_governance_presenter
+    from hexaqual.utils.test_parity import check_architecture_test_parity
+    from hexaqual.utils.workspace import get_repo_root
+
+    root = get_repo_root()
+    errors = check_architecture_test_parity(root)
+
+    presenter = create_governance_presenter(format_type=format_type)
+    exit_code = presenter.present_architecture_parity(errors)
     if exit_code != 0:
         raise typer.Exit(code=exit_code)

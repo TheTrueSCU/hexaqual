@@ -97,3 +97,26 @@ def test_update_inline_snapshots_handler(tmp_path: Path) -> None:
         report = handler.handle(UpdateInlineSnapshotsCommand(mode="fix", targets=(target,)))
         assert report.exit_code == 0
         assert len(report.targets_updated) == 1
+
+
+def test_load_fuzz_module_dynamic_discovery(tmp_path: Path) -> None:
+    """Verify _load_fuzz_module discovers colocated fuzz harness in packages/*/tests/fuzz."""
+    from hexaqual.infra.handlers.analysis import _load_fuzz_module
+
+    fuzz_dir = tmp_path / "packages" / "pkg_a" / "tests" / "fuzz"
+    fuzz_dir.mkdir(parents=True)
+    harness_file = fuzz_dir / "test_fuzz_custom_sanitizer.py"
+    harness_file.write_text(
+        "def run_standalone(runs=5):\n    return {'runs': runs, 'target': 'custom', 'passed': True}\n",
+        encoding="utf-8",
+    )
+
+    mod = _load_fuzz_module(
+        name_hints=("custom_sanitizer", "sanitizer"),
+        legacy_module="fuzz.non_existent",
+        repo_root=tmp_path,
+    )
+    assert mod is not None
+    res = mod.run_standalone(runs=20)
+    assert res["target"] == "custom"
+    assert res["runs"] == 20

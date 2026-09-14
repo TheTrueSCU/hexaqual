@@ -53,3 +53,23 @@ def test_parity_extras() -> None:
     with patch("hexaqual.infra.bootstrap.create_governance_bus", return_value=mock_bus):
         res = runner.invoke(parity_app, ["extras"])
         assert res.exit_code == 0
+
+
+def test_parity_architecture_clean() -> None:
+    """Test parity architecture with zero errors."""
+    with patch(
+        "hexaqual.utils.test_parity.check_architecture_test_parity",
+        return_value=[],
+    ):
+        res = runner.invoke(parity_app, ["architecture"])
+        assert res.exit_code == 0
+
+
+def test_parity_architecture_violations() -> None:
+    """Test parity architecture with detected errors."""
+    with patch(
+        "hexaqual.utils.test_parity.check_architecture_test_parity",
+        return_value=["Missing architecture tests in packages/foo/tests/architecture"],
+    ):
+        res = runner.invoke(parity_app, ["architecture"])
+        assert res.exit_code == 1

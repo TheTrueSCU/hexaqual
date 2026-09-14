@@ -8,6 +8,7 @@ Notes/Architectural Intent:
 from pathlib import Path
 
 from hexaqual.utils.test_parity import (
+    check_architecture_test_parity,
     check_package_parity,
     check_src_to_test_symmetry,
     check_test_directories_inits,
@@ -78,3 +79,28 @@ def test_check_src_to_test_symmetry_workspace(tmp_path: Path) -> None:
     errors = check_src_to_test_symmetry(tmp_path)
     assert len(errors) == 1
     assert "Missing unit test" in errors[0]
+
+
+def test_check_architecture_test_parity(tmp_path: Path) -> None:
+    """Verify check_architecture_test_parity checks tests/architecture in packages."""
+    pkg_dir = tmp_path / "packages" / "pkg_a"
+    src_dir = pkg_dir / "src"
+    src_dir.mkdir(parents=True)
+
+    # 1. Missing tests/architecture directory entirely
+    errors = check_architecture_test_parity(tmp_path)
+    assert len(errors) == 1
+    assert "Missing architecture tests directory" in errors[0]
+
+    # 2. Directory exists but missing __init__.py and tests
+    arch_dir = pkg_dir / "tests" / "architecture"
+    arch_dir.mkdir(parents=True)
+    errors = check_architecture_test_parity(tmp_path)
+    assert any("Missing __init__.py" in e for e in errors)
+    assert any("Missing architecture tests" in e for e in errors)
+
+    # 3. Clean architecture test directory
+    (arch_dir / "__init__.py").touch()
+    (arch_dir / "test_hexagonal_boundaries.py").touch()
+    errors_clean = check_architecture_test_parity(tmp_path)
+    assert errors_clean == []

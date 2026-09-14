@@ -30,6 +30,83 @@ from hexaqual.domain.analysis import (
 from hexaqual.utils.workspace import get_repo_root
 
 
+def _load_fuzz_module(
+    name_hints: tuple[str, ...],
+    legacy_module: str,
+    repo_root: Path,
+) -> Any:
+    """Dynamically resolve and load a fuzz harness module.
+
+    Args:
+        name_hints: Substring hints identifying the target fuzz harness.
+        legacy_module: Fallback module import path.
+        repo_root: Repository root path.
+
+    Returns:
+        Imported or loaded module.
+
+    Notes/Architectural Intent:
+        Searches for colocated fuzz harnesses under `packages/*/tests/fuzz/`
+        or `tests/fuzz/`, falling back to root `fuzz.<legacy_module>` if not found.
+    """
+    for hint in name_hints:
+        for candidate in repo_root.glob(f"packages/*/tests/fuzz/*{hint}*.py"):
+            if candidate.name.startswith("__"):
+                continue
+            spec = importlib.util.spec_from_file_location(f"fuzz_{hint}", candidate)
+            if spec and spec.loader:
+                mod = importlib.util.module_from_spec(spec)
+                sys.modules[f"fuzz_{hint}"] = mod
+                spec.loader.exec_module(mod)
+                return mod
+        for candidate in repo_root.glob(f"tests/fuzz/*{hint}*.py"):
+            if candidate.name.startswith("__"):
+                continue
+            spec = importlib.util.spec_from_file_location(f"fuzz_{hint}", candidate)
+            if spec and spec.loader:
+                mod = importlib.util.module_from_spec(spec)
+                sys.modules[f"fuzz_{hint}"] = mod
+                spec.loader.exec_module(mod)
+                return mod
+
+    return importlib.import_module(legacy_module)
+
+
+def _run_owasp_target(repo_root: Path, runs: int) -> dict[str, Any]:
+    """Execute the OWASP Hypothesis property security test suite."""
+    start_time = time.perf_counter()
+    owasp_path = (
+        repo_root / "packages/hexastack_fastapi/tests/properties/test_owasp_security_fuzz.py"
+    )
+    if not owasp_path.is_file():
+        matches = list(repo_root.glob("packages/*/tests/properties/*owasp*.py"))
+        if not matches:
+            matches = list(repo_root.glob("tests/**/*owasp*.py"))
+        if matches:
+            owasp_path = matches[0]
+
+    cmd = [
+        sys.executable,
+        "-m",
+        "pytest",
+        str(owasp_path),
+        "-q",
+        "--no-cov",
+    ]
+    proc = subprocess.run(cmd, capture_output=True, text=True, check=False)
+    dur = round(time.perf_counter() - start_time, 3)
+    passed = proc.returncode == 0
+    return {
+        "target": "OWASP Security Fuzz",
+        "engine": "hypothesis",
+        "runs": runs,
+        "duration_seconds": dur,
+        "crashes": 0 if passed else 1,
+        "redos_violations": 0,
+        "passed": passed,
+    }
+
+
 def run_target_fuzz(
     target: str,
     runs: int = 1000,
@@ -63,7 +140,11 @@ def run_target_fuzz(
             use_atheris = False
 
     if target in ("all", "sanitizer"):
-        mod_san = importlib.import_module("fuzz.fuzz_log_sanitizer")
+        mod_san = _load_fuzz_module(
+            name_hints=("sanitizer", "log_sanitizer"),
+            legacy_module="fuzz.fuzz_log_sanitizer",
+            repo_root=repo_root,
+        )
         runner = (
             mod_san.run_atheris
             if use_atheris and engine != "standalone"
@@ -72,7 +153,11 @@ def run_target_fuzz(
         results.append(runner(runs=runs))
 
     if target in ("all", "proto"):
-        mod_proto = importlib.import_module("fuzz.fuzz_proto_compiler")
+        mod_proto = _load_fuzz_module(
+            name_hints=("proto", "proto_compiler"),
+            legacy_module="fuzz.fuzz_proto_compiler",
+            repo_root=repo_root,
+        )
         proto_runs = min(runs, 500) if runs > 500 else runs
         runner = (
             mod_proto.run_atheris
@@ -82,29 +167,7 @@ def run_target_fuzz(
         results.append(runner(runs=proto_runs))
 
     if target in ("all", "owasp"):
-        start_time = time.perf_counter()
-        cmd = [
-            sys.executable,
-            "-m",
-            "pytest",
-            "packages/hexastack_fastapi/tests/properties/test_owasp_security_fuzz.py",
-            "-q",
-            "--no-cov",
-        ]
-        proc = subprocess.run(cmd, capture_output=True, text=True, check=False)
-        dur = round(time.perf_counter() - start_time, 3)
-        passed = proc.returncode == 0
-        results.append(
-            {
-                "target": "OWASP Security Fuzz",
-                "engine": "hypothesis",
-                "runs": runs,
-                "duration_seconds": dur,
-                "crashes": 0 if passed else 1,
-                "redos_violations": 0,
-                "passed": passed,
-            }
-        )
+        results.append(_run_owasp_target(repo_root, runs))
 
     if not results:
         raise ValueError(

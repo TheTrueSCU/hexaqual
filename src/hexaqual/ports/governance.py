@@ -191,3 +191,17 @@ class GovernancePresenterPort(ABC):
         Returns:
             Process exit code (0 for pass/success, 1 for failure).
         """
+
+    @abstractmethod
+    def present_architecture_parity(
+        self,
+        errors: list[str],
+    ) -> int:
+        """Render architecture test parity and boundary test outcomes.
+
+        Args:
+            errors: List of detected architecture parity violation errors.
+
+        Returns:
+            Process exit code (0 for pass/success, 1 for failure).
+        """

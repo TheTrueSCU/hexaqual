@@ -181,3 +181,30 @@ def test_create_governance_presenter_factory():
 
     with pytest.raises(ValueError, match="Unsupported presenter format"):
         create_governance_presenter("unknown_format")
+
+
+def test_present_architecture_parity_all_formats():
+    """Verify present_architecture_parity across Rich, JSON, and Markdown adapters."""
+    # 1. Rich
+    buf = StringIO()
+    presenter_rich = RichGovernancePresenterAdapter(console=Console(file=buf, force_terminal=False))
+    assert presenter_rich.present_architecture_parity([]) == 0
+    assert "All packages satisfy architecture test parity" in buf.getvalue()
+    assert presenter_rich.present_architecture_parity(["Missing test in pkg_a"]) == 1
+
+    # 2. JSON
+    buf_json = StringIO()
+    presenter_json = JsonGovernancePresenterAdapter(
+        console=Console(file=buf_json, force_terminal=False)
+    )
+    assert presenter_json.present_architecture_parity([]) == 0
+    assert presenter_json.present_architecture_parity(["Missing test in pkg_b"]) == 1
+
+    # 3. Markdown
+    buf_md = StringIO()
+    presenter_md = MarkdownGovernancePresenterAdapter(
+        console=Console(file=buf_md, force_terminal=False)
+    )
+    assert presenter_md.present_architecture_parity([]) == 0
+    assert presenter_md.present_architecture_parity(["Missing test in pkg_c"]) == 1
+    assert "Architecture Test Parity Violations" in buf_md.getvalue()

@@ -1,5 +1,12 @@
 # CHANGELOG
 
+## v0.3.0 (2026-09-14)
+
+### Highlights & Features
+* **Hexaflow v0.2.0 Integration & Dynamic CLI Binder Dogfooding**: Upgraded to `hexaflow>=0.2.0`, dogfooding `WorkflowCliBinder` to introspect workflow DAGs and dynamically bind CLI options (`--skip-ruff`, `--skip-ty`, `--skip-parity`, `--skip-statements`, `--skip-deptry`, `--skip-complexity`, `--skip-tests`) with `TriggerRule.ALL_SUCCESS_OR_SKIPPED` skip propagation across `hexaqual check` and `hexaqual sanity`.
+* **Architecture Test Parity (`hexaqual parity architecture`)**: Introduced `check_architecture_test_parity` and the `hexaqual parity architecture` command to ensure that packages with internal hexagonal architectures maintain dedicated `test_hexagonal_boundaries.py` architectural test suites.
+* **Colocated Dynamic Fuzz Harness Discovery**: Enhanced `hexaqual test fuzz` to dynamically discover and execute Atheris coverage-guided and OWASP security fuzz harnesses colocated within individual package test suites (`packages/*/tests/fuzz/test_fuzz_*.py`) alongside root harnesses.
+
 ## v0.2.2 (2026-09-14)
 
 ### Highlights & Features

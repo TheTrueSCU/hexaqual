@@ -8,32 +8,93 @@ Notes/Architectural Intent:
 from __future__ import annotations
 
 import typer
+from hexaflow import StepContext, TriggerRule, Workflow
 
 __all__ = [
     "check",
     "complexity",
     "register_check_commands",
     "sanity",
+    "sanity_binder",
 ]
 
 
+def _build_sanity_template_workflow() -> Workflow:
+    """Construct canonical sanity check pipeline DAG template for CLI binding.
+
+    Notes/Architectural Intent:
+        Defines the canonical sanity check stages and steps to power dynamic
+        CLI option binding via hexaflow.cli.binder.WorkflowCliBinder.
+    """
+    wf = Workflow("sanity_template")
+
+    @wf.stage("static_checks")
+    @wf.step("lint", trigger_rule=TriggerRule.ALL_SUCCESS_OR_SKIPPED)
+    def _lint(ctx: StepContext) -> None:
+        pass
+
+    @wf.step("all_statements", trigger_rule=TriggerRule.ALL_SUCCESS_OR_SKIPPED)
+    def _all_statements(ctx: StepContext) -> None:
+        pass
+
+    @wf.step("test_parity", trigger_rule=TriggerRule.ALL_SUCCESS_OR_SKIPPED)
+    def _test_parity(ctx: StepContext) -> None:
+        pass
+
+    @wf.stage("analysis")
+    @wf.step(
+        "typecheck",
+        depends_on=["lint"],
+        trigger_rule=TriggerRule.ALL_SUCCESS_OR_SKIPPED,
+    )
+    def _typecheck(ctx: StepContext) -> None:
+        pass
+
+    @wf.step(
+        "complexity",
+        depends_on=["lint"],
+        trigger_rule=TriggerRule.ALL_SUCCESS_OR_SKIPPED,
+    )
+    def _complexity(ctx: StepContext) -> None:
+        pass
+
+    @wf.step(
+        "deptry",
+        depends_on=["lint"],
+        trigger_rule=TriggerRule.ALL_SUCCESS_OR_SKIPPED,
+    )
+    def _deptry(ctx: StepContext) -> None:
+        pass
+
+    @wf.stage("verification")
+    @wf.step(
+        "pytest",
+        depends_on=["typecheck", "complexity"],
+        trigger_rule=TriggerRule.ALL_SUCCESS_OR_SKIPPED,
+    )
+    def _pytest(ctx: StepContext) -> None:
+        pass
+
+    return wf
+
+
+sanity_binder = _build_sanity_template_workflow().create_cli_binder(
+    aliases={
+        "lint": ["--skip-ruff"],
+        "all_statements": ["--skip-statements"],
+        "test_parity": ["--skip-parity"],
+        "typecheck": ["--skip-ty"],
+        "pytest": ["--skip-tests"],
+    }
+)
+
+
+@sanity_binder.apply
 def check(
     packages: list[str] | None = typer.Option(None, "-p", "--package", help="Target package(s)."),
     examples: list[str] | None = typer.Option(None, "-e", "--example", help="Target example(s)."),
     all_targets: bool = typer.Option(False, "-a", "--all", help="Run across all packages."),
     fix: bool = typer.Option(False, "--fix", help="Automatically apply autofixes."),
-    skip_tests: bool = typer.Option(False, "--skip-tests", help="Skip pytest suites."),
-    skip_deptry: bool = typer.Option(False, "--skip-deptry", help="Skip deptry dependency audits."),
-    skip_typecheck: bool = typer.Option(
-        False, "--skip-typecheck", "--skip-ty", help="Skip static type analysis."
-    ),
-    skip_complexity: bool = typer.Option(
-        False, "--skip-complexity", help="Skip cognitive complexity audit."
-    ),
-    skip_parity: bool = typer.Option(False, "--skip-parity", help="Skip 1:1 test parity check."),
-    skip_statements: bool = typer.Option(
-        False, "--skip-statements", help="Skip __all__ integrity check."
-    ),
     skip: list[str] | None = typer.Option(
         None, "--skip", help="Specific pipeline step(s) to skip (repeatable)."
     ),
@@ -43,6 +104,7 @@ def check(
     format_type: str = typer.Option(
         "table", "-f", "--format", help="Output format (table, json, markdown)."
     ),
+    skip_steps: set[str] | None = None,
     files: list[str] | None = typer.Argument(None, help="Specific files or directories to verify."),
 ) -> None:
     """Execute the sanity check pipeline.
@@ -52,15 +114,10 @@ def check(
         examples: Optional sequence of example project names to audit.
         all_targets: Whether to audit all packages unconditionally.
         fix: Whether to auto-apply formatting and lint fixes.
-        skip_tests: Whether to skip test suites.
-        skip_deptry: Whether to skip deptry audits.
-        skip_typecheck: Whether to skip type checking.
-        skip_complexity: Whether to skip complexity audits.
-        skip_parity: Whether to skip test parity checks.
-        skip_statements: Whether to skip __all__ statements check.
         skip: Optional list of explicit step names to skip.
         max_complexity: Cognitive complexity ceiling.
         format_type: Output presentation format.
+        skip_steps: Step names dynamically skipped via CLI flags.
         files: Optional explicit file or directory targets.
 
     Raises:
@@ -80,17 +137,21 @@ def check(
         all_targets=all_targets,
         repo_root=repo_root,
     )
+    merged_skips = set(skip_steps or set())
+    if skip:
+        merged_skips.update(skip)
+
     exit_code = run_sanity_check(
         targets=targets,
         repo_root=repo_root,
         fix=fix,
-        skip_tests=skip_tests,
-        skip_deptry=skip_deptry,
-        skip_typecheck=skip_typecheck,
-        skip_complexity=skip_complexity,
-        skip_parity=skip_parity,
-        skip_all_statements=skip_statements,
-        skip_steps=skip or [],
+        skip_tests="pytest" in merged_skips,
+        skip_deptry="deptry" in merged_skips,
+        skip_typecheck="typecheck" in merged_skips,
+        skip_complexity="complexity" in merged_skips,
+        skip_parity="test_parity" in merged_skips,
+        skip_all_statements="all_statements" in merged_skips,
+        skip_steps=tuple(sorted(merged_skips)),
         max_complexity=max_complexity,
         format_type=format_type,
     )
@@ -98,23 +159,12 @@ def check(
         raise typer.Exit(code=exit_code)
 
 
+@sanity_binder.apply
 def sanity(
     packages: list[str] | None = typer.Option(None, "-p", "--package", help="Target package(s)."),
     examples: list[str] | None = typer.Option(None, "-e", "--example", help="Target example(s)."),
     all_targets: bool = typer.Option(False, "-a", "--all", help="Run across all packages."),
     fix: bool = typer.Option(False, "--fix", help="Automatically apply autofixes."),
-    skip_tests: bool = typer.Option(False, "--skip-tests", help="Skip pytest suites."),
-    skip_deptry: bool = typer.Option(False, "--skip-deptry", help="Skip deptry dependency audits."),
-    skip_typecheck: bool = typer.Option(
-        False, "--skip-typecheck", "--skip-ty", help="Skip static type analysis."
-    ),
-    skip_complexity: bool = typer.Option(
-        False, "--skip-complexity", help="Skip cognitive complexity audit."
-    ),
-    skip_parity: bool = typer.Option(False, "--skip-parity", help="Skip 1:1 test parity check."),
-    skip_statements: bool = typer.Option(
-        False, "--skip-statements", help="Skip __all__ integrity check."
-    ),
     skip: list[str] | None = typer.Option(
         None, "--skip", help="Specific pipeline step(s) to skip (repeatable)."
     ),
@@ -124,6 +174,7 @@ def sanity(
     format_type: str = typer.Option(
         "table", "-f", "--format", help="Output format (table, json, markdown)."
     ),
+    skip_steps: set[str] | None = None,
     files: list[str] | None = typer.Argument(None, help="Specific files or directories to verify."),
 ) -> None:
     """Execute the sanity check pipeline (alias for 'check').
@@ -133,15 +184,10 @@ def sanity(
         examples: Optional sequence of example project names to audit.
         all_targets: Whether to audit all packages unconditionally.
         fix: Whether to auto-apply formatting and lint fixes.
-        skip_tests: Whether to skip test suites.
-        skip_deptry: Whether to skip deptry audits.
-        skip_typecheck: Whether to skip type checking.
-        skip_complexity: Whether to skip complexity audits.
-        skip_parity: Whether to skip test parity checks.
-        skip_statements: Whether to skip __all__ statements check.
         skip: Optional list of explicit step names to skip.
         max_complexity: Cognitive complexity ceiling.
         format_type: Output presentation format.
+        skip_steps: Step names dynamically skipped via CLI flags.
         files: Optional explicit file or directory targets.
 
     Raises:
@@ -155,15 +201,10 @@ def sanity(
         examples=examples,
         all_targets=all_targets,
         fix=fix,
-        skip_tests=skip_tests,
-        skip_deptry=skip_deptry,
-        skip_typecheck=skip_typecheck,
-        skip_complexity=skip_complexity,
-        skip_parity=skip_parity,
-        skip_statements=skip_statements,
         skip=skip,
         max_complexity=max_complexity,
         format_type=format_type,
+        skip_steps=skip_steps,
         files=files,
     )
 

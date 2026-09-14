@@ -11,7 +11,13 @@ from __future__ import annotations
 import time
 from typing import Any
 
-from hexaflow import InMemoryStateStore, StepContext, Workflow
+from hexaflow import (
+    InMemoryStateStore,
+    StepContext,
+    StepStatus,
+    TriggerRule,
+    Workflow,
+)
 
 from hexaqual.domain.governance import (
     AuditComplexityCommand,
@@ -249,7 +255,11 @@ class RunSanityCheckHandler:
         """Register Stage 1 static checks on the workflow."""
         combined_paths = target.src_paths + target.test_paths
 
-        @wf.step(name="lint", stage="static_checks")
+        @wf.step(
+            name="lint",
+            stage="static_checks",
+            trigger_rule=TriggerRule.ALL_SUCCESS_OR_SKIPPED,
+        )
         def _lint(ctx: StepContext) -> CheckResult:
             if "lint" in skip_set:
                 return CheckResult(
@@ -267,7 +277,11 @@ class RunSanityCheckHandler:
                 )
             )
 
-        @wf.step(name="all_statements", stage="static_checks")
+        @wf.step(
+            name="all_statements",
+            stage="static_checks",
+            trigger_rule=TriggerRule.ALL_SUCCESS_OR_SKIPPED,
+        )
         def _all_statements(ctx: StepContext) -> CheckResult:
             if "all_statements" in skip_set or command.skip_all_statements:
                 return CheckResult(
@@ -287,7 +301,11 @@ class RunSanityCheckHandler:
 
         if target.kind == "package":
 
-            @wf.step(name="test_parity", stage="static_checks")
+            @wf.step(
+                name="test_parity",
+                stage="static_checks",
+                trigger_rule=TriggerRule.ALL_SUCCESS_OR_SKIPPED,
+            )
             def _test_parity(ctx: StepContext) -> CheckResult:
                 if "test_parity" in skip_set or command.skip_parity:
                     return CheckResult(
@@ -314,7 +332,12 @@ class RunSanityCheckHandler:
         """Register Stage 2 deep analysis checks on the workflow."""
         combined_paths = target.src_paths + target.test_paths
 
-        @wf.step(name="typecheck", stage="analysis", depends_on=["lint"])
+        @wf.step(
+            name="typecheck",
+            stage="analysis",
+            depends_on=["lint"],
+            trigger_rule=TriggerRule.ALL_SUCCESS_OR_SKIPPED,
+        )
         def _typecheck(ctx: StepContext) -> CheckResult:
             if "typecheck" in skip_set or command.skip_typecheck:
                 return CheckResult(
@@ -331,7 +354,12 @@ class RunSanityCheckHandler:
                 )
             )
 
-        @wf.step(name="complexity", stage="analysis", depends_on=["lint"])
+        @wf.step(
+            name="complexity",
+            stage="analysis",
+            depends_on=["lint"],
+            trigger_rule=TriggerRule.ALL_SUCCESS_OR_SKIPPED,
+        )
         def _complexity(ctx: StepContext) -> CheckResult:
             if "complexity" in skip_set or command.skip_complexity:
                 return CheckResult(
@@ -351,7 +379,12 @@ class RunSanityCheckHandler:
 
         if target.kind == "package":
 
-            @wf.step(name="deptry", stage="analysis", depends_on=["lint"])
+            @wf.step(
+                name="deptry",
+                stage="analysis",
+                depends_on=["lint"],
+                trigger_rule=TriggerRule.ALL_SUCCESS_OR_SKIPPED,
+            )
             def _deptry(ctx: StepContext) -> CheckResult:
                 is_skipped = "deptry" in skip_set or command.skip_deptry
                 return self._bus.dispatch(
@@ -374,6 +407,7 @@ class RunSanityCheckHandler:
             name="pytest",
             stage="verification",
             depends_on=["typecheck", "complexity"],
+            trigger_rule=TriggerRule.ALL_SUCCESS_OR_SKIPPED,
         )
         def _pytest(ctx: StepContext) -> CheckResult:
             is_skipped = "pytest" in skip_set or command.skip_tests
@@ -396,10 +430,31 @@ class RunSanityCheckHandler:
             expected_step_order.extend(["test_parity", "deptry"])
         expected_step_order.append("pytest")
 
+        step_display_names = {
+            "lint": "Ruff Lint/Format",
+            "typecheck": "Ty Typecheck",
+            "complexity": "Cognitive Complexity",
+            "all_statements": "__all__ Integrity",
+            "test_parity": "Test Parity",
+            "deptry": "Deptry Audit",
+            "pytest": "Pytest Suite",
+        }
+
         results: list[CheckResult] = []
         for step_name in expected_step_order:
             cp = state.step_checkpoints.get(step_name)
-            if cp and isinstance(cp.output_payload, CheckResult):
+            if cp and cp.status == StepStatus.SKIPPED:
+                display_name = step_display_names.get(step_name, step_name)
+                results.append(
+                    CheckResult(
+                        check_name=display_name,
+                        target_name=target.name,
+                        status=CheckStatus.SKIP,
+                        duration=cp.duration_seconds or 0.0,
+                        details="Skipped via skip filter",
+                    )
+                )
+            elif cp and isinstance(cp.output_payload, CheckResult):
                 results.append(cp.output_payload)
             elif cp and cp.error_traceback:
                 results.append(

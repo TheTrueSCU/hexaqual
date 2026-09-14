@@ -11,6 +11,7 @@ import os
 from pathlib import Path
 
 __all__ = [
+    "check_architecture_test_parity",
     "check_package_parity",
     "check_src_to_test_symmetry",
     "check_test_directories_inits",
@@ -175,5 +176,63 @@ def check_src_to_test_symmetry(root_dir: Path) -> list[str]:
 
         errors.extend(_check_package_src_symmetry(pkg, root_dir, src_dir, unit_tests_dir))
         errors.extend(_check_package_test_symmetry(pkg, root_dir, src_dir, unit_tests_dir))
+
+    return errors
+
+
+def _check_package_arch_dir(pkg: Path, root_dir: Path) -> list[str]:
+    """Verify architecture tests inside a single package directory."""
+    errors: list[str] = []
+    arch_dir = pkg / "tests" / "architecture"
+    if not arch_dir.is_dir():
+        errors.append(
+            f"Missing architecture tests directory in {pkg.relative_to(root_dir)}: expected tests/architecture/"
+        )
+        return errors
+
+    if not (arch_dir / "__init__.py").is_file():
+        errors.append(f"Missing __init__.py in {arch_dir.relative_to(root_dir)}")
+
+    if not list(arch_dir.glob("test_*.py")):
+        errors.append(
+            f"Missing architecture tests in {arch_dir.relative_to(root_dir)}: expected test_hexagonal_boundaries.py"
+        )
+    return errors
+
+
+def check_architecture_test_parity(root_dir: Path) -> list[str]:
+    """Verify presence of architecture tests across all packages in a workspace.
+
+    Args:
+        root_dir: Root path of repository containing packages/ directory or package root.
+
+    Returns:
+        List of architecture test parity violation error messages.
+
+    Notes/Architectural Intent:
+        Enforces that every workspace package with a source tree contains
+        `tests/architecture/test_hexagonal_boundaries.py` and `tests/architecture/__init__.py`.
+        Also validates that repository-level architecture tests exist and have init files.
+    """
+    errors: list[str] = []
+    packages_dir = root_dir / "packages"
+
+    if packages_dir.is_dir():
+        for pkg in sorted(packages_dir.iterdir()):
+            if pkg.is_dir() and (pkg / "src").is_dir():
+                errors.extend(_check_package_arch_dir(pkg, root_dir))
+    else:
+        # Single-package repository
+        arch_dir = root_dir / "tests" / "architecture"
+        if (root_dir / "src").is_dir() and arch_dir.is_dir():
+            if not (arch_dir / "__init__.py").is_file():
+                errors.append(f"Missing __init__.py in {arch_dir.relative_to(root_dir)}")
+            if not list(arch_dir.glob("test_*.py")):
+                errors.append(f"Missing architecture tests in {arch_dir.relative_to(root_dir)}")
+
+    # Check root architecture directory if present in multi-package repository
+    root_arch_dir = root_dir / "tests" / "architecture"
+    if root_arch_dir.is_dir() and not (root_arch_dir / "__init__.py").is_file():
+        errors.append(f"Missing __init__.py in {root_arch_dir.relative_to(root_dir)}")
 
     return errors

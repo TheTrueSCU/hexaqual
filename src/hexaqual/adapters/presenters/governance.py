@@ -185,6 +185,38 @@ class RichGovernancePresenterAdapter(GovernancePresenterPort):
         )
         return 0
 
+    def present_architecture_parity(
+        self,
+        errors: list[str],
+    ) -> int:
+        """Render architecture test parity outcomes in Rich tables.
+
+        Args:
+            errors: List of detected architecture parity violation errors.
+
+        Returns:
+            0 if clean, 1 if errors detected.
+        """
+        if errors:
+            table = Table(
+                title="[bold red]Architecture Test Parity Violations[/bold red]",
+                show_header=True,
+                header_style="bold magenta",
+            )
+            table.add_column("Error", style="red")
+            for err in errors:
+                table.add_row(err)
+            self._console.print(table)
+            return 1
+
+        self._console.print(
+            Panel(
+                "[bold green]✅ All packages satisfy architecture test parity.[/bold green]",
+                border_style="green",
+            )
+        )
+        return 0
+
 
 class JsonGovernancePresenterAdapter(GovernancePresenterPort):
     """Machine-readable JSON presenter for governance outputs."""
@@ -269,6 +301,25 @@ class JsonGovernancePresenterAdapter(GovernancePresenterPort):
         }
         self._console.print(json.dumps(payload, indent=2))
         return 1 if has_errors else 0
+
+    def present_architecture_parity(
+        self,
+        errors: list[str],
+    ) -> int:
+        """Serialize architecture test parity results to JSON.
+
+        Args:
+            errors: List of detected architecture parity errors.
+
+        Returns:
+            0 if clean, 1 if errors detected.
+        """
+        payload = {
+            "status": "FAIL" if errors else "PASS",
+            "errors": errors,
+        }
+        self._console.print(json.dumps(payload, indent=2))
+        return 1 if errors else 0
 
 
 class MarkdownGovernancePresenterAdapter(GovernancePresenterPort):
@@ -401,6 +452,30 @@ class MarkdownGovernancePresenterAdapter(GovernancePresenterPort):
 
         self._console.print("\n".join(lines))
         return 1
+
+    def present_architecture_parity(
+        self,
+        errors: list[str],
+    ) -> int:
+        """Render architecture test parity outcomes as Markdown.
+
+        Args:
+            errors: List of detected architecture parity errors.
+
+        Returns:
+            0 if clean/success, 1 if errors detected.
+        """
+        lines: list[str] = []
+        if errors:
+            lines.append("### ❌ Architecture Test Parity Violations")
+            lines.append("")
+            for err in errors:
+                lines.append(f"- {err}")
+        else:
+            lines.append("> ✅ **All packages satisfy architecture test parity.**")
+
+        self._console.print("\n".join(lines))
+        return 1 if errors else 0
 
 
 def create_governance_presenter(
