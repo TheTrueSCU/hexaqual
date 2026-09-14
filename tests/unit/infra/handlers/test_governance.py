@@ -14,6 +14,7 @@ from hexaqual.domain.governance import (
     CheckResult,
     CheckStatus,
     CheckTestParityCommand,
+    RunDeptryCommand,
     RunLinterCommand,
     RunPytestCommand,
     RunSanityCheckCommand,
@@ -25,6 +26,7 @@ from hexaqual.infra.handlers.governance import (
     AuditComplexityHandler,
     CheckAllStatementsHandler,
     CheckTestParityHandler,
+    RunDeptryHandler,
     RunLinterHandler,
     RunPytestHandler,
     RunSanityCheckHandler,
@@ -42,6 +44,7 @@ def test_leaf_governance_handlers():
     mock_runner.run_complexipy.return_value = expected_res
     mock_runner.run_all_statements.return_value = expected_res
     mock_runner.run_test_parity.return_value = expected_res
+    mock_runner.run_deptry.return_value = expected_res
     mock_runner.run_pytest.return_value = expected_res
 
     target = SanityTarget("cqrs", "package", Path("/tmp"), (Path("/tmp"),), ())
@@ -77,6 +80,10 @@ def test_leaf_governance_handlers():
     )
     mock_runner.run_test_parity.assert_called_once()
 
+    h_deptry = RunDeptryHandler(mock_runner)
+    assert h_deptry.handle(RunDeptryCommand(target=target, skip=False)) == expected_res
+    mock_runner.run_deptry.assert_called_once()
+
     h_pytest = RunPytestHandler(mock_runner)
     assert (
         h_pytest.handle(RunPytestCommand(target=target, repo_root=Path("/tmp"), skip=True))
@@ -109,9 +116,41 @@ def test_run_sanity_check_handler_composite_dispatch():
 
     report = handler.handle(cmd)
     assert report.exit_code == 0
-    # Package target should dispatch: linter, ty, complexipy, all_statements, parity, pytest = 6 calls
-    assert mock_bus.dispatch.call_count == 6
-    assert len(report.results) == 6
+    # Package target should dispatch: linter, ty, complexipy, all_statements, parity, deptry, pytest = 7 calls
+    assert mock_bus.dispatch.call_count == 7
+    assert len(report.results) == 7
+
+
+def test_run_sanity_check_handler_skip_flags():
+    """Verify RunSanityCheckHandler honors individual and step skip flags."""
+    mock_bus = MagicMock(spec=CommandDispatcher)
+    pass_res = CheckResult("SubCheck", "target", CheckStatus.PASS, 0.01)
+    mock_bus.dispatch.return_value = pass_res
+
+    handler = RunSanityCheckHandler(mock_bus)
+    pkg_target = SanityTarget(
+        name="cqrs",
+        kind="package",
+        path=Path("/tmp/cqrs"),
+        src_paths=(Path("/tmp/cqrs/src"),),
+        test_paths=(Path("/tmp/cqrs/tests"),),
+    )
+    cmd = RunSanityCheckCommand(
+        targets=(pkg_target,),
+        repo_root=Path("/tmp"),
+        skip_tests=True,
+        skip_deptry=True,
+        skip_typecheck=True,
+        skip_complexity=True,
+        skip_parity=True,
+        skip_all_statements=True,
+        skip_steps=("lint",),
+    )
+    report = handler.handle(cmd)
+    assert report.exit_code == 0
+    # 5 steps are skipped immediately; deptry and pytest are dispatched with skip=True
+    assert mock_bus.dispatch.call_count == 2
+    assert len(report.results) == 7
 
 
 def test_run_sanity_check_handler_with_failures():

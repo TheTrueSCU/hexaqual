@@ -359,6 +359,77 @@ class SubprocessToolRunnerAdapter(ToolRunnerPort):
             "1:1 test symmetry verified",
         )
 
+    def run_deptry(
+        self,
+        target: SanityTarget,
+        skip: bool = False,
+    ) -> CheckResult:
+        """Audit package dependencies using deptry.
+
+        Args:
+            target: Target component to audit.
+            skip: Whether to skip running deptry.
+
+        Returns:
+            CheckResult with dependency audit diagnostics.
+        """
+        if skip:
+            return CheckResult(
+                "Deptry",
+                target.name,
+                CheckStatus.SKIP,
+                0.0,
+                "Skipped via --skip-deptry",
+            )
+
+        if target.kind != "package":
+            return CheckResult(
+                "Deptry",
+                target.name,
+                CheckStatus.SKIP,
+                0.0,
+                "Applicable to packages only",
+            )
+
+        pyproject = target.path / "pyproject.toml"
+        if not pyproject.is_file():
+            return CheckResult(
+                "Deptry",
+                target.name,
+                CheckStatus.PASS,
+                0.0,
+                "No pyproject.toml found",
+            )
+
+        cmd = [
+            find_executable("deptry"),
+            str(target.path),
+            "--config",
+            str(pyproject),
+            "--known-first-party",
+            target.path.name,
+            "--ignore",
+            "DEP002,DEP003,DEP004",
+        ]
+        code, out, err, dur = _execute_subprocess(cmd, cwd=target.path)
+        if code != 0:
+            return CheckResult(
+                "Deptry",
+                target.name,
+                CheckStatus.FAIL,
+                dur,
+                "Undeclared or missing dependencies",
+                error_output=(out + "\n" + err).strip(),
+            )
+
+        return CheckResult(
+            "Deptry",
+            target.name,
+            CheckStatus.PASS,
+            dur,
+            "Dependencies cleanly declared",
+        )
+
     def run_pytest(
         self,
         target: SanityTarget,

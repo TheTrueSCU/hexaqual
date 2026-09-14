@@ -47,6 +47,8 @@ Usage: hexaqual [OPTIONS] COMMAND [ARGS]...
 │ statements  Audit and format __all__ statements.                             │
 │ parity      Audit test symmetry and optional extras parity.                  │
 │ test        Test execution, coverage audits, and architecture verification.  │
+│ deps        Audit dependencies, generate import diagrams, and check          │
+│             architectural boundaries.                                        │
 │ mutate      Mutation testing execution and triage inspection.                │
 │ release     Distribution package building, validation, and PyPI publishing.  │
 │ gh          GitHub repository, PR, and security examination.                 │
@@ -57,6 +59,16 @@ Usage: hexaqual [OPTIONS] COMMAND [ARGS]...
 ---
 
 ## 🛠️ Complete Subcommand Tree Reference
+
+### `hexaqual architectural`
+
+```text
+Usage: hexaqual [OPTIONS] COMMAND [ARGS]...
+Try 'hexaqual --help' for help.
+╭─ Error ──────────────────────────────────────────────────────────────────────╮
+│ No such command 'architectural'.                                             │
+╰──────────────────────────────────────────────────────────────────────────────╯
+```
 
 ### `hexaqual check`
 
@@ -71,6 +83,12 @@ Usage: hexaqual check [OPTIONS] [files]...
      all_targets: Whether to audit all packages unconditionally.
      fix: Whether to auto-apply formatting and lint fixes.
      skip_tests: Whether to skip test suites.
+     skip_deptry: Whether to skip deptry audits.
+     skip_typecheck: Whether to skip type checking.
+     skip_complexity: Whether to skip complexity audits.
+     skip_parity: Whether to skip test parity checks.
+     skip_statements: Whether to skip __all__ statements check.
+     skip: Optional list of explicit step names to skip.
      max_complexity: Cognitive complexity ceiling.
      format_type: Output presentation format.
      files: Optional explicit file or directory targets.
@@ -85,16 +103,168 @@ Usage: hexaqual check [OPTIONS] [files]...
 │   files      <str>  Specific files or directories to verify.                 │
 ╰──────────────────────────────────────────────────────────────────────────────╯
 ╭─ Options ────────────────────────────────────────────────────────────────────╮
-│ --package         -p       <str>  Target package(s).                         │
-│ --example         -e       <str>  Target example(s).                         │
-│ --all             -a              Run across all packages.                   │
-│ --fix                             Automatically apply autofixes.             │
-│ --skip-tests                      Skip pytest suites.                        │
-│ --max-complexity  -mx      <int>  Cognitive complexity ceiling.              │
-│                                   [default: 25]                              │
-│ --format          -f       <str>  Output format (table, json, markdown).     │
-│                                   [default: table]                           │
-│ --help                            Show this message and exit.                │
+│ --package                   -p       <str>  Target package(s).               │
+│ --example                   -e       <str>  Target example(s).               │
+│ --all                       -a              Run across all packages.         │
+│ --fix                                       Automatically apply autofixes.   │
+│ --skip-tests                                Skip pytest suites.              │
+│ --skip-deptry                               Skip deptry dependency audits.   │
+│ --skip-typecheck,--skip-ty                  Skip static type analysis.       │
+│ --skip-complexity                           Skip cognitive complexity audit. │
+│ --skip-parity                               Skip 1:1 test parity check.      │
+│ --skip-statements                           Skip __all__ integrity check.    │
+│ --skip                               <str>  Specific pipeline step(s) to     │
+│                                             skip (repeatable).               │
+│ --max-complexity            -mx      <int>  Cognitive complexity ceiling.    │
+│                                             [default: 25]                    │
+│ --format                    -f       <str>  Output format (table, json,      │
+│                                             markdown).                       │
+│                                             [default: table]                 │
+│ --help                                      Show this message and exit.      │
+╰──────────────────────────────────────────────────────────────────────────────╯
+```
+
+### `hexaqual deps`
+
+```text
+Usage: hexaqual deps [OPTIONS] COMMAND [ARGS]...
+
+ Audit dependencies, generate import diagrams, and check architectural
+ boundaries.
+
+╭─ Options ────────────────────────────────────────────────────────────────────╮
+│ --help          Show this message and exit.                                  │
+╰──────────────────────────────────────────────────────────────────────────────╯
+╭─ Commands ───────────────────────────────────────────────────────────────────╮
+│ audit            Execute unified audit across dependencies, optional extras, │
+│                  and tools.                                                  │
+│ pydeps           Generate architecture dependency diagrams using pydeps.     │
+│ linter           Evaluate hexagonal architecture contract boundaries using   │
+│                  import-linter.                                              │
+│ linter-generate  Generate default hexagonal  contracts in pyproject.toml     │
+│                  files.                                                      │
+╰──────────────────────────────────────────────────────────────────────────────╯
+```
+
+#### `hexaqual deps and`
+
+```text
+Usage: hexaqual deps [OPTIONS] COMMAND [ARGS]...
+Try 'hexaqual deps --help' for help.
+╭─ Error ──────────────────────────────────────────────────────────────────────╮
+│ No such command 'and'.                                                       │
+╰──────────────────────────────────────────────────────────────────────────────╯
+```
+
+#### `hexaqual deps audit`
+
+```text
+Usage: hexaqual deps audit [OPTIONS]
+
+ Execute unified audit across dependencies, optional extras, and tools.
+
+ Args:
+     diagrams: Whether to regenerate Pydeps SVGs and Mermaid diagrams.
+     deptry_only: Whether to restrict execution to deptry source import audits.
+     extras_only: Whether to restrict execution to extras parity validation.
+     format_type: Output presentation format.
+
+ Raises:
+     typer.Exit: If dependency or extras auditing detects violations.
+
+ Notes/Architectural Intent:
+     Dispatches RunUnifiedDepsAuditCommand across the governance bus.
+
+╭─ Options ────────────────────────────────────────────────────────────────────╮
+│ --diagrams                    Regenerate all Pydeps SVG import graphs and    │
+│                               Mermaid diagrams.                              │
+│ --deptry-only                 Only run deptry source import audits.          │
+│ --extras-only                 Only run optional extras parity checks.        │
+│ --format       -f      <str>  Output representation format (table, json,     │
+│                               markdown).                                     │
+│                               [default: table]                               │
+│ --help                        Show this message and exit.                    │
+╰──────────────────────────────────────────────────────────────────────────────╯
+```
+
+#### `hexaqual deps linter`
+
+```text
+Usage: hexaqual deps linter [OPTIONS] [files]...
+
+ Evaluate hexagonal architecture contract boundaries using import-linter.
+
+ Args:
+     packages: Optional sequence of package names to check.
+     all_packages: Whether to verify all workspace packages.
+     format_type: Output presentation format.
+     files: Optional sequence of file paths to determine affected packages.
+
+ Raises:
+     typer.Exit: If import boundary contracts are broken.
+
+ Notes/Architectural Intent:
+     Enforces clean hexagonal dependencies between domain, ports, adapters, and
+ infra.
+
+╭─ Arguments ──────────────────────────────────────────────────────────────────╮
+│   files      <str>  Optional changed files list.                             │
+╰──────────────────────────────────────────────────────────────────────────────╯
+╭─ Options ────────────────────────────────────────────────────────────────────╮
+│ --package  -p      <str>  Target package(s).                                 │
+│ --all      -a             Run across all packages unconditionally.           │
+│ --format   -f      <str>  Output presentation format (table, json,           │
+│                           markdown).                                         │
+│                           [default: table]                                   │
+│ --help                    Show this message and exit.                        │
+╰──────────────────────────────────────────────────────────────────────────────╯
+```
+
+#### `hexaqual deps linter-generate`
+
+```text
+Usage: hexaqual deps linter-generate [OPTIONS]
+
+ Generate default hexagonal  contracts in pyproject.toml files.
+
+ Args:
+     packages: Optional sequence of packages for which to generate contracts.
+
+ Notes/Architectural Intent:
+     Generates standard forbidden-contract configurations forbidding adapters
+ from
+     importing infra, ports from importing adapters/infra, and domain from
+ importing any layer.
+
+╭─ Options ────────────────────────────────────────────────────────────────────╮
+│ --package  -p      <str>  Target package(s).                                 │
+│ --help                    Show this message and exit.                        │
+╰──────────────────────────────────────────────────────────────────────────────╯
+```
+
+#### `hexaqual deps pydeps`
+
+```text
+Usage: hexaqual deps pydeps [OPTIONS]
+
+ Generate architecture dependency diagrams using pydeps.
+
+ Args:
+     packages: Optional sequence of packages to graph.
+     format_type: Output presentation format.
+
+ Raises:
+     typer.Exit: If diagram generation encounters errors.
+
+ Notes/Architectural Intent:
+     Ensures pydeps availability and dispatches GeneratePydepsCommand.
+
+╭─ Options ────────────────────────────────────────────────────────────────────╮
+│ --package  -p      <str>  Target package(s).                                 │
+│ --format   -f      <str>  Output presentation format (table, json,           │
+│                           markdown).                                         │
+│                           [default: table]                                   │
+│ --help                    Show this message and exit.                        │
 ╰──────────────────────────────────────────────────────────────────────────────╯
 ```
 
@@ -481,6 +651,7 @@ Usage: hexaqual release check [OPTIONS]
  Validate package build distributions and PyPI release versions.
 
  Args:
+     package: Optional specific package name to check.
      format_type: Output format.
 
  Raises:
@@ -490,8 +661,9 @@ Usage: hexaqual release check [OPTIONS]
      Queries PyPI to verify current version status.
 
 ╭─ Options ────────────────────────────────────────────────────────────────────╮
-│ --format  -f      <str>  Output format. [default: rich]                      │
-│ --help                   Show this message and exit.                         │
+│ --package  -p      <str>  Target package name (default: all).                │
+│ --format   -f      <str>  Output format. [default: rich]                     │
+│ --help                    Show this message and exit.                        │
 ╰──────────────────────────────────────────────────────────────────────────────╯
 ```
 
@@ -563,6 +735,12 @@ Usage: hexaqual sanity [OPTIONS] [files]...
      all_targets: Whether to audit all packages unconditionally.
      fix: Whether to auto-apply formatting and lint fixes.
      skip_tests: Whether to skip test suites.
+     skip_deptry: Whether to skip deptry audits.
+     skip_typecheck: Whether to skip type checking.
+     skip_complexity: Whether to skip complexity audits.
+     skip_parity: Whether to skip test parity checks.
+     skip_statements: Whether to skip __all__ statements check.
+     skip: Optional list of explicit step names to skip.
      max_complexity: Cognitive complexity ceiling.
      format_type: Output presentation format.
      files: Optional explicit file or directory targets.
@@ -577,16 +755,24 @@ Usage: hexaqual sanity [OPTIONS] [files]...
 │   files      <str>  Specific files or directories to verify.                 │
 ╰──────────────────────────────────────────────────────────────────────────────╯
 ╭─ Options ────────────────────────────────────────────────────────────────────╮
-│ --package         -p       <str>  Target package(s).                         │
-│ --example         -e       <str>  Target example(s).                         │
-│ --all             -a              Run across all packages.                   │
-│ --fix                             Automatically apply autofixes.             │
-│ --skip-tests                      Skip pytest suites.                        │
-│ --max-complexity  -mx      <int>  Cognitive complexity ceiling.              │
-│                                   [default: 25]                              │
-│ --format          -f       <str>  Output format (table, json, markdown).     │
-│                                   [default: table]                           │
-│ --help                            Show this message and exit.                │
+│ --package                   -p       <str>  Target package(s).               │
+│ --example                   -e       <str>  Target example(s).               │
+│ --all                       -a              Run across all packages.         │
+│ --fix                                       Automatically apply autofixes.   │
+│ --skip-tests                                Skip pytest suites.              │
+│ --skip-deptry                               Skip deptry dependency audits.   │
+│ --skip-typecheck,--skip-ty                  Skip static type analysis.       │
+│ --skip-complexity                           Skip cognitive complexity audit. │
+│ --skip-parity                               Skip 1:1 test parity check.      │
+│ --skip-statements                           Skip __all__ integrity check.    │
+│ --skip                               <str>  Specific pipeline step(s) to     │
+│                                             skip (repeatable).               │
+│ --max-complexity            -mx      <int>  Cognitive complexity ceiling.    │
+│                                             [default: 25]                    │
+│ --format                    -f       <str>  Output format (table, json,      │
+│                                             markdown).                       │
+│                                             [default: table]                 │
+│ --help                                      Show this message and exit.      │
 ╰──────────────────────────────────────────────────────────────────────────────╯
 ```
 

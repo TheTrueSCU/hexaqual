@@ -22,6 +22,20 @@ def check(
     all_targets: bool = typer.Option(False, "-a", "--all", help="Run across all packages."),
     fix: bool = typer.Option(False, "--fix", help="Automatically apply autofixes."),
     skip_tests: bool = typer.Option(False, "--skip-tests", help="Skip pytest suites."),
+    skip_deptry: bool = typer.Option(False, "--skip-deptry", help="Skip deptry dependency audits."),
+    skip_typecheck: bool = typer.Option(
+        False, "--skip-typecheck", "--skip-ty", help="Skip static type analysis."
+    ),
+    skip_complexity: bool = typer.Option(
+        False, "--skip-complexity", help="Skip cognitive complexity audit."
+    ),
+    skip_parity: bool = typer.Option(False, "--skip-parity", help="Skip 1:1 test parity check."),
+    skip_statements: bool = typer.Option(
+        False, "--skip-statements", help="Skip __all__ integrity check."
+    ),
+    skip: list[str] | None = typer.Option(
+        None, "--skip", help="Specific pipeline step(s) to skip (repeatable)."
+    ),
     max_complexity: int = typer.Option(
         25, "-mx", "--max-complexity", help="Cognitive complexity ceiling."
     ),
@@ -38,6 +52,12 @@ def check(
         all_targets: Whether to audit all packages unconditionally.
         fix: Whether to auto-apply formatting and lint fixes.
         skip_tests: Whether to skip test suites.
+        skip_deptry: Whether to skip deptry audits.
+        skip_typecheck: Whether to skip type checking.
+        skip_complexity: Whether to skip complexity audits.
+        skip_parity: Whether to skip test parity checks.
+        skip_statements: Whether to skip __all__ statements check.
+        skip: Optional list of explicit step names to skip.
         max_complexity: Cognitive complexity ceiling.
         format_type: Output presentation format.
         files: Optional explicit file or directory targets.
@@ -64,6 +84,12 @@ def check(
         repo_root=repo_root,
         fix=fix,
         skip_tests=skip_tests,
+        skip_deptry=skip_deptry,
+        skip_typecheck=skip_typecheck,
+        skip_complexity=skip_complexity,
+        skip_parity=skip_parity,
+        skip_all_statements=skip_statements,
+        skip_steps=skip or [],
         max_complexity=max_complexity,
         format_type=format_type,
     )
@@ -77,6 +103,20 @@ def sanity(
     all_targets: bool = typer.Option(False, "-a", "--all", help="Run across all packages."),
     fix: bool = typer.Option(False, "--fix", help="Automatically apply autofixes."),
     skip_tests: bool = typer.Option(False, "--skip-tests", help="Skip pytest suites."),
+    skip_deptry: bool = typer.Option(False, "--skip-deptry", help="Skip deptry dependency audits."),
+    skip_typecheck: bool = typer.Option(
+        False, "--skip-typecheck", "--skip-ty", help="Skip static type analysis."
+    ),
+    skip_complexity: bool = typer.Option(
+        False, "--skip-complexity", help="Skip cognitive complexity audit."
+    ),
+    skip_parity: bool = typer.Option(False, "--skip-parity", help="Skip 1:1 test parity check."),
+    skip_statements: bool = typer.Option(
+        False, "--skip-statements", help="Skip __all__ integrity check."
+    ),
+    skip: list[str] | None = typer.Option(
+        None, "--skip", help="Specific pipeline step(s) to skip (repeatable)."
+    ),
     max_complexity: int = typer.Option(
         25, "-mx", "--max-complexity", help="Cognitive complexity ceiling."
     ),
@@ -93,6 +133,12 @@ def sanity(
         all_targets: Whether to audit all packages unconditionally.
         fix: Whether to auto-apply formatting and lint fixes.
         skip_tests: Whether to skip test suites.
+        skip_deptry: Whether to skip deptry audits.
+        skip_typecheck: Whether to skip type checking.
+        skip_complexity: Whether to skip complexity audits.
+        skip_parity: Whether to skip test parity checks.
+        skip_statements: Whether to skip __all__ statements check.
+        skip: Optional list of explicit step names to skip.
         max_complexity: Cognitive complexity ceiling.
         format_type: Output presentation format.
         files: Optional explicit file or directory targets.
@@ -109,6 +155,12 @@ def sanity(
         all_targets=all_targets,
         fix=fix,
         skip_tests=skip_tests,
+        skip_deptry=skip_deptry,
+        skip_typecheck=skip_typecheck,
+        skip_complexity=skip_complexity,
+        skip_parity=skip_parity,
+        skip_statements=skip_statements,
+        skip=skip,
         max_complexity=max_complexity,
         format_type=format_type,
         files=files,

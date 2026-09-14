@@ -238,6 +238,12 @@ def run_sanity_check(
     repo_root: Path,
     fix: bool = False,
     skip_tests: bool = False,
+    skip_deptry: bool = False,
+    skip_typecheck: bool = False,
+    skip_complexity: bool = False,
+    skip_parity: bool = False,
+    skip_all_statements: bool = False,
+    skip_steps: tuple[str, ...] | list[str] = (),
     max_complexity: int = 25,
     format_type: str = "table",
     console: Console | None = None,
@@ -252,6 +258,12 @@ def run_sanity_check(
         repo_root: Root path of the repository.
         fix: Whether to auto-format and fix violations.
         skip_tests: Whether to skip pytest suites.
+        skip_deptry: Whether to skip deptry dependency audit.
+        skip_typecheck: Whether to skip static type analysis.
+        skip_complexity: Whether to skip cognitive complexity audit.
+        skip_parity: Whether to skip 1:1 test parity checks.
+        skip_all_statements: Whether to skip __all__ export checks.
+        skip_steps: Explicit sequence of step names to skip.
         max_complexity: Cognitive complexity ceiling per function.
         format_type: Output representation format ('table', 'json', 'markdown').
         console: Optional Rich Console instance.
@@ -277,6 +289,12 @@ def run_sanity_check(
         repo_root=repo_root,
         fix=fix,
         skip_tests=skip_tests,
+        skip_deptry=skip_deptry,
+        skip_typecheck=skip_typecheck,
+        skip_complexity=skip_complexity,
+        skip_parity=skip_parity,
+        skip_all_statements=skip_all_statements,
+        skip_steps=tuple(skip_steps),
         max_complexity=max_complexity,
     )
 
@@ -346,6 +364,44 @@ def _build_parser(repo_root: Path | None = None) -> argparse.ArgumentParser:
         help="Skip running pytest suites (run static analysis and parity only).",
     )
     parser.add_argument(
+        "--skip-deptry",
+        dest="skip_deptry",
+        action="store_true",
+        help="Skip deptry dependency audits.",
+    )
+    parser.add_argument(
+        "--skip-typecheck",
+        "--skip-ty",
+        dest="skip_typecheck",
+        action="store_true",
+        help="Skip static type analysis.",
+    )
+    parser.add_argument(
+        "--skip-complexity",
+        dest="skip_complexity",
+        action="store_true",
+        help="Skip cognitive complexity audit.",
+    )
+    parser.add_argument(
+        "--skip-parity",
+        dest="skip_parity",
+        action="store_true",
+        help="Skip 1:1 test parity check.",
+    )
+    parser.add_argument(
+        "--skip-statements",
+        dest="skip_all_statements",
+        action="store_true",
+        help="Skip __all__ integrity check.",
+    )
+    parser.add_argument(
+        "--skip",
+        dest="skip_steps",
+        action="append",
+        default=[],
+        help="Specific pipeline step(s) to skip (repeatable).",
+    )
+    parser.add_argument(
         "-mx",
         "--max-complexity",
         dest="max_complexity",
@@ -373,6 +429,12 @@ def main() -> None:
         repo_root=repo_root,
         fix=args.fix,
         skip_tests=args.skip_tests,
+        skip_deptry=args.skip_deptry,
+        skip_typecheck=args.skip_typecheck,
+        skip_complexity=args.skip_complexity,
+        skip_parity=args.skip_parity,
+        skip_all_statements=args.skip_all_statements,
+        skip_steps=args.skip_steps,
         max_complexity=args.max_complexity,
         format_type=args.format,
     )

@@ -112,6 +112,22 @@ class ToolRunnerPort(ABC):
         """
 
     @abstractmethod
+    def run_deptry(
+        self,
+        target: SanityTarget,
+        skip: bool = False,
+    ) -> CheckResult:
+        """Audit package dependencies using deptry.
+
+        Args:
+            target: Target component to audit.
+            skip: Whether to skip running deptry.
+
+        Returns:
+            CheckResult with dependency diagnostics.
+        """
+
+    @abstractmethod
     def run_pytest(
         self,
         target: SanityTarget,

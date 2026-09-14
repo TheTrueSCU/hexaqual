@@ -14,6 +14,13 @@ from rich.console import Console
 
 from hexaqual import __version__
 from hexaqual.cli.check import check, register_check_commands, sanity
+from hexaqual.cli.deps import (
+    deps_app,
+    deps_audit,
+    deps_linter,
+    deps_linter_generate,
+    deps_pydeps,
+)
 from hexaqual.cli.docs import docs_app, docs_usage
 from hexaqual.cli.gh import (
     gh_app,
@@ -44,6 +51,11 @@ from hexaqual.cli.test import (
 __all__ = [
     "app",
     "check",
+    "deps_app",
+    "deps_audit",
+    "deps_linter",
+    "deps_linter_generate",
+    "deps_pydeps",
     "docs_app",
     "docs_usage",
     "gh_app",
@@ -90,6 +102,7 @@ register_check_commands(app)
 app.add_typer(statements_app)
 app.add_typer(parity_app)
 app.add_typer(test_app)
+app.add_typer(deps_app)
 app.add_typer(mutate_app)
 app.add_typer(release_app)
 app.add_typer(gh_app)

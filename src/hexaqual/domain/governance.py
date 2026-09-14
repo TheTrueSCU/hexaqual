@@ -19,6 +19,7 @@ __all__ = [
     "CheckResult",
     "CheckStatus",
     "CheckTestParityCommand",
+    "RunDeptryCommand",
     "RunLinterCommand",
     "RunPytestCommand",
     "RunSanityCheckCommand",
@@ -106,6 +107,13 @@ class CheckTestParityCommand(Command):
     repo_root: Path
 
 
+class RunDeptryCommand(Command):
+    """Command requesting deptry dependency audit."""
+
+    target: SanityTarget
+    skip: bool = False
+
+
 class RunPytestCommand(Command):
     """Command requesting test suite execution."""
 
@@ -121,4 +129,10 @@ class RunSanityCheckCommand(Command):
     repo_root: Path
     fix: bool = False
     skip_tests: bool = False
+    skip_deptry: bool = False
+    skip_typecheck: bool = False
+    skip_complexity: bool = False
+    skip_parity: bool = False
+    skip_all_statements: bool = False
+    skip_steps: tuple[str, ...] = ()
     max_complexity: int = 25

@@ -61,6 +61,9 @@ def test_concrete_tool_runner_implementation():
         def run_test_parity(self, target: SanityTarget, repo_root: Path) -> CheckResult:
             return CheckResult("Parity", target.name, CheckStatus.PASS, 0.01)
 
+        def run_deptry(self, target: SanityTarget, skip: bool = False) -> CheckResult:
+            return CheckResult("Deptry", target.name, CheckStatus.PASS, 0.01)
+
         def run_pytest(
             self, target: SanityTarget, repo_root: Path, skip: bool = False
         ) -> CheckResult:
