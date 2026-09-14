@@ -11,10 +11,13 @@ import typer
 
 __all__ = [
     "test_app",
+    "test_archon",
     "test_boundary",
+    "test_fuzz",
     "test_impact",
     "test_redundancy",
     "test_run",
+    "test_snapshot",
 ]
 
 test_app = typer.Typer(
@@ -151,5 +154,142 @@ def test_redundancy(
     from hexaqual.commands.coverage import redundancy_audit_main
 
     exit_code = redundancy_audit_main() or 0
+    if exit_code != 0:
+        raise typer.Exit(code=exit_code)
+
+
+@test_app.command("fuzz")
+def test_fuzz(
+    target: str = typer.Option(
+        "all", "-t", "--target", help="Target fuzz harness (all, sanitizer, proto, owasp)."
+    ),
+    runs: int = typer.Option(1000, "-n", "--runs", help="Number of fuzzed runs per harness."),
+    engine: str = typer.Option(
+        "auto", "-e", "--engine", help="Fuzzing engine (auto, atheris, standalone)."
+    ),
+    format_type: str = typer.Option(
+        "table", "-f", "--format", help="Output presentation format (table, json, markdown)."
+    ),
+) -> None:
+    """Run coverage-guided and adversarial security fuzz harnesses.
+
+    Args:
+        target: Target fuzz harness to execute.
+        runs: Number of fuzzed runs per harness.
+        engine: Fuzzing engine to use.
+        format_type: Output presentation format.
+
+    Raises:
+        typer.Exit: If any fuzz harness fails.
+
+    Notes/Architectural Intent:
+        Driving adapter dispatching FuzzRunCommand across the governance bus.
+    """
+    from hexaqual.adapters.presenters.analysis import create_analysis_presenter
+    from hexaqual.domain.analysis import FuzzRunCommand
+    from hexaqual.infra.bootstrap import create_governance_bus
+
+    bus = create_governance_bus()
+    presenter = create_analysis_presenter(format_type)
+    cmd = FuzzRunCommand(
+        target=target,
+        runs=runs,
+        engine=engine,
+    )
+    report = bus.dispatch(cmd)
+    exit_code = presenter.present_fuzz(report)
+    if exit_code != 0:
+        raise typer.Exit(code=exit_code)
+
+
+@test_app.command("snapshot")
+def test_snapshot(
+    mode: str = typer.Option(
+        "fix", "-m", "--mode", help="inline-snapshot mode (create, fix, review)."
+    ),
+    packages: list[str] | None = typer.Option(None, "-p", "--package", help="Target package(s)."),
+    format_type: str = typer.Option(
+        "table", "-f", "--format", help="Output presentation format (table, json, markdown)."
+    ),
+    files: list[str] | None = typer.Argument(None, help="Target file paths."),
+) -> None:
+    """Update or review inline snapshots across test suites.
+
+    Args:
+        mode: Snapshot update mode.
+        packages: Target package(s).
+        format_type: Output presentation format.
+        files: Target file paths.
+
+    Raises:
+        typer.Exit: If snapshot update command fails.
+
+    Notes/Architectural Intent:
+        Driving adapter dispatching UpdateInlineSnapshotsCommand across packages.
+    """
+    from pathlib import Path
+
+    from hexaqual.adapters.presenters.analysis import create_analysis_presenter
+    from hexaqual.domain.analysis import UpdateInlineSnapshotsCommand
+    from hexaqual.infra.bootstrap import create_governance_bus
+    from hexaqual.utils.workspace import (
+        get_package_directories,
+        get_package_directory,
+        get_repo_root,
+    )
+
+    root = get_repo_root()
+    targets: list[Path] = []
+    if files:
+        targets.extend(Path(f) for f in files)
+    elif packages:
+        targets.extend(get_package_directory(p, root) for p in packages)
+    else:
+        targets.extend(get_package_directories(root))
+
+    bus = create_governance_bus(repo_root=root)
+    presenter = create_analysis_presenter(format_type)
+    cmd = UpdateInlineSnapshotsCommand(mode=mode, targets=tuple(targets))
+    report = bus.dispatch(cmd)
+    exit_code = presenter.present_inline_snapshots(report)
+    if exit_code != 0:
+        raise typer.Exit(code=exit_code)
+
+
+@test_app.command("archon")
+def test_archon(
+    packages: list[str] | None = typer.Option(None, "-p", "--package", help="Target package(s)."),
+    force: bool = typer.Option(False, "--force", help="Overwrite existing boundary test files."),
+    format_type: str = typer.Option(
+        "table", "-f", "--format", help="Output presentation format (table, json, markdown)."
+    ),
+) -> None:
+    """Generate pytest-archon boundary tests for packages.
+
+    Args:
+        packages: Target package(s) for test generation.
+        force: Overwrite existing test files.
+        format_type: Output presentation format.
+
+    Raises:
+        typer.Exit: If generation fails.
+
+    Notes/Architectural Intent:
+        Driving adapter dispatching GenerateArchonTestsCommand across the governance bus.
+    """
+    from hexaqual.adapters.presenters.generators import create_generator_presenter
+    from hexaqual.domain.generators import GenerateArchonTestsCommand
+    from hexaqual.infra.bootstrap import create_governance_bus
+    from hexaqual.utils.workspace import get_repo_root
+
+    root = get_repo_root()
+    bus = create_governance_bus(repo_root=root)
+    presenter = create_generator_presenter(format_type)
+    cmd = GenerateArchonTestsCommand(
+        packages=tuple(packages) if packages else (),
+        force=force,
+    )
+    report = bus.dispatch(cmd)
+    exit_code = presenter.present_archon(report)
     if exit_code != 0:
         raise typer.Exit(code=exit_code)

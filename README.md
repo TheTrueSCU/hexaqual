@@ -46,11 +46,15 @@ Hexaqual subsumes all developer quality tools into a single unified entrypoint (
 | `hexaqual check` (alias: `sanity`) | — | Run the multi-stage quality pipeline (Ruff, Ty, Complexipy, `__all__`, test parity, pytest). |
 | `hexaqual statements` | `check`, `fix` | Audit and auto-format `__all__` exports with strict casefold sorting. |
 | `hexaqual parity` | `test`, `extras` | Audit 1:1 symmetry between source modules and unit tests, and optional extras forwarding. |
-| `hexaqual test` | `run`, `boundary`, `redundancy`, `impact` | Run pytest suites, boundary assertion audits, redundancy analysis, and git impact tests. |
+| `hexaqual test` | `run`, `boundary`, `redundancy`, `impact`, `fuzz`, `snapshot`, `archon` | Run pytest suites, boundary assertion audits, redundancy analysis, git impact tests, fuzzing, and inline snapshots. |
 | `hexaqual mutate` | `run`, `inspect` | Execute mutation testing via mutmut and inspect critical surviving mutants. |
-| `hexaqual release` | `build`, `check`, `publish` | Build sdist/wheel distributions, verify metadata, and publish to PyPI with smart duplicate skipping. |
-| `hexaqual gh` | `pr`, `checks`, `repo`, `security`, `code-scanning` | Inspect PR health dashboards, CI checks, repo governance, Dependabot, and CodeQL alerts. |
-| `hexaqual docs` | `usage` | Verify and regenerate `USAGE.md` catalogs with dynamic subcommand tree unrolling. |
+| `hexaqual release` | `build`, `check`, `publish`, `reproducible` | Build sdist/wheel distributions, verify metadata, and publish to PyPI with smart duplicate skipping. |
+| `hexaqual gh` | `pr`, `checks`, `repo`, `security`, `code-scanning`, `codeql` | Inspect PR health dashboards, CI checks, repo governance, Dependabot, and CodeQL alerts. |
+| `hexaqual deps` | `audit`, `deptry`, `graph` | Audit dependencies, run deptry checks, and generate dependency graphs via pydeps. |
+| `hexaqual imports` | `check`, `generate` | Verify and generate import-linter contracts for hexagonal boundary enforcement. |
+| `hexaqual refactor` | `alphabetize`, `rename`, `extract`, `move`, `run` | Automated code refactoring and AST-level symbol alphabetization via Rope. |
+| `hexaqual docs` | `usage`, `publish` | Verify/regenerate USAGE.md catalogs and publish Medium articles. |
+| `hexaqual complexity` | — | Audit cognitive complexity across functions and methods via complexipy. |
 
 ```bash
 # Run sanity checks on specific packages in a workspace

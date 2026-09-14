@@ -43,6 +43,7 @@ Usage: hexaqual [OPTIONS] COMMAND [ARGS]...
 ╭─ Commands ───────────────────────────────────────────────────────────────────╮
 │ check       Execute the sanity check pipeline.                               │
 │ sanity      Execute the sanity check pipeline (alias for 'check').           │
+│ complexity  Audit cognitive complexity using complexipy.                     │
 │ version     Display the current Hexaqual version.                            │
 │ statements  Audit and format __all__ statements.                             │
 │ parity      Audit test symmetry and optional extras parity.                  │
@@ -53,6 +54,7 @@ Usage: hexaqual [OPTIONS] COMMAND [ARGS]...
 │ release     Distribution package building, validation, and PyPI publishing.  │
 │ gh          GitHub repository, PR, and security examination.                 │
 │ docs        Documentation generation and verification.                       │
+│ refactor    AST symbol alphabetization and Python code refactoring.          │
 ╰──────────────────────────────────────────────────────────────────────────────╯
 ```
 
@@ -124,6 +126,35 @@ Usage: hexaqual check [OPTIONS] [files]...
 ╰──────────────────────────────────────────────────────────────────────────────╯
 ```
 
+### `hexaqual complexity`
+
+```text
+Usage: hexaqual complexity [OPTIONS] [files]...
+
+ Audit cognitive complexity using complexipy.
+
+ Args:
+     max_complexity: Maximum allowed cognitive complexity score.
+     packages: Target packages to check.
+     files: Target files or directories.
+
+ Raises:
+     typer.Exit: If complexity violations are detected.
+
+ Notes/Architectural Intent:
+     Driving adapter invoking ToolRunnerPort.run_complexipy across targets.
+
+╭─ Arguments ──────────────────────────────────────────────────────────────────╮
+│   files      <str>  Target file(s) or directories.                           │
+╰──────────────────────────────────────────────────────────────────────────────╯
+╭─ Options ────────────────────────────────────────────────────────────────────╮
+│ --max-complexity  -mx      <int>  Maximum cognitive complexity ceiling.      │
+│                                   [default: 25]                              │
+│ --package         -p       <str>  Target package(s).                         │
+│ --help                            Show this message and exit.                │
+╰──────────────────────────────────────────────────────────────────────────────╯
+```
+
 ### `hexaqual deps`
 
 ```text
@@ -143,6 +174,7 @@ Usage: hexaqual deps [OPTIONS] COMMAND [ARGS]...
 │                  import-linter.                                              │
 │ linter-generate  Generate default hexagonal  contracts in pyproject.toml     │
 │                  files.                                                      │
+│ deptry           Run deptry dependency analysis across workspace packages.   │
 ╰──────────────────────────────────────────────────────────────────────────────╯
 ```
 
@@ -184,6 +216,30 @@ Usage: hexaqual deps audit [OPTIONS]
 │                               markdown).                                     │
 │                               [default: table]                               │
 │ --help                        Show this message and exit.                    │
+╰──────────────────────────────────────────────────────────────────────────────╯
+```
+
+#### `hexaqual deps deptry`
+
+```text
+Usage: hexaqual deps deptry [OPTIONS]
+
+ Run deptry dependency analysis across workspace packages.
+
+ Args:
+     format_type: Output presentation format.
+
+ Raises:
+     typer.Exit: If unused or missing dependencies are detected.
+
+ Notes/Architectural Intent:
+     Driving adapter dispatching RunDeptryAuditCommand across all workspace
+ packages.
+
+╭─ Options ────────────────────────────────────────────────────────────────────╮
+│ --format  -f      <str>  Output presentation format (table, json, markdown). │
+│                          [default: table]                                    │
+│ --help                   Show this message and exit.                         │
 ╰──────────────────────────────────────────────────────────────────────────────╯
 ```
 
@@ -279,7 +335,40 @@ Usage: hexaqual docs [OPTIONS] COMMAND [ARGS]...
 │ --help          Show this message and exit.                                  │
 ╰──────────────────────────────────────────────────────────────────────────────╯
 ╭─ Commands ───────────────────────────────────────────────────────────────────╮
-│ usage  Generate or verify USAGE.md documentation catalogs.                   │
+│ usage    Generate or verify USAGE.md documentation catalogs.                 │
+│ publish  Syndicate or publish documentation articles to DEV.to / Medium.     │
+╰──────────────────────────────────────────────────────────────────────────────╯
+```
+
+#### `hexaqual docs publish`
+
+```text
+Usage: hexaqual docs publish [OPTIONS]
+
+ Syndicate or publish documentation articles to DEV.to / Medium.
+
+ Args:
+     manifest: Optional path to article markdown files.
+     dry_run: Validate without network writes.
+     publish: Publish live articles.
+     format_type: Output presentation format.
+
+ Raises:
+     typer.Exit: If publication fails.
+
+ Notes/Architectural Intent:
+     Driving adapter dispatching PublishMediumArticlesCommand across the
+ governance bus.
+
+╭─ Options ────────────────────────────────────────────────────────────────────╮
+│ --manifest  -m      <path>  Path to articles manifest or directory.          │
+│ --dry-run                   Validate without making live HTTP requests.      │
+│ --publish                   Publish live articles (otherwise draft upload    │
+│                             mode).                                           │
+│ --format    -f      <str>   Output presentation format (table, json,         │
+│                             markdown).                                       │
+│                             [default: table]                                 │
+│ --help                      Show this message and exit.                      │
 ╰──────────────────────────────────────────────────────────────────────────────╯
 ```
 
@@ -327,6 +416,8 @@ Usage: hexaqual gh [OPTIONS] COMMAND [ARGS]...
 │ repo           Inspect GitHub repository settings and permissions.           │
 │ security       Summarize GitHub security advisories and Dependabot alerts.   │
 │ code-scanning  Query CodeQL alerts and scanning status.                      │
+│ codeql         Run local CodeQL security and quality analysis with           │
+│                auto-detection.                                               │
 ╰──────────────────────────────────────────────────────────────────────────────╯
 ```
 
@@ -376,6 +467,39 @@ Usage: hexaqual gh code-scanning [OPTIONS]
 ╭─ Options ────────────────────────────────────────────────────────────────────╮
 │ --format  -f      <str>  Output format. [default: auto]                      │
 │ --help                   Show this message and exit.                         │
+╰──────────────────────────────────────────────────────────────────────────────╯
+```
+
+#### `hexaqual gh codeql`
+
+```text
+Usage: hexaqual gh codeql [OPTIONS]
+
+ Run local CodeQL security and quality analysis with auto-detection.
+
+ Args:
+     suite: CodeQL query suite or pack name.
+     output: Optional destination path for SARIF report.
+     threads: Number of analysis threads (0 for auto).
+     format_type: Output presentation format.
+
+ Raises:
+     typer.Exit: If CodeQL analysis detects critical violations.
+
+ Notes/Architectural Intent:
+     Driving adapter dispatching ScanCodeQlCommand across the governance bus.
+
+╭─ Options ────────────────────────────────────────────────────────────────────╮
+│ --suite    -s      <str>   CodeQL query suite or pack.                       │
+│                            [default: codeql/python-queries]                  │
+│ --output   -o      <path>  Optional destination path for generated SARIF     │
+│                            report.                                           │
+│ --threads  -t      <int>   Number of analysis threads (0 for auto).          │
+│                            [default: 0]                                      │
+│ --format   -f      <str>   Output presentation format (table, json,          │
+│                            markdown).                                        │
+│                            [default: table]                                  │
+│ --help                     Show this message and exit.                       │
 ╰──────────────────────────────────────────────────────────────────────────────╯
 ```
 
@@ -596,6 +720,181 @@ Usage: hexaqual parity test [OPTIONS]
 │ --format  -f      <str>  Output format (table, json, markdown).              │
 │                          [default: table]                                    │
 │ --help                   Show this message and exit.                         │
+╰──────────────────────────────────────────────────────────────────────────────╯
+```
+
+### `hexaqual refactor`
+
+```text
+Usage: hexaqual refactor [OPTIONS] COMMAND [ARGS]...
+
+ AST symbol alphabetization and Python code refactoring.
+
+╭─ Options ────────────────────────────────────────────────────────────────────╮
+│ --help          Show this message and exit.                                  │
+╰──────────────────────────────────────────────────────────────────────────────╯
+╭─ Commands ───────────────────────────────────────────────────────────────────╮
+│ alphabetize  Sort functions and class methods alphabetically using LibCST.   │
+│ rename       Rename a symbol project-wide using Rope.                        │
+│ extract      Extract code block into a new function or method using Rope.    │
+│ move         Move a symbol or class to another module project-wide using     │
+│              Rope.                                                           │
+│ run          Run interactive or advanced Rope refactoring operations.        │
+╰──────────────────────────────────────────────────────────────────────────────╯
+```
+
+#### `hexaqual refactor alphabetize`
+
+```text
+Usage: hexaqual refactor alphabetize [OPTIONS] [files]...
+
+ Sort functions and class methods alphabetically using LibCST.
+
+ Args:
+     packages: Optional sequence of target package names.
+     all_packages: Whether to format all workspace packages.
+     dry_run: Preview reordering without modifying disk.
+     format_type: Output presentation format.
+     files: Optional sequence of files or directories to format.
+
+ Raises:
+     typer.Exit: If alphabetization fails or detects errors.
+
+ Notes/Architectural Intent:
+     Dispatches AlphabetizeCodeCommand across the governance bus.
+
+╭─ Arguments ──────────────────────────────────────────────────────────────────╮
+│   files      <str>  Specific files or directories to format.                 │
+╰──────────────────────────────────────────────────────────────────────────────╯
+╭─ Options ────────────────────────────────────────────────────────────────────╮
+│ --package  -p      <str>  Target package(s).                                 │
+│ --all      -a             Format across all packages.                        │
+│ --dry-run                 Preview reordering without modifying disk.         │
+│ --format   -f      <str>  Output presentation format (table, json,           │
+│                           markdown).                                         │
+│                           [default: table]                                   │
+│ --help                    Show this message and exit.                        │
+╰──────────────────────────────────────────────────────────────────────────────╯
+```
+
+#### `hexaqual refactor extract`
+
+```text
+Usage: hexaqual refactor extract [OPTIONS]
+
+ Extract code block into a new function or method using Rope.
+
+ Args:
+     file: Target python file.
+     start_line: 1-based start line.
+     end_line: 1-based end line.
+     extracted_name: Name for the extracted function/method.
+     root: Optional root directory.
+     dry_run: Preview only.
+
+ Raises:
+     typer.Exit: If extraction fails.
+
+ Notes/Architectural Intent:
+     Executes method extraction via Rope AST refactoring.
+
+╭─ Options ────────────────────────────────────────────────────────────────────╮
+│ *  --file        -f      <path>  Target python file. [required]              │
+│ *  --start-line  -s      <int>   1-based start line. [required]              │
+│ *  --end-line    -e      <int>   1-based end line. [required]                │
+│ *  --name        -n      <str>   Name for the extracted function/method.     │
+│                                  [required]                                  │
+│    --root        -r      <path>  Project root directory.                     │
+│    --dry-run                     Preview extraction without saving.          │
+│    --help                        Show this message and exit.                 │
+╰──────────────────────────────────────────────────────────────────────────────╯
+```
+
+#### `hexaqual refactor move`
+
+```text
+Usage: hexaqual refactor move [OPTIONS]
+
+ Move a symbol or class to another module project-wide using Rope.
+
+ Args:
+     source_file: Source python file.
+     dest_file: Destination python file.
+     line: 1-based line number.
+     col: 1-based column offset.
+     root: Optional root directory.
+     dry_run: Preview only.
+
+ Raises:
+     typer.Exit: If move fails.
+
+ Notes/Architectural Intent:
+     Executes symbol relocation across module boundaries via Rope.
+
+╭─ Options ────────────────────────────────────────────────────────────────────╮
+│ *  --source-file  -s      <path>  Source python file. [required]             │
+│ *  --dest-file    -d      <path>  Destination python file. [required]        │
+│ *  --line         -l      <int>   1-based line number of symbol to move.     │
+│                                   [required]                                 │
+│ *  --col          -c      <int>   1-based column offset of symbol.           │
+│                                   [required]                                 │
+│    --root         -r      <path>  Project root directory.                    │
+│    --dry-run                      Preview move without saving.               │
+│    --help                         Show this message and exit.                │
+╰──────────────────────────────────────────────────────────────────────────────╯
+```
+
+#### `hexaqual refactor rename`
+
+```text
+Usage: hexaqual refactor rename [OPTIONS]
+
+ Rename a symbol project-wide using Rope.
+
+ Args:
+     file: Target python file.
+     line: 1-based line number.
+     col: 1-based column offset.
+     new_name: New symbol name.
+     root: Optional root directory.
+     dry_run: Preview only.
+
+ Raises:
+     typer.Exit: If refactoring fails.
+
+ Notes/Architectural Intent:
+     Executes AST symbol renaming via Rope project engine.
+
+╭─ Options ────────────────────────────────────────────────────────────────────╮
+│ *  --file      -f      <path>  Target python file containing the symbol.     │
+│                                [required]                                    │
+│ *  --line      -l      <int>   1-based line number of symbol. [required]     │
+│ *  --col       -c      <int>   1-based column offset of symbol. [required]   │
+│ *  --new-name  -n      <str>   New identifier name. [required]               │
+│    --root      -r      <path>  Project root directory.                       │
+│    --dry-run                   Preview rename without saving.                │
+│    --help                      Show this message and exit.                   │
+╰──────────────────────────────────────────────────────────────────────────────╯
+```
+
+#### `hexaqual refactor run`
+
+```text
+Usage: hexaqual refactor run [OPTIONS]
+
+ Run interactive or advanced Rope refactoring operations.
+
+ Args:
+     ctx: Typer context capturing extra positional and option arguments.
+
+ Raises:
+     typer.Exit: If refactoring fails.
+
+ Notes/Architectural Intent:
+     Passes CLI arguments directly to the Rope refactoring command dispatcher.
+
+╭─ Options ────────────────────────────────────────────────────────────────────╮
+│ --help          Show this message and exit.                                  │
 ╰──────────────────────────────────────────────────────────────────────────────╯
 ```
 
@@ -863,6 +1162,38 @@ Usage: hexaqual test [OPTIONS] COMMAND [ARGS]...
 │ boundary    Audit test suites for branch boundary and edge-case assertions.  │
 │ impact      Selectively run tests impacted by current git diff changes.      │
 │ redundancy  Analyze test execution overlap and flag duplicate test paths.    │
+│ fuzz        Run coverage-guided and adversarial security fuzz harnesses.     │
+│ snapshot    Update or review inline snapshots across test suites.            │
+│ archon      Generate pytest-archon boundary tests for packages.              │
+╰──────────────────────────────────────────────────────────────────────────────╯
+```
+
+#### `hexaqual test archon`
+
+```text
+Usage: hexaqual test archon [OPTIONS]
+
+ Generate pytest-archon boundary tests for packages.
+
+ Args:
+     packages: Target package(s) for test generation.
+     force: Overwrite existing test files.
+     format_type: Output presentation format.
+
+ Raises:
+     typer.Exit: If generation fails.
+
+ Notes/Architectural Intent:
+     Driving adapter dispatching GenerateArchonTestsCommand across the
+ governance bus.
+
+╭─ Options ────────────────────────────────────────────────────────────────────╮
+│ --package  -p      <str>  Target package(s).                                 │
+│ --force                   Overwrite existing boundary test files.            │
+│ --format   -f      <str>  Output presentation format (table, json,           │
+│                           markdown).                                         │
+│                           [default: table]                                   │
+│ --help                    Show this message and exit.                        │
 ╰──────────────────────────────────────────────────────────────────────────────╯
 ```
 
@@ -884,6 +1215,37 @@ Usage: hexaqual test boundary [OPTIONS]
 
 ╭─ Options ────────────────────────────────────────────────────────────────────╮
 │ --format  -f      <str>  Output presentation format. [default: table]        │
+│ --help                   Show this message and exit.                         │
+╰──────────────────────────────────────────────────────────────────────────────╯
+```
+
+#### `hexaqual test fuzz`
+
+```text
+Usage: hexaqual test fuzz [OPTIONS]
+
+ Run coverage-guided and adversarial security fuzz harnesses.
+
+ Args:
+     target: Target fuzz harness to execute.
+     runs: Number of fuzzed runs per harness.
+     engine: Fuzzing engine to use.
+     format_type: Output presentation format.
+
+ Raises:
+     typer.Exit: If any fuzz harness fails.
+
+ Notes/Architectural Intent:
+     Driving adapter dispatching FuzzRunCommand across the governance bus.
+
+╭─ Options ────────────────────────────────────────────────────────────────────╮
+│ --target  -t      <str>  Target fuzz harness (all, sanitizer, proto, owasp). │
+│                          [default: all]                                      │
+│ --runs    -n      <int>  Number of fuzzed runs per harness. [default: 1000]  │
+│ --engine  -e      <str>  Fuzzing engine (auto, atheris, standalone).         │
+│                          [default: auto]                                     │
+│ --format  -f      <str>  Output presentation format (table, json, markdown). │
+│                          [default: table]                                    │
 │ --help                   Show this message and exit.                         │
 ╰──────────────────────────────────────────────────────────────────────────────╯
 ```
@@ -965,6 +1327,39 @@ Usage: hexaqual test run [OPTIONS]
 │ --properties    -P             Run only property tests.                      │
 │ --with-context                 Capture test context in coverage.             │
 │ --help                         Show this message and exit.                   │
+╰──────────────────────────────────────────────────────────────────────────────╯
+```
+
+#### `hexaqual test snapshot`
+
+```text
+Usage: hexaqual test snapshot [OPTIONS] [files]...
+
+ Update or review inline snapshots across test suites.
+
+ Args:
+     mode: Snapshot update mode.
+     packages: Target package(s).
+     format_type: Output presentation format.
+     files: Target file paths.
+
+ Raises:
+     typer.Exit: If snapshot update command fails.
+
+ Notes/Architectural Intent:
+     Driving adapter dispatching UpdateInlineSnapshotsCommand across packages.
+
+╭─ Arguments ──────────────────────────────────────────────────────────────────╮
+│   files      <str>  Target file paths.                                       │
+╰──────────────────────────────────────────────────────────────────────────────╯
+╭─ Options ────────────────────────────────────────────────────────────────────╮
+│ --mode     -m      <str>  inline-snapshot mode (create, fix, review).        │
+│                           [default: fix]                                     │
+│ --package  -p      <str>  Target package(s).                                 │
+│ --format   -f      <str>  Output presentation format (table, json,           │
+│                           markdown).                                         │
+│                           [default: table]                                   │
+│ --help                    Show this message and exit.                        │
 ╰──────────────────────────────────────────────────────────────────────────────╯
 ```
 

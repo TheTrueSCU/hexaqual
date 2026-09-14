@@ -11,6 +11,7 @@ import typer
 
 __all__ = [
     "check",
+    "complexity",
     "register_check_commands",
     "sanity",
 ]
@@ -167,8 +168,59 @@ def sanity(
     )
 
 
+def complexity(
+    max_complexity: int = typer.Option(
+        25, "-mx", "--max-complexity", help="Maximum cognitive complexity ceiling."
+    ),
+    packages: list[str] | None = typer.Option(None, "-p", "--package", help="Target package(s)."),
+    files: list[str] | None = typer.Argument(None, help="Target file(s) or directories."),
+) -> None:
+    """Audit cognitive complexity using complexipy.
+
+    Args:
+        max_complexity: Maximum allowed cognitive complexity score.
+        packages: Target packages to check.
+        files: Target files or directories.
+
+    Raises:
+        typer.Exit: If complexity violations are detected.
+
+    Notes/Architectural Intent:
+        Driving adapter invoking ToolRunnerPort.run_complexipy across targets.
+    """
+    from pathlib import Path
+
+    from hexaqual.adapters.runners.subprocess_runner import SubprocessToolRunnerAdapter
+    from hexaqual.domain.governance import CheckStatus
+    from hexaqual.utils.workspace import (
+        get_package_directories,
+        get_package_directory,
+        get_repo_root,
+    )
+
+    root = get_repo_root()
+    runner = SubprocessToolRunnerAdapter()
+    target_paths: list[Path] = []
+    if files:
+        target_paths.extend(Path(f) for f in files)
+    elif packages:
+        target_paths.extend(get_package_directory(p, root) for p in packages)
+    else:
+        target_paths.extend(get_package_directories(root))
+
+    result = runner.run_complexipy(
+        paths=tuple(target_paths),
+        target_name="workspace",
+        max_complexity=max_complexity,
+    )
+    if result.status == CheckStatus.FAIL:
+        if result.error_output:
+            typer.echo(result.error_output, err=True)
+        raise typer.Exit(code=1)
+
+
 def register_check_commands(app: typer.Typer) -> None:
-    """Register check and sanity commands on the root Typer application.
+    """Register check, sanity, and complexity commands on the root Typer application.
 
     Args:
         app: Target root Typer application.
@@ -178,3 +230,4 @@ def register_check_commands(app: typer.Typer) -> None:
     """
     app.command("check")(check)
     app.command("sanity")(sanity)
+    app.command("complexity")(complexity)

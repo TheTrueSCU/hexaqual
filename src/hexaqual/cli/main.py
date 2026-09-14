@@ -13,25 +13,35 @@ import typer
 from rich.console import Console
 
 from hexaqual import __version__
-from hexaqual.cli.check import check, register_check_commands, sanity
+from hexaqual.cli.check import check, complexity, register_check_commands, sanity
 from hexaqual.cli.deps import (
     deps_app,
     deps_audit,
+    deps_deptry,
     deps_linter,
     deps_linter_generate,
     deps_pydeps,
 )
-from hexaqual.cli.docs import docs_app, docs_usage
+from hexaqual.cli.docs import docs_app, docs_publish, docs_usage
 from hexaqual.cli.gh import (
     gh_app,
     gh_checks,
     gh_code_scanning,
+    gh_codeql,
     gh_pr,
     gh_repo,
     gh_security,
 )
 from hexaqual.cli.mutate import mutate_app, mutate_inspect, mutate_run
 from hexaqual.cli.parity import parity_app, parity_extras, parity_test
+from hexaqual.cli.refactor import (
+    refactor_alphabetize,
+    refactor_app,
+    refactor_extract,
+    refactor_move,
+    refactor_rename,
+    refactor_run,
+)
 from hexaqual.cli.release import (
     release_app,
     release_build,
@@ -42,25 +52,32 @@ from hexaqual.cli.release import (
 from hexaqual.cli.statements import statements_app, statements_check, statements_fix
 from hexaqual.cli.test import (
     test_app,
+    test_archon,
     test_boundary,
+    test_fuzz,
     test_impact,
     test_redundancy,
     test_run,
+    test_snapshot,
 )
 
 __all__ = [
     "app",
     "check",
+    "complexity",
     "deps_app",
     "deps_audit",
+    "deps_deptry",
     "deps_linter",
     "deps_linter_generate",
     "deps_pydeps",
     "docs_app",
+    "docs_publish",
     "docs_usage",
     "gh_app",
     "gh_checks",
     "gh_code_scanning",
+    "gh_codeql",
     "gh_pr",
     "gh_repo",
     "gh_security",
@@ -70,6 +87,12 @@ __all__ = [
     "parity_app",
     "parity_extras",
     "parity_test",
+    "refactor_alphabetize",
+    "refactor_app",
+    "refactor_extract",
+    "refactor_move",
+    "refactor_rename",
+    "refactor_run",
     "release_app",
     "release_build",
     "release_check",
@@ -80,10 +103,13 @@ __all__ = [
     "statements_check",
     "statements_fix",
     "test_app",
+    "test_archon",
     "test_boundary",
+    "test_fuzz",
     "test_impact",
     "test_redundancy",
     "test_run",
+    "test_snapshot",
     "version",
 ]
 
@@ -107,6 +133,7 @@ app.add_typer(mutate_app)
 app.add_typer(release_app)
 app.add_typer(gh_app)
 app.add_typer(docs_app)
+app.add_typer(refactor_app)
 
 
 @app.command()

@@ -8,6 +8,7 @@ Notes/Architectural Intent:
 from __future__ import annotations
 
 import time
+from pathlib import Path
 
 import typer
 
@@ -15,6 +16,7 @@ __all__ = [
     "gh_app",
     "gh_checks",
     "gh_code_scanning",
+    "gh_codeql",
     "gh_pr",
     "gh_repo",
     "gh_security",
@@ -204,5 +206,52 @@ def gh_code_scanning(
         rep = bus.dispatch(InspectCodeScanningCommand())
     presenter = create_github_presenter(output_format=format_type)
     exit_code = presenter.present_code_scanning(rep) or 0
+    if exit_code != 0:
+        raise typer.Exit(code=exit_code)
+
+
+@gh_app.command("codeql")
+def gh_codeql(
+    suite: str = typer.Option(
+        "codeql/python-queries", "-s", "--suite", help="CodeQL query suite or pack."
+    ),
+    output: Path | None = typer.Option(
+        None, "-o", "--output", help="Optional destination path for generated SARIF report."
+    ),
+    threads: int = typer.Option(
+        0, "-t", "--threads", help="Number of analysis threads (0 for auto)."
+    ),
+    format_type: str = typer.Option(
+        "table", "-f", "--format", help="Output presentation format (table, json, markdown)."
+    ),
+) -> None:
+    """Run local CodeQL security and quality analysis with auto-detection.
+
+    Args:
+        suite: CodeQL query suite or pack name.
+        output: Optional destination path for SARIF report.
+        threads: Number of analysis threads (0 for auto).
+        format_type: Output presentation format.
+
+    Raises:
+        typer.Exit: If CodeQL analysis detects critical violations.
+
+    Notes/Architectural Intent:
+        Driving adapter dispatching ScanCodeQlCommand across the governance bus.
+    """
+    from hexaqual.adapters.presenters.analysis import create_analysis_presenter
+    from hexaqual.domain.analysis import ScanCodeQlCommand
+    from hexaqual.infra.bootstrap import create_governance_bus
+
+    bus = create_governance_bus()
+    presenter = create_analysis_presenter(format_type)
+
+    cmd = ScanCodeQlCommand(
+        query_suite=suite,
+        output_sarif=output,
+        threads=threads,
+    )
+    report = bus.dispatch(cmd)
+    exit_code = presenter.present_codeql(report)
     if exit_code != 0:
         raise typer.Exit(code=exit_code)

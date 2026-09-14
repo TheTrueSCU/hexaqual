@@ -42,3 +42,48 @@ def test_check_failure_exit_code() -> None:
     with patch("hexaqual.commands.sanity_check.run_sanity_check", return_value=1):
         res = runner.invoke(test_app, ["check", "--skip-tests"])
         assert res.exit_code == 1
+
+
+def test_complexity_command_success() -> None:
+    """Test complexity command invokes runner successfully."""
+    test_app = typer.Typer()
+    register_check_commands(test_app)
+
+    from hexaqual.domain.governance import CheckResult, CheckStatus
+
+    mock_res = CheckResult(
+        check_name="Cognitive Complexity",
+        target_name="workspace",
+        status=CheckStatus.PASS,
+        duration=0.1,
+    )
+    with patch(
+        "hexaqual.adapters.runners.subprocess_runner.SubprocessToolRunnerAdapter.run_complexipy",
+        return_value=mock_res,
+    ) as mock_run:
+        res = runner.invoke(test_app, ["complexity", "-mx", "20", "-p", "core"])
+        assert res.exit_code == 0
+        assert mock_run.called
+        assert mock_run.call_args[1]["max_complexity"] == 20
+
+
+def test_complexity_command_failure() -> None:
+    """Test complexity command exits non-zero on violations."""
+    test_app = typer.Typer()
+    register_check_commands(test_app)
+
+    from hexaqual.domain.governance import CheckResult, CheckStatus
+
+    mock_res = CheckResult(
+        check_name="Cognitive Complexity",
+        target_name="workspace",
+        status=CheckStatus.FAIL,
+        duration=0.1,
+        error_output="Violation found",
+    )
+    with patch(
+        "hexaqual.adapters.runners.subprocess_runner.SubprocessToolRunnerAdapter.run_complexipy",
+        return_value=mock_res,
+    ):
+        res = runner.invoke(test_app, ["complexity"])
+        assert res.exit_code == 1

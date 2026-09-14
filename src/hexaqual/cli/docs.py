@@ -13,6 +13,7 @@ import typer
 
 __all__ = [
     "docs_app",
+    "docs_publish",
     "docs_usage",
 ]
 
@@ -60,5 +61,53 @@ def docs_usage(
     rep = bus.dispatch(cmd)
     presenter = create_generator_presenter("table")
     exit_code = presenter.present_usage_docs(rep) or 0
+    if exit_code != 0:
+        raise typer.Exit(code=exit_code)
+
+
+@docs_app.command("publish")
+def docs_publish(
+    manifest: Path | None = typer.Option(
+        None, "-m", "--manifest", help="Path to articles manifest or directory."
+    ),
+    dry_run: bool = typer.Option(
+        False, "--dry-run", help="Validate without making live HTTP requests."
+    ),
+    publish: bool = typer.Option(
+        False, "--publish", help="Publish live articles (otherwise draft upload mode)."
+    ),
+    format_type: str = typer.Option(
+        "table", "-f", "--format", help="Output presentation format (table, json, markdown)."
+    ),
+) -> None:
+    """Syndicate or publish documentation articles to DEV.to / Medium.
+
+    Args:
+        manifest: Optional path to article markdown files.
+        dry_run: Validate without network writes.
+        publish: Publish live articles.
+        format_type: Output presentation format.
+
+    Raises:
+        typer.Exit: If publication fails.
+
+    Notes/Architectural Intent:
+        Driving adapter dispatching PublishMediumArticlesCommand across the governance bus.
+    """
+    from hexaqual.adapters.presenters.refactoring import create_refactoring_presenter
+    from hexaqual.domain.refactoring import PublishMediumArticlesCommand
+    from hexaqual.infra.bootstrap import create_governance_bus
+    from hexaqual.utils.workspace import get_repo_root
+
+    root = get_repo_root()
+    bus = create_governance_bus(repo_root=root)
+    presenter = create_refactoring_presenter(format_type)
+    cmd = PublishMediumArticlesCommand(
+        manifest_path=manifest,
+        dry_run=dry_run,
+        publish=publish,
+    )
+    report = bus.dispatch(cmd)
+    exit_code = presenter.present_medium_publish(report)
     if exit_code != 0:
         raise typer.Exit(code=exit_code)

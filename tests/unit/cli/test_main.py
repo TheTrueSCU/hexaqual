@@ -6,6 +6,7 @@ from unittest.mock import patch
 
 from typer.testing import CliRunner
 
+from hexaqual import __version__
 from hexaqual.cli.main import app
 
 runner = CliRunner()
@@ -15,7 +16,7 @@ def test_cli_version() -> None:
     """Test hexaqual version subcommand."""
     res = runner.invoke(app, ["version"])
     assert res.exit_code == 0
-    assert "0.2.1" in res.stdout
+    assert __version__ in res.stdout
 
 
 def test_cli_check_invokes_runner() -> None:
@@ -111,3 +112,10 @@ def test_cli_docs_usage() -> None:
     with patch("hexaqual.infra.bootstrap.create_governance_bus", return_value=mock_bus):
         res = runner.invoke(app, ["docs", "usage", "--check"])
         assert res.exit_code == 0
+
+
+def test_cli_refactor_help() -> None:
+    """Test refactor command group help."""
+    res = runner.invoke(app, ["refactor", "--help"])
+    assert res.exit_code == 0
+    assert "AST symbol alphabetization and Python code refactoring" in res.stdout

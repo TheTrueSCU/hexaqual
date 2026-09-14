@@ -195,3 +195,45 @@ def test_deps_linter_generate(tmp_path: Path) -> None:
         exit_code = res.exit_code
         assert exit_code == 0
         mock_bus.dispatch.assert_called_once()
+
+
+def test_deps_deptry_success() -> None:
+    """Test deps deptry dispatches RunDeptryAuditCommand across governance bus."""
+    mock_bus = MagicMock()
+    mock_report = MagicMock()
+    mock_bus.dispatch.return_value = mock_report
+    mock_pres = MagicMock()
+    mock_pres.present_deptry_audit.return_value = 0
+
+    with (
+        patch("hexaqual.utils.workspace.ensure_tool_installed"),
+        patch("hexaqual.infra.bootstrap.create_governance_bus", return_value=mock_bus),
+        patch(
+            "hexaqual.adapters.presenters.dependency.create_dependency_presenter",
+            return_value=mock_pres,
+        ),
+    ):
+        res = runner.invoke(deps_app, ["deptry", "-f", "json"])
+        exit_code = res.exit_code
+        assert exit_code == 0
+        assert mock_bus.dispatch.called
+        assert mock_pres.present_deptry_audit.called
+
+
+def test_deps_deptry_failure() -> None:
+    """Test deps deptry handles non-zero presenter exit code."""
+    mock_bus = MagicMock()
+    mock_pres = MagicMock()
+    mock_pres.present_deptry_audit.return_value = 1
+
+    with (
+        patch("hexaqual.utils.workspace.ensure_tool_installed"),
+        patch("hexaqual.infra.bootstrap.create_governance_bus", return_value=mock_bus),
+        patch(
+            "hexaqual.adapters.presenters.dependency.create_dependency_presenter",
+            return_value=mock_pres,
+        ),
+    ):
+        res = runner.invoke(deps_app, ["deptry"])
+        exit_code = res.exit_code
+        assert exit_code == 1

@@ -14,6 +14,7 @@ import typer
 __all__ = [
     "deps_app",
     "deps_audit",
+    "deps_deptry",
     "deps_linter",
     "deps_linter_generate",
     "deps_pydeps",
@@ -220,3 +221,38 @@ def deps_linter_generate(
         packages=target_dirs,
     )
     bus.dispatch(cmd)
+
+
+@deps_app.command("deptry")
+def deps_deptry(
+    format_type: str = typer.Option(
+        "table", "-f", "--format", help="Output presentation format (table, json, markdown)."
+    ),
+) -> None:
+    """Run deptry dependency analysis across workspace packages.
+
+    Args:
+        format_type: Output presentation format.
+
+    Raises:
+        typer.Exit: If unused or missing dependencies are detected.
+
+    Notes/Architectural Intent:
+        Driving adapter dispatching RunDeptryAuditCommand across all workspace packages.
+    """
+    from hexaqual.adapters.presenters.dependency import create_dependency_presenter
+    from hexaqual.domain.dependencies import RunDeptryAuditCommand
+    from hexaqual.infra.bootstrap import create_governance_bus
+    from hexaqual.utils.workspace import ensure_tool_installed, get_repo_root
+
+    ensure_tool_installed("deptry", cli_command="deptry", extra_name="governance")
+
+    root = get_repo_root()
+    bus = create_governance_bus(repo_root=root)
+    presenter = create_dependency_presenter(format_type)
+
+    cmd = RunDeptryAuditCommand(repo_root=root)
+    report = bus.dispatch(cmd)
+    exit_code = presenter.present_deptry_audit(report)
+    if exit_code != 0:
+        raise typer.Exit(code=exit_code)

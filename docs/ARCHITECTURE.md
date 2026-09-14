@@ -91,14 +91,17 @@ src/hexaqual/
 │   └── clients/             # GitHub CLI and PyPI HTTP adapters
 ├── cli/                     # Driving adapters (Modular Typer sub-applications)
 │   ├── main.py              # Root Typer entrypoint mounting sub-apps
-│   ├── check.py             # 'check' and 'sanity' commands
-│   ├── statements.py        # 'statements' subcommands (check, fix)
-│   ├── parity.py            # 'parity' subcommands (test, extras)
-│   ├── test.py              # 'test' subcommands (run, boundary, impact, redundancy)
+│   ├── check.py             # 'check' and 'sanity' commands (and 'complexity')
+│   ├── deps.py              # 'deps' subcommands (audit, deptry, graph)
+│   ├── docs.py              # 'docs' subcommands (usage, publish)
+│   ├── gh.py                # 'gh' subcommands (pr, checks, repo, security, code-scanning, codeql)
+│   ├── imports.py           # 'imports' subcommands (check, generate)
 │   ├── mutate.py            # 'mutate' subcommands (run, inspect)
+│   ├── parity.py            # 'parity' subcommands (test, extras)
+│   ├── refactor.py          # 'refactor' subcommands (alphabetize, rename, extract, move, run)
 │   ├── release.py           # 'release' subcommands (build, check, publish, reproducible)
-│   ├── gh.py                # 'gh' subcommands (pr, checks, repo, security, code-scanning)
-│   └── docs.py              # 'docs' subcommands (usage)
+│   ├── statements.py        # 'statements' subcommands (check, fix)
+│   └── test.py              # 'test' subcommands (run, boundary, impact, redundancy, fuzz, snapshot, archon)
 ├── infra/                   # CQRS bus and orchestration plumbing
 │   ├── dispatcher.py        # Synchronous in-process command dispatcher
 │   ├── bootstrap.py         # Factory assembling buses with default adapter wiring
