@@ -1,6 +1,7 @@
 # 🛡️ Hexaqual
 
 [![PyPI version](https://img.shields.io/pypi/v/hexaqual.svg)](https://pypi.org/project/hexaqual/)
+[![GitHub Marketplace](https://img.shields.io/badge/Marketplace-Hexaqual%20Quality%20Gate-blue.svg?logo=github&style=flat)](https://github.com/marketplace/actions/hexaqual-quality-gate)
 [![Python 3.13+](https://img.shields.io/badge/python-3.13+-blue.svg)](https://www.python.org/downloads/)
 [![License: Apache 2.0](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
 
@@ -13,10 +14,29 @@ Hexaqual provides an opinionated, high-velocity quality harness designed for mod
 ## 🚀 Key Features
 
 * **Workflow-Driven Sanity Checks**: Multi-stage DAG pipeline powered by [Hexaflow](https://pypi.org/project/hexaflow/) for parallel linting, typechecking, and testing.
+* **Turnkey GitHub Marketplace Action**: Drop-in composite action setting up Python, `uv`, pre-commit caching, and executing quality checks in CI.
 * **Architectural Invariants**: First-class support for hexagonal layer enforcement (`domain`, `ports`, `adapters`, `infra`).
 * **Test Parity Enforcement**: 1:1 symmetry verification between source modules and unit test suites.
 * **Public API Integrity**: Automatic sorting, deduplication, and AST validation of `__all__` exports.
 * **Smart PyPI Publishing**: Dependency-ordered, reproducible builds with automatic skip-if-exists checks.
+
+---
+
+## ⚡ GitHub Marketplace Action
+
+Hexaqual is available on the [GitHub Marketplace](https://github.com/marketplace/actions/hexaqual-quality-gate) as a turnkey composite action that automatically sets up `uv`, Python, caches pre-commit environments, and runs your checks:
+
+```yaml
+jobs:
+  quality-gate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: TheTrueSCU/hexaqual@v0.4.0
+        with:
+          mode: "pre-commit" # options: 'pre-commit', 'sanity', 'setup'
+          sync-args: "--all-extras --dev"
+```
 
 ---
 
