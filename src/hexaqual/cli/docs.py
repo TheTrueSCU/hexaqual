@@ -11,8 +11,11 @@ from pathlib import Path
 
 import typer
 
+from hexaqual.cli.options import format_option, resolve_format
+
 __all__ = [
     "docs_app",
+    "docs_links",
     "docs_publish",
     "docs_usage",
 ]
@@ -65,6 +68,43 @@ def docs_usage(
         raise typer.Exit(code=exit_code)
 
 
+@docs_app.command("links")
+def docs_links(
+    path: Path | None = typer.Option(
+        None, "-p", "--path", help="Directory or markdown file to scan for broken links."
+    ),
+    format_type: str = format_option(
+        default="table",
+        help_text="Output presentation format (table, json, markdown, rich, auto).",
+    ),
+    root: Path | None = typer.Option(None, "--root", help="Workspace root directory."),
+) -> None:
+    """Validate relative links and local anchors across documentation trees.
+
+    Args:
+        path: Path to markdown document or directory.
+        format_type: Output presentation format.
+        root: Workspace root directory.
+
+    Raises:
+        typer.Exit: If broken links are detected.
+
+    Notes/Architectural Intent:
+        Driving adapter scanning markdown files for dead links and missing anchors.
+    """
+    from hexaqual.adapters.presenters.generators import create_generator_presenter
+    from hexaqual.commands.doc_links import scan_doc_links
+    from hexaqual.utils.workspace import get_repo_root
+
+    repo_root = root or get_repo_root()
+    resolved_fmt = resolve_format(format_type, default_tty="table", default_pipe="json")
+    presenter = create_generator_presenter(resolved_fmt)
+    report = scan_doc_links(target_path=path, repo_root=repo_root)
+    exit_code = presenter.present_doc_links(report)
+    if exit_code != 0:
+        raise typer.Exit(code=exit_code)
+
+
 @docs_app.command("publish")
 def docs_publish(
     manifest: Path | None = typer.Option(
@@ -76,8 +116,9 @@ def docs_publish(
     publish: bool = typer.Option(
         False, "--publish", help="Publish live articles (otherwise draft upload mode)."
     ),
-    format_type: str = typer.Option(
-        "table", "-f", "--format", help="Output presentation format (table, json, markdown)."
+    format_type: str = format_option(
+        default="table",
+        help_text="Output presentation format (table, json, markdown, auto).",
     ),
 ) -> None:
     """Syndicate or publish documentation articles to DEV.to / Medium.
@@ -101,7 +142,8 @@ def docs_publish(
 
     root = get_repo_root()
     bus = create_governance_bus(repo_root=root)
-    presenter = create_refactoring_presenter(format_type)
+    resolved_fmt = resolve_format(format_type, default_tty="table", default_pipe="json")
+    presenter = create_refactoring_presenter(resolved_fmt)
     cmd = PublishMediumArticlesCommand(
         manifest_path=manifest,
         dry_run=dry_run,

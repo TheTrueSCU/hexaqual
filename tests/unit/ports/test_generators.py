@@ -6,6 +6,7 @@ import pytest
 
 from hexaqual.domain.generators import (
     ArchonReport,
+    DocLinksReport,
     PydepsReport,
     UsageDocsReport,
 )
@@ -24,6 +25,9 @@ class DummyGeneratorPresenter(GeneratorPresenterPort):
     def present_archon(self, report: ArchonReport) -> int:
         return 0 if report.is_successful else 1
 
+    def present_doc_links(self, report: DocLinksReport) -> int:
+        return 0 if report.is_successful else 1
+
 
 def test_generator_presenter_port_instantiation() -> None:
     """Verify GeneratorPresenterPort cannot be instantiated directly without implementations."""
@@ -34,6 +38,11 @@ def test_generator_presenter_port_instantiation() -> None:
 def test_concrete_generator_presenter() -> None:
     """Verify concrete subclass implements all abstract methods."""
     presenter = DummyGeneratorPresenter()
-    assert presenter.present_pydeps(PydepsReport()) == 0
-    assert presenter.present_usage_docs(UsageDocsReport()) == 0
-    assert presenter.present_archon(ArchonReport()) == 0
+    res_pydeps = presenter.present_pydeps(PydepsReport())
+    assert res_pydeps == 0
+    res_usage = presenter.present_usage_docs(UsageDocsReport())
+    assert res_usage == 0
+    res_archon = presenter.present_archon(ArchonReport())
+    assert res_archon == 0
+    res_doc_links = presenter.present_doc_links(DocLinksReport())
+    assert res_doc_links == 0

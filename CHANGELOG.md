@@ -1,5 +1,14 @@
 # CHANGELOG
 
+## v0.4.0 (2026-09-16)
+
+### Highlights & Features
+* **Turnkey Composite GitHub Action (`action.yml`)**: Added turnkey composite GitHub Action supporting `pre-commit`, `sanity`, and `setup` execution modes with automated uv, Python, and pre-commit caching across CI pipelines.
+* **Modular Pre-Commit Hooks Menu (`.pre-commit-hooks.yaml`)**: Exposed standalone, reusable pre-commit hooks including `hexaqual-sanity`, `hexaqual-architecture`, `hexaqual-test-parity`, `hexaqual-statements`, `hexaqual-linter`, `hexaqual-extras`, `hexaqual-usage-docs`, and `hexaqual-docs-links`.
+* **Documentation Link Integrity Scanner (`hexaqual docs links`)**: Added relative path, cross-file reference, and anchor integrity validation across Markdown documentation trees with table, JSON, and Markdown presentation adapters.
+* **Standardized CLI Options & Pipe Detection (`hexaqual.cli.options`)**: Centralized `OutputFormat` enum, `format_option()` factory, and `resolve_format()` with automatic terminal TTY vs pipeline redirection detection across CLI diagnostic commands.
+* **Hexaflow v0.3.0 Engine Upgrade**: Upgraded core workflow orchestrator dependency to `hexaflow>=0.3.0`.
+
 ## v0.3.0 (2026-09-14)
 
 ### Highlights & Features

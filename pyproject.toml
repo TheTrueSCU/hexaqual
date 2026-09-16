@@ -1,6 +1,6 @@
 [project]
 name = "hexaqual"
-version = "0.3.0"
+version = "0.4.0"
 description = "Universal Python quality gates, architectural boundary enforcement, and release engineering toolchain."
 readme = "README.md"
 license = "Apache-2.0"
@@ -12,7 +12,7 @@ dependencies = [
     "complexipy>=7.0.1",
     "coverage>=7.6.0",
     "deptry>=0.23.0",
-    "hexaflow>=0.2.0",
+    "hexaflow>=0.3.0",
     "httpx>=0.28.0",
     "import-linter>=2.13",
     "inline-snapshot>=0.35.4",

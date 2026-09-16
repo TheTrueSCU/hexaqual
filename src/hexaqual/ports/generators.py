@@ -11,6 +11,7 @@ from abc import ABC, abstractmethod
 
 from hexaqual.domain.generators import (
     ArchonReport,
+    DocLinksReport,
     PydepsReport,
     UsageDocsReport,
 )
@@ -63,6 +64,22 @@ class GeneratorPresenterPort(ABC):
 
         Notes/Architectural Intent:
             Outputs created and skipped architecture test specification files.
+        """
+        raise NotImplementedError
+
+    @abstractmethod
+    def present_doc_links(self, report: DocLinksReport) -> int:
+        """Present results of documentation link validation scan.
+
+        Args:
+            report: DocLinksReport containing link validation summary and errors.
+
+        Returns:
+            Exit code (0 for success/no broken links, 1 if broken links detected).
+
+        Notes/Architectural Intent:
+            Renders documentation link validation reports across Rich terminal tables,
+            JSON records, or GitHub Flavored Markdown.
         """
         raise NotImplementedError
 

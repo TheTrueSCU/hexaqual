@@ -138,8 +138,69 @@ class GenerateArchonTestsCommand(Command):
     force: bool = False
 
 
+@dataclass(frozen=True)
+class BrokenDocLink:
+    """Represents a broken or invalid link detected within documentation.
+
+    Attributes:
+        source_file: Path to the markdown file containing the broken link.
+        line: Line number where the broken link appears.
+        target: Target URL or relative path referenced.
+        reason: Explanation of why the link is considered invalid or broken.
+
+    Notes/Architectural Intent:
+        Encapsulates diagnostic data for broken relative paths, missing anchors,
+        or dead local files across markdown document trees.
+    """
+
+    source_file: str
+    line: int
+    target: str
+    reason: str
+
+
+@dataclass(frozen=True)
+class DocLinksReport:
+    """Summary report of documentation link validation.
+
+    Attributes:
+        scanned_files_count: Total markdown files inspected.
+        total_links_count: Total relative and anchor links validated.
+        broken_links: Tuple of broken link diagnostics found.
+        is_successful: True if no broken links were detected.
+
+    Notes/Architectural Intent:
+        Aggregates documentation link integrity scan results for multi-format
+        presentation and automated CI quality gates.
+    """
+
+    scanned_files_count: int = 0
+    total_links_count: int = 0
+    broken_links: tuple[BrokenDocLink, ...] = ()
+    is_successful: bool = True
+
+
+class CheckDocLinksCommand(Command):
+    """CQRS Command to validate relative links and anchors across documentation trees.
+
+    Attributes:
+        path: Optional path to specific file or directory to scan.
+        repo_root: Optional workspace repository root path.
+
+    Notes/Architectural Intent:
+        Scans markdown documents for broken local references and anchor links,
+        providing an early CI quality gate before documentation is published.
+    """
+
+    path: str | None = None
+    repo_root: str | None = None
+
+
 __all__ = [
     "ArchonReport",
+    "BrokenDocLink",
+    "CheckDocLinksCommand",
+    "DocLinksReport",
     "GenerateArchonTestsCommand",
     "GeneratePydepsCommand",
     "GenerateUsageDocsCommand",

@@ -84,15 +84,10 @@ Usage: hexaqual check [OPTIONS] [files]...
      examples: Optional sequence of example project names to audit.
      all_targets: Whether to audit all packages unconditionally.
      fix: Whether to auto-apply formatting and lint fixes.
-     skip_tests: Whether to skip test suites.
-     skip_deptry: Whether to skip deptry audits.
-     skip_typecheck: Whether to skip type checking.
-     skip_complexity: Whether to skip complexity audits.
-     skip_parity: Whether to skip test parity checks.
-     skip_statements: Whether to skip __all__ statements check.
      skip: Optional list of explicit step names to skip.
      max_complexity: Cognitive complexity ceiling.
      format_type: Output presentation format.
+     skip_steps: Step names dynamically skipped via CLI flags.
      files: Optional explicit file or directory targets.
 
  Raises:
@@ -105,24 +100,34 @@ Usage: hexaqual check [OPTIONS] [files]...
 │   files      <str>  Specific files or directories to verify.                 │
 ╰──────────────────────────────────────────────────────────────────────────────╯
 ╭─ Options ────────────────────────────────────────────────────────────────────╮
-│ --package                   -p       <str>  Target package(s).               │
-│ --example                   -e       <str>  Target example(s).               │
-│ --all                       -a              Run across all packages.         │
-│ --fix                                       Automatically apply autofixes.   │
-│ --skip-tests                                Skip pytest suites.              │
-│ --skip-deptry                               Skip deptry dependency audits.   │
-│ --skip-typecheck,--skip-ty                  Skip static type analysis.       │
-│ --skip-complexity                           Skip cognitive complexity audit. │
-│ --skip-parity                               Skip 1:1 test parity check.      │
-│ --skip-statements                           Skip __all__ integrity check.    │
-│ --skip                               <str>  Specific pipeline step(s) to     │
-│                                             skip (repeatable).               │
-│ --max-complexity            -mx      <int>  Cognitive complexity ceiling.    │
-│                                             [default: 25]                    │
-│ --format                    -f       <str>  Output format (table, json,      │
-│                                             markdown).                       │
-│                                             [default: table]                 │
-│ --help                                      Show this message and exit.      │
+│ --package                      -p       <str>  Target package(s).            │
+│ --example                      -e       <str>  Target example(s).            │
+│ --all                          -a              Run across all packages.      │
+│ --fix                                          Automatically apply           │
+│                                                autofixes.                    │
+│ --skip                                  <str>  Specific pipeline step(s) to  │
+│                                                skip (repeatable).            │
+│ --max-complexity               -mx      <int>  Cognitive complexity ceiling. │
+│                                                [default: 25]                 │
+│ --format                       -f       <str>  Output format (table, json,   │
+│                                                markdown).                    │
+│                                                [default: table]              │
+│ --skip-lint,--skip-ruff                        Skip execution of the 'lint'  │
+│                                                workflow step.                │
+│ --skip-all-statements,--skip…                  Skip execution of the         │
+│                                                'all_statements' workflow     │
+│                                                step.                         │
+│ --skip-test-parity,--skip-pa…                  Skip execution of the         │
+│                                                'test_parity' workflow step.  │
+│ --skip-typecheck,--skip-ty                     Skip execution of the         │
+│                                                'typecheck' workflow step.    │
+│ --skip-complexity                              Skip execution of the         │
+│                                                'complexity' workflow step.   │
+│ --skip-deptry                                  Skip execution of the         │
+│                                                'deptry' workflow step.       │
+│ --skip-pytest,--skip-tests                     Skip execution of the         │
+│                                                'pytest' workflow step.       │
+│ --help                                         Show this message and exit.   │
 ╰──────────────────────────────────────────────────────────────────────────────╯
 ```
 
@@ -336,7 +341,39 @@ Usage: hexaqual docs [OPTIONS] COMMAND [ARGS]...
 ╰──────────────────────────────────────────────────────────────────────────────╯
 ╭─ Commands ───────────────────────────────────────────────────────────────────╮
 │ usage    Generate or verify USAGE.md documentation catalogs.                 │
+│ links    Validate relative links and local anchors across documentation      │
+│          trees.                                                              │
 │ publish  Syndicate or publish documentation articles to DEV.to / Medium.     │
+╰──────────────────────────────────────────────────────────────────────────────╯
+```
+
+#### `hexaqual docs links`
+
+```text
+Usage: hexaqual docs links [OPTIONS]
+
+ Validate relative links and local anchors across documentation trees.
+
+ Args:
+     path: Path to markdown document or directory.
+     format_type: Output presentation format.
+     root: Workspace root directory.
+
+ Raises:
+     typer.Exit: If broken links are detected.
+
+ Notes/Architectural Intent:
+     Driving adapter scanning markdown files for dead links and missing
+ anchors.
+
+╭─ Options ────────────────────────────────────────────────────────────────────╮
+│ --path    -p      <path>  Directory or markdown file to scan for broken      │
+│                           links.                                             │
+│ --format  -f      <str>   Output presentation format (table, json, markdown, │
+│                           rich, auto).                                       │
+│                           [default: table]                                   │
+│ --root            <path>  Workspace root directory.                          │
+│ --help                    Show this message and exit.                        │
 ╰──────────────────────────────────────────────────────────────────────────────╯
 ```
 
@@ -366,7 +403,7 @@ Usage: hexaqual docs publish [OPTIONS]
 │ --publish                   Publish live articles (otherwise draft upload    │
 │                             mode).                                           │
 │ --format    -f      <str>   Output presentation format (table, json,         │
-│                             markdown).                                       │
+│                             markdown, auto).                                 │
 │                             [default: table]                                 │
 │ --help                      Show this message and exit.                      │
 ╰──────────────────────────────────────────────────────────────────────────────╯
@@ -667,9 +704,35 @@ Usage: hexaqual parity [OPTIONS] COMMAND [ARGS]...
 │ --help          Show this message and exit.                                  │
 ╰──────────────────────────────────────────────────────────────────────────────╯
 ╭─ Commands ───────────────────────────────────────────────────────────────────╮
-│ test    Verify 1:1 symmetry between src modules and unit tests.              │
-│ extras  Audit optional extras parity across workspace subpackages and        │
-│         umbrella.                                                            │
+│ test          Verify 1:1 symmetry between src modules and unit tests.        │
+│ extras        Audit optional extras parity across workspace subpackages and  │
+│               umbrella.                                                      │
+│ architecture  Audit architecture tests and boundary test parity across       │
+│               packages.                                                      │
+╰──────────────────────────────────────────────────────────────────────────────╯
+```
+
+#### `hexaqual parity architecture`
+
+```text
+Usage: hexaqual parity architecture [OPTIONS]
+
+ Audit architecture tests and boundary test parity across packages.
+
+ Args:
+     format_type: Output presentation format.
+
+ Raises:
+     typer.Exit: If architecture parity violations are found.
+
+ Notes/Architectural Intent:
+     Driving adapter verifying tests/architecture/test_hexagonal_boundaries.py
+     and test directory inits exist across all workspace packages.
+
+╭─ Options ────────────────────────────────────────────────────────────────────╮
+│ --format  -f      <str>  Output format (table, json, markdown).              │
+│                          [default: table]                                    │
+│ --help                   Show this message and exit.                         │
 ╰──────────────────────────────────────────────────────────────────────────────╯
 ```
 
@@ -1033,15 +1096,10 @@ Usage: hexaqual sanity [OPTIONS] [files]...
      examples: Optional sequence of example project names to audit.
      all_targets: Whether to audit all packages unconditionally.
      fix: Whether to auto-apply formatting and lint fixes.
-     skip_tests: Whether to skip test suites.
-     skip_deptry: Whether to skip deptry audits.
-     skip_typecheck: Whether to skip type checking.
-     skip_complexity: Whether to skip complexity audits.
-     skip_parity: Whether to skip test parity checks.
-     skip_statements: Whether to skip __all__ statements check.
      skip: Optional list of explicit step names to skip.
      max_complexity: Cognitive complexity ceiling.
      format_type: Output presentation format.
+     skip_steps: Step names dynamically skipped via CLI flags.
      files: Optional explicit file or directory targets.
 
  Raises:
@@ -1054,24 +1112,34 @@ Usage: hexaqual sanity [OPTIONS] [files]...
 │   files      <str>  Specific files or directories to verify.                 │
 ╰──────────────────────────────────────────────────────────────────────────────╯
 ╭─ Options ────────────────────────────────────────────────────────────────────╮
-│ --package                   -p       <str>  Target package(s).               │
-│ --example                   -e       <str>  Target example(s).               │
-│ --all                       -a              Run across all packages.         │
-│ --fix                                       Automatically apply autofixes.   │
-│ --skip-tests                                Skip pytest suites.              │
-│ --skip-deptry                               Skip deptry dependency audits.   │
-│ --skip-typecheck,--skip-ty                  Skip static type analysis.       │
-│ --skip-complexity                           Skip cognitive complexity audit. │
-│ --skip-parity                               Skip 1:1 test parity check.      │
-│ --skip-statements                           Skip __all__ integrity check.    │
-│ --skip                               <str>  Specific pipeline step(s) to     │
-│                                             skip (repeatable).               │
-│ --max-complexity            -mx      <int>  Cognitive complexity ceiling.    │
-│                                             [default: 25]                    │
-│ --format                    -f       <str>  Output format (table, json,      │
-│                                             markdown).                       │
-│                                             [default: table]                 │
-│ --help                                      Show this message and exit.      │
+│ --package                      -p       <str>  Target package(s).            │
+│ --example                      -e       <str>  Target example(s).            │
+│ --all                          -a              Run across all packages.      │
+│ --fix                                          Automatically apply           │
+│                                                autofixes.                    │
+│ --skip                                  <str>  Specific pipeline step(s) to  │
+│                                                skip (repeatable).            │
+│ --max-complexity               -mx      <int>  Cognitive complexity ceiling. │
+│                                                [default: 25]                 │
+│ --format                       -f       <str>  Output format (table, json,   │
+│                                                markdown).                    │
+│                                                [default: table]              │
+│ --skip-lint,--skip-ruff                        Skip execution of the 'lint'  │
+│                                                workflow step.                │
+│ --skip-all-statements,--skip…                  Skip execution of the         │
+│                                                'all_statements' workflow     │
+│                                                step.                         │
+│ --skip-test-parity,--skip-pa…                  Skip execution of the         │
+│                                                'test_parity' workflow step.  │
+│ --skip-typecheck,--skip-ty                     Skip execution of the         │
+│                                                'typecheck' workflow step.    │
+│ --skip-complexity                              Skip execution of the         │
+│                                                'complexity' workflow step.   │
+│ --skip-deptry                                  Skip execution of the         │
+│                                                'deptry' workflow step.       │
+│ --skip-pytest,--skip-tests                     Skip execution of the         │
+│                                                'pytest' workflow step.       │
+│ --help                                         Show this message and exit.   │
 ╰──────────────────────────────────────────────────────────────────────────────╯
 ```
 

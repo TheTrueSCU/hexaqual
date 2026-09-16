@@ -351,21 +351,21 @@ wheels = [
 
 [[package]]
 name = "hexaflow"
-version = "0.2.0"
+version = "0.3.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "pydantic" },
     { name = "rich" },
     { name = "typer" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/3d/45/d0fac45408d72d7f008154a5f7013783cee33ec22fe78095bd94e2e68023/hexaflow-0.2.0.tar.gz", hash = "sha256:a9f970f4a522f5a2ac0bdc408b42f61d086c34922b26406e14c3c67c7dfbce83", size = 103637, upload-time = "2026-09-14T14:38:50.234Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/cf/6f/9d1e0a7dfbbfb5ba02867a2049be1e01c40a1cf6e6a37cc5ebd94207df3e/hexaflow-0.3.0.tar.gz", hash = "sha256:4e605c6d4e8f94714123b952774573976ea53ce76a583bba47c7897e06a9ff4f", size = 123995, upload-time = "2026-09-16T20:41:16.234Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/20/46/3934436eca566c2cdad93c1c30faa3df93d92fdd2c069f3ad9b79f51d5e8/hexaflow-0.2.0-py3-none-any.whl", hash = "sha256:56fca7e1edb94d5d4e01ce45780a5cec279ee9b0977f8e916d8929552f0c9a4d", size = 39100, upload-time = "2026-09-14T14:38:49.175Z" },
+    { url = "https://files.pythonhosted.org/packages/c2/42/2e4f58c2f0dc5334fe6f3619c7a1cef238aa67ab65d07340c56932667d25/hexaflow-0.3.0-py3-none-any.whl", hash = "sha256:51ef9071219e0e2eec1e74c04df3f6129b0ed079a59cf5ded5bbf8a288dcc14c", size = 42487, upload-time = "2026-09-16T20:41:14.973Z" },
 ]
 
 [[package]]
 name = "hexaqual"
-version = "0.3.0"
+version = "0.4.0"
 source = { editable = "." }
 dependencies = [
     { name = "complexipy" },
@@ -416,7 +416,7 @@ requires-dist = [
     { name = "complexipy", specifier = ">=7.0.1" },
     { name = "coverage", specifier = ">=7.6.0" },
     { name = "deptry", specifier = ">=0.23.0" },
-    { name = "hexaflow", specifier = ">=0.2.0" },
+    { name = "hexaflow", specifier = ">=0.3.0" },
     { name = "hexaqual", extras = ["diagrams", "mutmut", "rope"], marker = "extra == 'all'" },
     { name = "httpx", specifier = ">=0.28.0" },
     { name = "import-linter", specifier = ">=2.13" },

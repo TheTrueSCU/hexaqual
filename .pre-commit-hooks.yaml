@@ -49,3 +49,11 @@
   language: system
   files: ^packages/.*$
   pass_filenames: false
+
+- id: hexaqual-docs-links
+  name: hexaqual doc link integrity
+  description: Ensure relative links and anchors within documentation trees are valid
+  entry: uv run hexaqual docs links
+  language: system
+  files: \.(md|rst)$
+  pass_filenames: false

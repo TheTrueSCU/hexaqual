@@ -14,6 +14,7 @@ from rich.table import Table
 
 from hexaqual.domain.generators import (
     ArchonReport,
+    DocLinksReport,
     PydepsReport,
     UsageDocsReport,
 )
@@ -117,6 +118,35 @@ class RichGeneratorPresenterAdapter(GeneratorPresenterPort):
             self.console.print(f"[dim]Skipped {s} (no standard hexagonal layers present)[/dim]")
         return 0 if report.is_successful else 1
 
+    def present_doc_links(self, report: DocLinksReport) -> int:
+        """Render documentation link check summary table."""
+        if report.broken_links:
+            table = Table(
+                title="[bold red]Documentation Link Integrity Check - Violations[/bold red]",
+                show_header=True,
+                header_style="bold magenta",
+            )
+            table.add_column("Source File", style="blue")
+            table.add_column("Line", justify="right", style="cyan")
+            table.add_column("Target Link", style="yellow")
+            table.add_column("Reason", style="red")
+
+            for broken in report.broken_links:
+                table.add_row(broken.source_file, str(broken.line), broken.target, broken.reason)
+
+            self.console.print(table)
+            self.console.print(
+                f"[bold red]❌ Found {len(report.broken_links)} broken link(s) across "
+                f"{report.scanned_files_count} file(s) ({report.total_links_count} links checked)[/bold red]"
+            )
+            return 1
+
+        self.console.print(
+            f"[bold green]✅ All {report.total_links_count} link(s) valid across "
+            f"{report.scanned_files_count} markdown file(s)![/bold green]"
+        )
+        return 0
+
 
 class JsonGeneratorPresenterAdapter(GeneratorPresenterPort):
     """Machine-readable JSON presenter for generator outputs."""
@@ -155,6 +185,25 @@ class JsonGeneratorPresenterAdapter(GeneratorPresenterPort):
             "is_successful": report.is_successful,
             "generated_files": list(report.generated_files),
             "skipped_files": list(report.skipped_files),
+        }
+        self.console.print_json(data=data)
+        return 0 if report.is_successful else 1
+
+    def present_doc_links(self, report: DocLinksReport) -> int:
+        """Format documentation link report as structured JSON."""
+        data = {
+            "is_successful": report.is_successful,
+            "scanned_files_count": report.scanned_files_count,
+            "total_links_count": report.total_links_count,
+            "broken_links": [
+                {
+                    "source_file": b.source_file,
+                    "line": b.line,
+                    "target": b.target,
+                    "reason": b.reason,
+                }
+                for b in report.broken_links
+            ],
         }
         self.console.print_json(data=data)
         return 0 if report.is_successful else 1
@@ -214,6 +263,30 @@ class MarkdownGeneratorPresenterAdapter(GeneratorPresenterPort):
         ]
         for f in report.generated_files:
             lines.append(f"- Generated: `{f}`")
+        self.console.print("\n".join(lines))
+        return 0 if report.is_successful else 1
+
+    def present_doc_links(self, report: DocLinksReport) -> int:
+        """Render documentation link check results as Markdown."""
+        status = "✅ All links valid" if report.is_successful else "❌ Broken links detected"
+        lines = [
+            f"### 🔗 Documentation Link Validation: {status}",
+            "",
+            f"- **Scanned Files**: {report.scanned_files_count}",
+            f"- **Links Validated**: {report.total_links_count}",
+            f"- **Broken Links**: {len(report.broken_links)}",
+            "",
+        ]
+        if report.broken_links:
+            lines.extend(
+                [
+                    "| Source File | Line | Target | Reason |",
+                    "|---|---|---|---|",
+                ]
+            )
+            for b in report.broken_links:
+                lines.append(f"| `{b.source_file}` | {b.line} | `{b.target}` | {b.reason} |")
+            lines.append("")
         self.console.print("\n".join(lines))
         return 0 if report.is_successful else 1
 

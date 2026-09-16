@@ -138,7 +138,7 @@ graph LR
 
 ## 🏛️ Architecture & Documentation
 
-- **[Architecture & Design Guide](docs/ARCHITECTURE.md)**: Hexagonal boundaries, CQRS command bus, and architectural invariants.
+- **[Architecture & Design Guide](docs/architecture.md)**: Hexagonal boundaries, CQRS command bus, and architectural invariants.
 - **[CLI Reference Catalog](USAGE.md)**: Full unrolled command and subcommand trees with exhaustive option listings.
 
 ---

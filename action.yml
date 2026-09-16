@@ -1,0 +1,70 @@
+name: "Hexaqual Quality Gate"
+description: "Turnkey GitHub Action setting up Python, uv, caching, and executing Hexaqual quality checks."
+author: "TheTrueSCU"
+
+branding:
+  icon: "check-circle"
+  color: "blue"
+
+inputs:
+  mode:
+    description: "Execution mode: 'pre-commit' (run all pre-commit hooks), 'sanity' (run hexaqual sanity), or 'setup' (only install dependencies and configure environment)"
+    required: false
+    default: "pre-commit"
+  python-version:
+    description: "Python version to set up"
+    required: false
+    default: "3.13"
+  uv-version:
+    description: "Version of uv to install"
+    required: false
+    default: "latest"
+  sync-args:
+    description: "Arguments to pass to uv sync"
+    required: false
+    default: "--all-extras --dev"
+  sanity-args:
+    description: "Arguments to pass to hexaqual sanity if mode is 'sanity'"
+    required: false
+    default: "-a --skip-tests"
+  cache-pre-commit:
+    description: "Whether to cache ~/.cache/pre-commit"
+    required: false
+    default: "true"
+
+runs:
+  using: "composite"
+  steps:
+    - name: Install uv
+      uses: astral-sh/setup-uv@bec219d24cd3e171d82865faccec33120bb574f4 # v10.1.0
+      with:
+        version: ${{ inputs.uv-version }}
+        enable-cache: true
+
+    - name: Set up Python
+      uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+      with:
+        python-version: ${{ inputs.python-version }}
+
+    - name: Cache Pre-Commit Environments
+      if: ${{ inputs.cache-pre-commit == 'true' }}
+      uses: actions/cache@0c9c4854eb13009762699f14309322c3683f2115 # v4.0.2
+      with:
+        path: ~/.cache/pre-commit
+        key: pre-commit-${{ runner.os }}-${{ inputs.python-version }}-${{ hashFiles('.pre-commit-config.yaml') }}
+        restore-keys: |
+          pre-commit-${{ runner.os }}-${{ inputs.python-version }}-
+
+    - name: Install dependencies with uv
+      shell: bash
+      run: uv sync ${{ inputs.sync-args }}
+
+    - name: Run Pre-Commit Quality Checks
+      if: ${{ inputs.mode == 'pre-commit' }}
+      shell: bash
+      run: uv run pre-commit run --all-files
+
+    - name: Run Hexaqual Sanity
+      if: ${{ inputs.mode == 'sanity' }}
+      shell: bash
+      run: uv run hexaqual sanity ${{ inputs.sanity-args }}

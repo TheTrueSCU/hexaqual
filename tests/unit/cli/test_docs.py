@@ -73,3 +73,38 @@ def test_docs_publish_failure() -> None:
     ):
         res = runner.invoke(docs_app, ["publish"])
         assert res.exit_code == 1
+
+
+def test_docs_links_success() -> None:
+    """Test docs links subcommand succeeds on valid links."""
+    from hexaqual.domain.generators import DocLinksReport
+
+    mock_report = DocLinksReport(is_successful=True, total_links_count=5)
+    with (
+        patch("hexaqual.commands.doc_links.scan_doc_links", return_value=mock_report),
+        patch(
+            "hexaqual.adapters.presenters.generators.RichGeneratorPresenterAdapter.present_doc_links",
+            return_value=0,
+        ),
+    ):
+        res = runner.invoke(docs_app, ["links", "-f", "table"])
+        assert res.exit_code == 0
+
+
+def test_docs_links_failure() -> None:
+    """Test docs links subcommand exits with 1 when broken links detected."""
+    from hexaqual.domain.generators import BrokenDocLink, DocLinksReport
+
+    mock_report = DocLinksReport(
+        is_successful=False,
+        broken_links=(BrokenDocLink("readme.md", 1, "bad.md", "does not exist"),),
+    )
+    with (
+        patch("hexaqual.commands.doc_links.scan_doc_links", return_value=mock_report),
+        patch(
+            "hexaqual.adapters.presenters.generators.RichGeneratorPresenterAdapter.present_doc_links",
+            return_value=1,
+        ),
+    ):
+        res = runner.invoke(docs_app, ["links"])
+        assert res.exit_code == 1
