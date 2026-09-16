@@ -1,13 +1,51 @@
 - id: hexaqual-sanity
-  name: hexaqual-sanity
-  description: Fast scoped sanity check runner (Ruff, Ty, Complexipy, __all__, test parity)
-  entry: hexaqual sanity --skip-tests
+  name: hexaqual sanity check
+  description: Fast scoped sanity check runner (Ruff, Ty, Complexipy, __all__, test parity, deptry)
+  entry: hexaqual sanity -a --skip-tests
   language: system
   pass_filenames: false
 
+- id: hexaqual-architecture
+  name: hexaqual architecture parity
+  description: Verify test_hexagonal_boundaries.py architectural test suites across packages
+  entry: hexaqual parity architecture
+  language: system
+  pass_filenames: false
+
+- id: hexaqual-test-parity
+  name: hexaqual test parity
+  description: Verify 1:1 structural symmetry between src/ and tests/unit/
+  entry: hexaqual parity test
+  language: system
+  pass_filenames: false
+
+- id: hexaqual-statements
+  name: hexaqual statement integrity
+  description: Validate sorted and deduplicated __all__ export lists
+  entry: hexaqual statements check
+  language: system
+  pass_filenames: false
+
+- id: hexaqual-linter
+  name: hexaqual hexagonal import boundaries
+  description: Validate hexagonal package import boundaries via import-linter
+  entry: hexaqual deps linter
+  language: system
+  files: ^packages/.*(\.py|pyproject\.toml)$
+  pass_filenames: true
+
 - id: hexaqual-extras
-  name: hexaqual-extras
+  name: hexaqual extras parity
   description: Verify optional extras forwarding across workspace packages
   entry: hexaqual parity extras
   language: system
+  files: ^(packages/.*/pyproject\.toml|pyproject\.toml)$
+  pass_filenames: false
+
+- id: hexaqual-usage-docs
+  name: hexaqual usage docs integrity
+  description: Ensure CLI USAGE.md documentation matches Typer entrypoints
+  entry: hexaqual docs usage --check
+  language: system
+  files: ^packages/.*$
   pass_filenames: false
