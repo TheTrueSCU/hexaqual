@@ -49,3 +49,6 @@ logs/
 
 # Hexaflow state & artifacts
 .hexaflow/
+
+# Documentation
+site/

@@ -1,0 +1,23 @@
+[project]
+site_name = "Hexaqual"
+site_description = "Universal Python Quality Gates, Architectural Boundary Enforcement, and Release Engineering Toolchain"
+site_url = "https://dopplereffect.us/hexaqual/"
+
+nav = [
+    { "Overview" = "index.md" },
+    { "Architecture & Design" = "architecture.md" },
+    { "CLI Command Catalog" = "cli-reference.md" },
+    { "Pre-Commit Integration" = "pre-commit-guide.md" },
+    { "CI/CD & GitHub Actions" = "ci-cd-integration.md" }
+]
+
+[project.markdown_extensions]
+admonition = {}
+tables = {}
+toc = { permalink = true }
+"pymdownx.highlight" = { anchor_linenums = true, line_spans = "__span", pygments_lang_class = true }
+"pymdownx.inlinehilite" = {}
+"pymdownx.snippets" = {}
+"pymdownx.superfences" = { custom_fences = [
+    { name = "mermaid", class = "mermaid", format = "pymdownx.superfences.fence_code_format" }
+] }
