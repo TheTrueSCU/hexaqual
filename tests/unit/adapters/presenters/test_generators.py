@@ -67,6 +67,22 @@ def test_rich_generator_presenter() -> None:
     )
     assert presenter.present_pydeps(pydeps_check_stale) == 1
 
+    # Check mode pydeps - skipped dot
+    pydeps_check_skip = PydepsReport(
+        results=(
+            PydepsDiagramResult(
+                name="Architecture Diagrams",
+                path="",
+                success=True,
+                is_stale=False,
+                details="Graphviz 'dot' not installed (check skipped)",
+            ),
+        ),
+        is_successful=True,
+        is_check=True,
+    )
+    assert presenter.present_pydeps(pydeps_check_skip) == 0
+
     usage_rep = UsageDocsReport(
         up_to_date_files=("USAGE.md",),
         updated_files=(),
@@ -159,6 +175,22 @@ def test_markdown_generator_presenter() -> None:
         is_check=True,
     )
     assert presenter.present_pydeps(pydeps_check_stale) == 1
+
+    # Check mode pydeps Markdown - skipped dot
+    pydeps_check_skip = PydepsReport(
+        results=(
+            PydepsDiagramResult(
+                name="Architecture Diagrams",
+                path="",
+                success=True,
+                is_stale=False,
+                details="Graphviz 'dot' not installed (check skipped)",
+            ),
+        ),
+        is_successful=True,
+        is_check=True,
+    )
+    assert presenter.present_pydeps(pydeps_check_skip) == 0
 
     usage_rep = UsageDocsReport(
         stale_files=("USAGE.md",),

@@ -8,6 +8,7 @@ Notes/Architectural Intent:
 from __future__ import annotations
 
 import difflib
+import shutil
 import subprocess
 import tomllib
 from concurrent.futures import ProcessPoolExecutor
@@ -423,6 +424,21 @@ class GeneratePydepsHandler:
 
     def _handle_check(self, command: GeneratePydepsCommand, packages: list[Path]) -> PydepsReport:
         """Execute check mode for overview and package diagrams."""
+        if shutil.which("dot") is None:
+            return PydepsReport(
+                results=(
+                    PydepsDiagramResult(
+                        name="Architecture Diagrams",
+                        path="",
+                        success=True,
+                        is_stale=False,
+                        details="Graphviz 'dot' not installed (check skipped)",
+                    ),
+                ),
+                is_successful=True,
+                is_check=True,
+            )
+
         results: list[PydepsDiagramResult] = []
         if not command.packages:
             overview_ok, overview_info = check_overview_diagram(self._root)
@@ -443,6 +459,21 @@ class GeneratePydepsHandler:
         self, command: GeneratePydepsCommand, packages: list[Path]
     ) -> PydepsReport:
         """Execute generate mode for overview and package diagrams."""
+        if shutil.which("dot") is None:
+            return PydepsReport(
+                results=(
+                    PydepsDiagramResult(
+                        name="Architecture Diagrams",
+                        path="",
+                        success=False,
+                        is_stale=False,
+                        details="Graphviz 'dot' not installed (generation aborted)",
+                    ),
+                ),
+                is_successful=False,
+                is_check=False,
+            )
+
         results: list[PydepsDiagramResult] = []
         if not command.packages:
             overview_path = generate_overview_diagram(self._root)

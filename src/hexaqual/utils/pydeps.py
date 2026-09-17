@@ -7,6 +7,7 @@ Notes/Architectural Intent:
 
 from __future__ import annotations
 
+import shutil
 import tempfile
 from concurrent.futures import ProcessPoolExecutor
 from pathlib import Path
@@ -130,7 +131,7 @@ def generate_package_diagram(pkg_path: Path, root: Path) -> str | None:
     svg_path = _get_package_svg_path(pkg_path, root)
     entry_point = _get_package_entry_point(pkg_path)
 
-    if not entry_point:
+    if not entry_point or shutil.which("dot") is None:
         return None
 
     try:
@@ -169,6 +170,9 @@ def check_package_diagram(pkg_path: Path, root: Path) -> tuple[bool, str]:
 
     if not entry_point:
         return True, f"No source directory for {pkg_path.name}"
+
+    if shutil.which("dot") is None:
+        return True, f"Graphviz 'dot' not installed (check skipped for {pkg_path.name})"
 
     if not svg_path.is_file():
         return False, f"{svg_path.relative_to(root)} does not exist"
@@ -214,6 +218,9 @@ def generate_overview_diagram(root: Path) -> str | None:
     svg_path = _get_overview_svg_path(root)
     packages_dir = get_packages_directory(root)
 
+    if shutil.which("dot") is None:
+        return None
+
     try:
         pydeps(
             fname=str(packages_dir),
@@ -249,6 +256,9 @@ def check_overview_diagram(root: Path) -> tuple[bool, str]:
 
     if not packages_dir.is_dir():
         return True, "No packages directory found"
+
+    if shutil.which("dot") is None:
+        return True, "Graphviz 'dot' not installed (check skipped)"
 
     if not svg_path.is_file():
         return False, f"{svg_path.relative_to(root)} does not exist"
@@ -297,6 +307,8 @@ def generate_all_diagrams(
         diagram.
     """
     ensure_tool_installed("pydeps", cli_command="pydeps", extra_name="diagrams")
+    if shutil.which("dot") is None:
+        return []
     target_pkgs = packages if packages is not None else get_package_directories(root)
     results: list[tuple[str, str]] = []
 
@@ -345,6 +357,8 @@ def check_all_diagrams(
         diagram, providing diagnostic reporting for CI and sanity check pipelines.
     """
     ensure_tool_installed("pydeps", cli_command="pydeps", extra_name="diagrams")
+    if shutil.which("dot") is None:
+        return [("Architecture Diagrams", "Graphviz 'dot' not installed (check skipped)", True)]
     target_pkgs = packages if packages is not None else get_package_directories(root)
     results: list[tuple[str, str, bool]] = []
 

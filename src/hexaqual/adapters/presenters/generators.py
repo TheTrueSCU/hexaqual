@@ -57,7 +57,9 @@ class RichGeneratorPresenterAdapter(GeneratorPresenterPort):
             table.add_column("Details", style="dim")
 
             for res in report.results:
-                if res.success and not res.is_stale:
+                if res.details and "Graphviz 'dot' not installed" in res.details:
+                    status = "[bold yellow]SKIP[/bold yellow]"
+                elif res.success and not res.is_stale:
                     status = "[bold green]PASS[/bold green]"
                 elif res.is_stale:
                     status = "[bold red]STALE[/bold red]"
@@ -67,12 +69,25 @@ class RichGeneratorPresenterAdapter(GeneratorPresenterPort):
 
             self.console.print(table)
             if report.is_successful:
-                self.console.print(
-                    Panel.fit(
-                        f"[bold green]✨ All {len(report.results)} architecture dependency diagram(s) are up to date.[/bold green]",
-                        border_style="green",
-                    )
+                has_skip = any(
+                    "Graphviz 'dot' not installed" in (r.details or "") for r in report.results
                 )
+                if has_skip and all(
+                    "Graphviz 'dot' not installed" in (r.details or "") for r in report.results
+                ):
+                    self.console.print(
+                        Panel.fit(
+                            "[bold yellow]⏭️ Architecture diagram check skipped (Graphviz 'dot' not installed).[/bold yellow]",
+                            border_style="yellow",
+                        )
+                    )
+                else:
+                    self.console.print(
+                        Panel.fit(
+                            f"[bold green]✨ All {len(report.results)} architecture dependency diagram(s) are up to date.[/bold green]",
+                            border_style="green",
+                        )
+                    )
                 return 0
 
             self.console.print(
@@ -278,7 +293,10 @@ class MarkdownGeneratorPresenterAdapter(GeneratorPresenterPort):
         ]
         for r in report.results:
             if report.is_check:
-                status = "✅ Up to date" if r.success and not r.is_stale else "❌ Stale"
+                if r.details and "Graphviz 'dot' not installed" in r.details:
+                    status = "⚠️ Skipped (dot not installed)"
+                else:
+                    status = "✅ Up to date" if r.success and not r.is_stale else "❌ Stale"
             else:
                 status = "✅ Generated" if r.success else "❌ Failed"
             lines.append(f"| `{r.name}` | `{r.path}` | {status} |")

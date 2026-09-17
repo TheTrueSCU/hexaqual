@@ -180,3 +180,41 @@ def test_check_all_diagrams(tmp_path: Path) -> None:
         assert len(results) == 1
         assert results[0][0] == "Monorepo Overview"
         assert results[0][2] is True
+
+
+def test_pydeps_missing_dot_handling(tmp_path: Path) -> None:
+    """Verify pydeps generation and checks handle missing dot executable gracefully.
+
+    Args:
+        tmp_path: Temporary filesystem fixture path.
+
+    Notes/Architectural Intent:
+        Ensures graceful skipping without hard crashes when Graphviz is not installed.
+    """
+    pkg = tmp_path / "my_pkg"
+    (pkg / "src" / "my_pkg").mkdir(parents=True)
+    (tmp_path / "packages").mkdir(parents=True)
+
+    with patch("shutil.which", return_value=None):
+        gen_pkg = generate_package_diagram(pkg, tmp_path)
+        assert gen_pkg is None
+
+        gen_ov = generate_overview_diagram(tmp_path)
+        assert gen_ov is None
+
+        with patch("hexaqual.utils.pydeps.ensure_tool_installed"):
+            gen_all = generate_all_diagrams(tmp_path)
+            assert gen_all == []
+
+            check_all = check_all_diagrams(tmp_path)
+            assert len(check_all) == 1
+            assert check_all[0][2] is True
+            assert "Graphviz 'dot' not installed" in check_all[0][1]
+
+        check_pkg_ok, check_pkg_msg = check_package_diagram(pkg, tmp_path)
+        assert check_pkg_ok is True
+        assert "Graphviz 'dot' not installed" in check_pkg_msg
+
+        check_ov_ok, check_ov_msg = check_overview_diagram(tmp_path)
+        assert check_ov_ok is True
+        assert "Graphviz 'dot' not installed" in check_ov_msg

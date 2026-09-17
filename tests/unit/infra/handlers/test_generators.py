@@ -64,6 +64,30 @@ def test_generate_pydeps_handler_check_mode(tmp_path: Path) -> None:
         assert report.results[0].is_stale is False
 
 
+def test_generate_pydeps_handler_missing_dot_check_mode(tmp_path: Path) -> None:
+    """Verify GeneratePydepsHandler gracefully skips when dot is missing in check mode."""
+    handler = GeneratePydepsHandler(root=tmp_path, parallel=False)
+    with patch("shutil.which", return_value=None):
+        report = handler.handle(GeneratePydepsCommand(check_only=True))
+        assert report.is_successful is True
+        assert report.is_check is True
+        assert len(report.results) == 1
+        assert report.results[0].success is True
+        assert "Graphviz 'dot' not installed" in report.results[0].details
+
+
+def test_generate_pydeps_handler_missing_dot_generate_mode(tmp_path: Path) -> None:
+    """Verify GeneratePydepsHandler fails gracefully when dot is missing in generate mode."""
+    handler = GeneratePydepsHandler(root=tmp_path, parallel=False)
+    with patch("shutil.which", return_value=None):
+        report = handler.handle(GeneratePydepsCommand(check_only=False))
+        assert report.is_successful is False
+        assert report.is_check is False
+        assert len(report.results) == 1
+        assert report.results[0].success is False
+        assert "Graphviz 'dot' not installed" in report.results[0].details
+
+
 def test_generate_usage_docs_handler_check_and_fix(tmp_path: Path) -> None:
     """Verify GenerateUsageDocsHandler checks and fixes USAGE.md."""
     usage_file = tmp_path / "USAGE.md"

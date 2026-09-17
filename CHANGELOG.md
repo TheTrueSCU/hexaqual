@@ -1,5 +1,10 @@
 # CHANGELOG
 
+## v0.4.2 (2026-09-17)
+
+### Fixes & Reliability
+* **Graceful Graphviz Skip in Diagram Checks**: Gracefully skip diagram verification (`hexaqual deps pydeps --check`, `GeneratePydepsHandler`, `check_package_diagram`, `check_overview_diagram`, `check_all_diagrams`) with `SKIP` status and exit code 0 when Graphviz `dot` executable is absent from the host environment, preventing pre-commit and CI crashes on minimal containers.
+
 ## v0.4.1 (2026-09-17)
 
 ### Highlights & Features
