@@ -55,6 +55,7 @@ from hexaqual.domain.github import (
 from hexaqual.domain.governance import (
     AuditComplexityCommand,
     CheckAllStatementsCommand,
+    CheckDiagramsCommand,
     CheckTestParityCommand,
     RunDeptryCommand,
     RunLinterCommand,
@@ -107,6 +108,7 @@ from hexaqual.infra.handlers.github import (
 from hexaqual.infra.handlers.governance import (
     AuditComplexityHandler,
     CheckAllStatementsHandler,
+    CheckDiagramsHandler,
     CheckTestParityHandler,
     RunDeptryHandler,
     RunLinterHandler,
@@ -231,6 +233,9 @@ def create_governance_bus(
 
     parity_handler = CheckTestParityHandler(actual_runner)
     registry.register(CheckTestParityCommand, parity_handler.handle)
+
+    diagrams_handler = CheckDiagramsHandler(actual_runner)
+    registry.register(CheckDiagramsCommand, diagrams_handler.handle)
 
     deptry_runner_handler = RunDeptryHandler(actual_runner)
     registry.register(RunDeptryCommand, deptry_runner_handler.handle)

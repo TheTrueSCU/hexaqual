@@ -51,6 +51,22 @@ def test_rich_generator_presenter() -> None:
     )
     assert presenter.present_pydeps(pydeps_fail) == 1
 
+    # Check mode pydeps - up to date
+    pydeps_check_ok = PydepsReport(
+        results=(PydepsDiagramResult(name="core", path="core.svg", success=True, is_stale=False),),
+        is_successful=True,
+        is_check=True,
+    )
+    assert presenter.present_pydeps(pydeps_check_ok) == 0
+
+    # Check mode pydeps - stale
+    pydeps_check_stale = PydepsReport(
+        results=(PydepsDiagramResult(name="core", path="core.svg", success=False, is_stale=True),),
+        is_successful=False,
+        is_check=True,
+    )
+    assert presenter.present_pydeps(pydeps_check_stale) == 1
+
     usage_rep = UsageDocsReport(
         up_to_date_files=("USAGE.md",),
         updated_files=(),
@@ -95,6 +111,14 @@ def test_json_generator_presenter() -> None:
     assert res_pydeps == 0
     mock_console.print_json.assert_called()
 
+    # Check mode pydeps JSON
+    pydeps_check = PydepsReport(
+        results=(PydepsDiagramResult(name="core", path="core.svg", success=True, is_stale=False),),
+        is_successful=True,
+        is_check=True,
+    )
+    assert presenter.present_pydeps(pydeps_check) == 0
+
     usage_rep = UsageDocsReport(is_valid=True)
     res_usage = presenter.present_usage_docs(usage_rep)
     assert res_usage == 0
@@ -120,6 +144,21 @@ def test_markdown_generator_presenter() -> None:
     res_pydeps = presenter.present_pydeps(pydeps_rep)
     assert res_pydeps == 0
     mock_console.print.assert_called()
+
+    # Check mode pydeps Markdown
+    pydeps_check_ok = PydepsReport(
+        results=(PydepsDiagramResult(name="core", path="core.svg", success=True, is_stale=False),),
+        is_successful=True,
+        is_check=True,
+    )
+    assert presenter.present_pydeps(pydeps_check_ok) == 0
+
+    pydeps_check_stale = PydepsReport(
+        results=(PydepsDiagramResult(name="core", path="core.svg", success=False, is_stale=True),),
+        is_successful=False,
+        is_check=True,
+    )
+    assert presenter.present_pydeps(pydeps_check_stale) == 1
 
     usage_rep = UsageDocsReport(
         stale_files=("USAGE.md",),

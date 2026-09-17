@@ -69,6 +69,11 @@ def test_concrete_tool_runner_implementation():
         ) -> CheckResult:
             return CheckResult("Pytest", target.name, CheckStatus.PASS, 0.01)
 
+        def run_diagrams(
+            self, target: SanityTarget, repo_root: Path, fix: bool = False
+        ) -> CheckResult:
+            return CheckResult("Diagrams", target.name, CheckStatus.PASS, 0.01)
+
     runner = DummyRunner()
     res = runner.run_ruff((Path(),), "dummy")
     assert res.status == CheckStatus.PASS

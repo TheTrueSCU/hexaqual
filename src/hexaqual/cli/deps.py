@@ -81,18 +81,24 @@ def deps_audit(
 @deps_app.command("pydeps")
 def deps_pydeps(
     packages: list[str] | None = typer.Option(None, "-p", "--package", help="Target package(s)."),
+    check_only: bool = typer.Option(
+        False, "--check", help="Verify diagram freshness without modifying files."
+    ),
+    fix: bool = typer.Option(False, "--fix", help="Regenerate architecture diagrams."),
     format_type: str = typer.Option(
         "table", "-f", "--format", help="Output presentation format (table, json, markdown)."
     ),
 ) -> None:
-    """Generate architecture dependency diagrams using pydeps.
+    """Generate or verify architecture dependency diagrams using pydeps.
 
     Args:
         packages: Optional sequence of packages to graph.
+        check_only: Whether to verify diagram freshness without modifying files.
+        fix: Whether to regenerate architecture diagrams.
         format_type: Output presentation format.
 
     Raises:
-        typer.Exit: If diagram generation encounters errors.
+        typer.Exit: If diagram generation or verification encounters errors.
 
     Notes/Architectural Intent:
         Ensures pydeps availability and dispatches GeneratePydepsCommand.
@@ -109,6 +115,8 @@ def deps_pydeps(
 
     cmd = GeneratePydepsCommand(
         packages=tuple(packages) if packages else (),
+        check_only=check_only,
+        fix=fix,
     )
     report = bus.dispatch(cmd)
     exit_code = presenter.present_pydeps(report)

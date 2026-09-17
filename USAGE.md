@@ -119,6 +119,8 @@ Usage: hexaqual check [OPTIONS] [files]...
 │                                                step.                         │
 │ --skip-test-parity,--skip-pa…                  Skip execution of the         │
 │                                                'test_parity' workflow step.  │
+│ --skip-diagrams                                Skip execution of the         │
+│                                                'diagrams' workflow step.     │
 │ --skip-typecheck,--skip-ty                     Skip execution of the         │
 │                                                'typecheck' workflow step.    │
 │ --skip-complexity                              Skip execution of the         │
@@ -174,7 +176,8 @@ Usage: hexaqual deps [OPTIONS] COMMAND [ARGS]...
 ╭─ Commands ───────────────────────────────────────────────────────────────────╮
 │ audit            Execute unified audit across dependencies, optional extras, │
 │                  and tools.                                                  │
-│ pydeps           Generate architecture dependency diagrams using pydeps.     │
+│ pydeps           Generate or verify architecture dependency diagrams using   │
+│                  pydeps.                                                     │
 │ linter           Evaluate hexagonal architecture contract boundaries using   │
 │                  import-linter.                                              │
 │ linter-generate  Generate default hexagonal  contracts in pyproject.toml     │
@@ -308,20 +311,24 @@ Usage: hexaqual deps linter-generate [OPTIONS]
 ```text
 Usage: hexaqual deps pydeps [OPTIONS]
 
- Generate architecture dependency diagrams using pydeps.
+ Generate or verify architecture dependency diagrams using pydeps.
 
  Args:
      packages: Optional sequence of packages to graph.
+     check_only: Whether to verify diagram freshness without modifying files.
+     fix: Whether to regenerate architecture diagrams.
      format_type: Output presentation format.
 
  Raises:
-     typer.Exit: If diagram generation encounters errors.
+     typer.Exit: If diagram generation or verification encounters errors.
 
  Notes/Architectural Intent:
      Ensures pydeps availability and dispatches GeneratePydepsCommand.
 
 ╭─ Options ────────────────────────────────────────────────────────────────────╮
 │ --package  -p      <str>  Target package(s).                                 │
+│ --check                   Verify diagram freshness without modifying files.  │
+│ --fix                     Regenerate architecture diagrams.                  │
 │ --format   -f      <str>  Output presentation format (table, json,           │
 │                           markdown).                                         │
 │                           [default: table]                                   │
@@ -1131,6 +1138,8 @@ Usage: hexaqual sanity [OPTIONS] [files]...
 │                                                step.                         │
 │ --skip-test-parity,--skip-pa…                  Skip execution of the         │
 │                                                'test_parity' workflow step.  │
+│ --skip-diagrams                                Skip execution of the         │
+│                                                'diagrams' workflow step.     │
 │ --skip-typecheck,--skip-ty                     Skip execution of the         │
 │                                                'typecheck' workflow step.    │
 │ --skip-complexity                              Skip execution of the         │

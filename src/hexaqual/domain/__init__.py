@@ -58,6 +58,7 @@ from hexaqual.domain.github import (
 from hexaqual.domain.governance import (
     AuditComplexityCommand,
     CheckAllStatementsCommand,
+    CheckDiagramsCommand,
     CheckResult,
     CheckStatus,
     CheckTestParityCommand,
@@ -119,6 +120,7 @@ __all__ = [
     "BoundaryAuditReport",
     "BuildPackagesCommand",
     "CheckAllStatementsCommand",
+    "CheckDiagramsCommand",
     "CheckPyPiReleasesCommand",
     "CheckResult",
     "CheckRunFinding",

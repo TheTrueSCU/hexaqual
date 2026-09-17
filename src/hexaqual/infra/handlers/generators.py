@@ -28,6 +28,8 @@ from hexaqual.utils.help_extractor import (
 )
 from hexaqual.utils.import_linter import get_present_layers
 from hexaqual.utils.pydeps import (
+    check_overview_diagram,
+    check_package_diagram,
     generate_overview_diagram,
     generate_package_diagram,
 )
@@ -349,17 +351,124 @@ class GeneratePydepsHandler:
         self._root = root or get_repo_root()
         self._parallel = parallel
 
+    def _check_single_package(self, pkg: Path) -> PydepsDiagramResult:
+        """Verify a single package diagram."""
+        ok, info = check_package_diagram(pkg, self._root)
+        return PydepsDiagramResult(
+            name=pkg.name,
+            path=info,
+            success=ok,
+            is_stale=not ok,
+            details="" if ok else "Diagram is stale or missing",
+        )
+
+    def _check_packages(self, packages: list[Path]) -> list[PydepsDiagramResult]:
+        """Verify package diagrams sequentially or concurrently."""
+        if not self._parallel:
+            return [self._check_single_package(pkg) for pkg in packages]
+
+        results: list[PydepsDiagramResult] = []
+        with ProcessPoolExecutor() as executor:
+            futures = {
+                executor.submit(check_package_diagram, pkg, self._root): pkg.name
+                for pkg in packages
+            }
+            for future in futures:
+                pkg_name = futures[future]
+                ok, info = future.result()
+                results.append(
+                    PydepsDiagramResult(
+                        name=pkg_name,
+                        path=info,
+                        success=ok,
+                        is_stale=not ok,
+                        details="" if ok else "Diagram is stale or missing",
+                    )
+                )
+        return results
+
+    def _generate_single_package(self, pkg: Path) -> PydepsDiagramResult:
+        """Generate a single package diagram."""
+        path = generate_package_diagram(pkg, self._root)
+        return PydepsDiagramResult(
+            name=pkg.name,
+            path=path or "",
+            success=bool(path),
+            is_stale=False,
+        )
+
+    def _generate_packages(self, packages: list[Path]) -> list[PydepsDiagramResult]:
+        """Generate package diagrams sequentially or concurrently."""
+        if not self._parallel:
+            return [self._generate_single_package(pkg) for pkg in packages]
+
+        results: list[PydepsDiagramResult] = []
+        with ProcessPoolExecutor() as executor:
+            futures = {
+                executor.submit(generate_package_diagram, pkg, self._root): pkg.name
+                for pkg in packages
+            }
+            for future in futures:
+                pkg_name = futures[future]
+                path = future.result()
+                results.append(
+                    PydepsDiagramResult(
+                        name=pkg_name,
+                        path=path or "",
+                        success=bool(path),
+                        is_stale=False,
+                    )
+                )
+        return results
+
+    def _handle_check(self, command: GeneratePydepsCommand, packages: list[Path]) -> PydepsReport:
+        """Execute check mode for overview and package diagrams."""
+        results: list[PydepsDiagramResult] = []
+        if not command.packages:
+            overview_ok, overview_info = check_overview_diagram(self._root)
+            results.append(
+                PydepsDiagramResult(
+                    name="Monorepo Overview",
+                    path=overview_info,
+                    success=overview_ok,
+                    is_stale=not overview_ok,
+                    details="" if overview_ok else "Diagram is stale or missing",
+                )
+            )
+        results.extend(self._check_packages(packages))
+        all_ok = all(r.success for r in results) if results else True
+        return PydepsReport(results=tuple(results), is_successful=all_ok, is_check=True)
+
+    def _handle_generate(
+        self, command: GeneratePydepsCommand, packages: list[Path]
+    ) -> PydepsReport:
+        """Execute generate mode for overview and package diagrams."""
+        results: list[PydepsDiagramResult] = []
+        if not command.packages:
+            overview_path = generate_overview_diagram(self._root)
+            if overview_path:
+                results.append(
+                    PydepsDiagramResult(
+                        name="Monorepo Overview",
+                        path=overview_path,
+                        success=True,
+                    )
+                )
+        results.extend(self._generate_packages(packages))
+        all_ok = all(r.success for r in results) if results else True
+        return PydepsReport(results=tuple(results), is_successful=all_ok, is_check=False)
+
     def handle(self, command: GeneratePydepsCommand) -> PydepsReport:
-        """Execute pydeps diagram generation across targeted packages.
+        """Execute pydeps diagram generation or verification across targeted packages.
 
         Args:
-            command: GeneratePydepsCommand specifying target packages.
+            command: GeneratePydepsCommand specifying target packages and check mode.
 
         Returns:
-            PydepsReport with results for each generated SVG.
+            PydepsReport with results for each generated or verified SVG.
 
         Notes/Architectural Intent:
-            Concurrently generates individual package dependency diagrams using
+            Concurrently generates or validates individual package dependency diagrams using
             multiprocessing when parallel is True, or sequentially when False.
         """
         if command.packages:
@@ -367,42 +476,9 @@ class GeneratePydepsHandler:
         else:
             packages = get_package_directories(self._root)
 
-        results: list[PydepsDiagramResult] = []
-        overview_path = generate_overview_diagram(self._root)
-        if overview_path:
-            results.append(
-                PydepsDiagramResult(name="Monorepo Overview", path=overview_path, success=True)
-            )
-
-        if not self._parallel:
-            for pkg in packages:
-                path = generate_package_diagram(pkg, self._root)
-                results.append(
-                    PydepsDiagramResult(
-                        name=pkg.name,
-                        path=path or "",
-                        success=bool(path),
-                    )
-                )
-        else:
-            with ProcessPoolExecutor() as executor:
-                futures = {
-                    executor.submit(generate_package_diagram, pkg, self._root): pkg.name
-                    for pkg in packages
-                }
-                for future in futures:
-                    pkg_name = futures[future]
-                    path = future.result()
-                    results.append(
-                        PydepsDiagramResult(
-                            name=pkg_name,
-                            path=path or "",
-                            success=bool(path),
-                        )
-                    )
-
-        all_ok = all(r.success for r in results) if results else True
-        return PydepsReport(results=tuple(results), is_successful=all_ok)
+        if command.check_only:
+            return self._handle_check(command, packages)
+        return self._handle_generate(command, packages)
 
 
 def _filter_target_map(

@@ -145,6 +145,24 @@ class ToolRunnerPort(ABC):
             CheckResult with test outcomes.
         """
 
+    @abstractmethod
+    def run_diagrams(
+        self,
+        target: SanityTarget,
+        repo_root: Path,
+        fix: bool = False,
+    ) -> CheckResult:
+        """Verify or regenerate architecture dependency diagrams.
+
+        Args:
+            target: Target component to audit.
+            repo_root: Repository root path.
+            fix: Whether to automatically regenerate stale diagrams.
+
+        Returns:
+            CheckResult with diagram status and diagnostics.
+        """
+
 
 class GovernancePresenterPort(ABC):
     """Abstract port for presenting governance reports and dashboards."""

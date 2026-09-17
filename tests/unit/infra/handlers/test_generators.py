@@ -39,6 +39,31 @@ def test_generate_pydeps_handler(tmp_path: Path) -> None:
         assert len(report.results) >= 1
 
 
+def test_generate_pydeps_handler_check_mode(tmp_path: Path) -> None:
+    """Verify GeneratePydepsHandler executes checks in check mode."""
+    handler = GeneratePydepsHandler(root=tmp_path, parallel=False)
+    with (
+        patch(
+            "hexaqual.infra.handlers.generators.check_overview_diagram",
+            return_value=(True, "docs/overview.svg"),
+        ),
+        patch(
+            "hexaqual.infra.handlers.generators.check_package_diagram",
+            return_value=(True, "docs/core.svg"),
+        ),
+        patch(
+            "hexaqual.infra.handlers.generators.get_package_directories",
+            return_value=[tmp_path / "packages" / "core"],
+        ),
+    ):
+        report = handler.handle(GeneratePydepsCommand(check_only=True))
+        assert report.is_successful is True
+        assert report.is_check is True
+        assert len(report.results) == 2
+        assert report.results[0].success is True
+        assert report.results[0].is_stale is False
+
+
 def test_generate_usage_docs_handler_check_and_fix(tmp_path: Path) -> None:
     """Verify GenerateUsageDocsHandler checks and fixes USAGE.md."""
     usage_file = tmp_path / "USAGE.md"

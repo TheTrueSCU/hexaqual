@@ -22,6 +22,7 @@ from hexaflow import (
 from hexaqual.domain.governance import (
     AuditComplexityCommand,
     CheckAllStatementsCommand,
+    CheckDiagramsCommand,
     CheckResult,
     CheckStatus,
     CheckTestParityCommand,
@@ -39,6 +40,7 @@ from hexaqual.ports.governance import ToolRunnerPort
 __all__ = [
     "AuditComplexityHandler",
     "CheckAllStatementsHandler",
+    "CheckDiagramsHandler",
     "CheckTestParityHandler",
     "RunDeptryHandler",
     "RunLinterHandler",
@@ -165,6 +167,37 @@ class CheckTestParityHandler:
         return self._runner.run_test_parity(command.target, command.repo_root)
 
 
+class CheckDiagramsHandler:
+    """Handler validating or updating architecture diagrams via ToolRunnerPort."""
+
+    def __init__(self, runner: ToolRunnerPort) -> None:
+        """Initialize with tool runner port.
+
+        Args:
+            runner: Concrete ToolRunnerPort implementation.
+        """
+        self._runner = runner
+
+    def handle(self, command: CheckDiagramsCommand) -> CheckResult:
+        """Execute architecture diagram audit.
+
+        Args:
+            command: CheckDiagramsCommand specification.
+
+        Returns:
+            CheckResult outcome.
+        """
+        if command.skip:
+            return CheckResult(
+                "Architecture Diagrams",
+                command.target.name,
+                CheckStatus.SKIP,
+                0.0,
+                "Skipped via --skip-diagrams",
+            )
+        return self._runner.run_diagrams(command.target, command.repo_root, fix=command.fix)
+
+
 class RunDeptryHandler:
     """Handler executing deptry dependency audits via ToolRunnerPort."""
 
@@ -243,6 +276,8 @@ class RunSanityCheckHandler:
             skip_set.add("test_parity")
         if command.skip_all_statements:
             skip_set.add("all_statements")
+        if command.skip_diagrams:
+            skip_set.add("diagrams")
         return skip_set
 
     def _register_static_checks(
@@ -319,6 +354,22 @@ class RunSanityCheckHandler:
                     CheckTestParityCommand(
                         target=target,
                         repo_root=command.repo_root,
+                    )
+                )
+
+            @wf.step(
+                name="diagrams",
+                stage="static_checks",
+                trigger_rule=TriggerRule.ALL_SUCCESS_OR_SKIPPED,
+            )
+            def _diagrams(ctx: StepContext) -> CheckResult:
+                is_skipped = "diagrams" in skip_set or command.skip_diagrams
+                return self._bus.dispatch(
+                    CheckDiagramsCommand(
+                        target=target,
+                        repo_root=command.repo_root,
+                        fix=command.fix,
+                        skip=is_skipped,
                     )
                 )
 
@@ -427,7 +478,7 @@ class RunSanityCheckHandler:
         """Collect and order CheckResult outcomes from workflow state."""
         expected_step_order = ["lint", "typecheck", "complexity", "all_statements"]
         if target.kind == "package":
-            expected_step_order.extend(["test_parity", "deptry"])
+            expected_step_order.extend(["test_parity", "diagrams", "deptry"])
         expected_step_order.append("pytest")
 
         step_display_names = {
@@ -436,6 +487,7 @@ class RunSanityCheckHandler:
             "complexity": "Cognitive Complexity",
             "all_statements": "__all__ Integrity",
             "test_parity": "Test Parity",
+            "diagrams": "Architecture Diagrams",
             "deptry": "Deptry Audit",
             "pytest": "Pytest Suite",
         }

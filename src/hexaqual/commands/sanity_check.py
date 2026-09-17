@@ -243,6 +243,7 @@ def run_sanity_check(
     skip_complexity: bool = False,
     skip_parity: bool = False,
     skip_all_statements: bool = False,
+    skip_diagrams: bool = False,
     skip_steps: tuple[str, ...] | list[str] = (),
     max_complexity: int = 25,
     format_type: str = "table",
@@ -263,6 +264,7 @@ def run_sanity_check(
         skip_complexity: Whether to skip cognitive complexity audit.
         skip_parity: Whether to skip 1:1 test parity checks.
         skip_all_statements: Whether to skip __all__ export checks.
+        skip_diagrams: Whether to skip architecture dependency diagram check.
         skip_steps: Explicit sequence of step names to skip.
         max_complexity: Cognitive complexity ceiling per function.
         format_type: Output representation format ('table', 'json', 'markdown').
@@ -294,6 +296,7 @@ def run_sanity_check(
         skip_complexity=skip_complexity,
         skip_parity=skip_parity,
         skip_all_statements=skip_all_statements,
+        skip_diagrams=skip_diagrams,
         skip_steps=tuple(skip_steps),
         max_complexity=max_complexity,
     )
@@ -395,6 +398,12 @@ def _build_parser(repo_root: Path | None = None) -> argparse.ArgumentParser:
         help="Skip __all__ integrity check.",
     )
     parser.add_argument(
+        "--skip-diagrams",
+        dest="skip_diagrams",
+        action="store_true",
+        help="Skip architecture dependency diagram check.",
+    )
+    parser.add_argument(
         "--skip",
         dest="skip_steps",
         action="append",
@@ -434,6 +443,7 @@ def main() -> None:
         skip_complexity=args.skip_complexity,
         skip_parity=args.skip_parity,
         skip_all_statements=args.skip_all_statements,
+        skip_diagrams=args.skip_diagrams,
         skip_steps=args.skip_steps,
         max_complexity=args.max_complexity,
         format_type=args.format,

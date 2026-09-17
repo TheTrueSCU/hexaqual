@@ -10,6 +10,7 @@ from pathlib import Path
 from hexaqual.domain.governance import (
     AuditComplexityCommand,
     CheckAllStatementsCommand,
+    CheckDiagramsCommand,
     CheckResult,
     CheckStatus,
     CheckTestParityCommand,
@@ -86,6 +87,9 @@ def test_governance_commands():
     cmd_parity = CheckTestParityCommand(target=target, repo_root=repo_root)
     assert cmd_parity.target.name == "cqrs"
 
+    cmd_diag = CheckDiagramsCommand(target=target, repo_root=repo_root, fix=True)
+    assert cmd_diag.fix is True
+
     cmd_test = RunPytestCommand(target=target, repo_root=repo_root, skip=True)
     assert cmd_test.skip is True
 
@@ -94,6 +98,8 @@ def test_governance_commands():
         repo_root=repo_root,
         fix=False,
         skip_tests=False,
+        skip_diagrams=True,
         max_complexity=25,
     )
     assert len(cmd_sanity.targets) == 1
+    assert cmd_sanity.skip_diagrams is True

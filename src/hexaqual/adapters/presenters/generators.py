@@ -33,18 +33,57 @@ class RichGeneratorPresenterAdapter(GeneratorPresenterPort):
         self.console = console or Console()
 
     def present_pydeps(self, report: PydepsReport) -> int:
-        """Render generated pydeps diagrams in a formatted table.
+        """Render generated or verified pydeps diagrams in a formatted table.
 
         Args:
             report: PydepsReport to render.
 
         Returns:
-            0 if generation was successful, 1 otherwise.
+            0 if generation or verification was successful, 1 otherwise.
 
         Notes/Architectural Intent:
-            Displays a colorized summary table listing all generated SVG diagram
-            assets and total count.
+            Displays a colorized summary table listing all generated or checked SVG diagram
+            assets, freshness status, and actionable diagnostic guidance.
         """
+        if report.is_check:
+            table = Table(
+                title="[bold cyan]Architecture Dependency Diagram Freshness Check (pydeps)[/bold cyan]",
+                show_header=True,
+                header_style="bold magenta",
+            )
+            table.add_column("Asset / Package", style="bold")
+            table.add_column("Output File", style="blue")
+            table.add_column("Status", justify="center")
+            table.add_column("Details", style="dim")
+
+            for res in report.results:
+                if res.success and not res.is_stale:
+                    status = "[bold green]PASS[/bold green]"
+                elif res.is_stale:
+                    status = "[bold red]STALE[/bold red]"
+                else:
+                    status = "[bold red]FAIL[/bold red]"
+                table.add_row(res.name, res.path, status, res.details)
+
+            self.console.print(table)
+            if report.is_successful:
+                self.console.print(
+                    Panel.fit(
+                        f"[bold green]✨ All {len(report.results)} architecture dependency diagram(s) are up to date.[/bold green]",
+                        border_style="green",
+                    )
+                )
+                return 0
+
+            self.console.print(
+                Panel.fit(
+                    "[bold red]❌ One or more architecture diagrams are stale or missing.\n"
+                    "Run 'hexaqual deps pydeps' or 'hexaqual deps pydeps --fix' to regenerate.[/bold red]",
+                    border_style="red",
+                )
+            )
+            return 1
+
         table = Table(
             title="[bold cyan]Architecture Dependency Diagram Generator (pydeps)[/bold cyan]",
             show_header=True,
@@ -159,9 +198,17 @@ class JsonGeneratorPresenterAdapter(GeneratorPresenterPort):
         """Format pydeps report as structured JSON."""
         data = {
             "is_successful": report.is_successful,
+            "is_check": report.is_check,
             "total_diagrams": len(report.results),
             "diagrams": [
-                {"name": r.name, "path": r.path, "success": r.success} for r in report.results
+                {
+                    "name": r.name,
+                    "path": r.path,
+                    "success": r.success,
+                    "is_stale": r.is_stale,
+                    "details": r.details,
+                }
+                for r in report.results
             ],
         }
         self.console.print_json(data=data)
@@ -218,14 +265,22 @@ class MarkdownGeneratorPresenterAdapter(GeneratorPresenterPort):
 
     def present_pydeps(self, report: PydepsReport) -> int:
         """Render pydeps diagrams as a Markdown table."""
+        title = (
+            "### 📐 Architecture Dependency Diagrams Freshness Check"
+            if report.is_check
+            else "### 📐 Architecture Dependency Diagrams"
+        )
         lines = [
-            "### 📐 Architecture Dependency Diagrams",
+            title,
             "",
             "| Asset / Package | Output File | Status |",
             "|---|---|---|",
         ]
         for r in report.results:
-            status = "✅ Generated" if r.success else "❌ Failed"
+            if report.is_check:
+                status = "✅ Up to date" if r.success and not r.is_stale else "❌ Stale"
+            else:
+                status = "✅ Generated" if r.success else "❌ Failed"
             lines.append(f"| `{r.name}` | `{r.path}` | {status} |")
         lines.append("")
         self.console.print("\n".join(lines))

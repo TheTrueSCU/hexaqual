@@ -57,3 +57,11 @@
   language: system
   files: \.(md|rst)$
   pass_filenames: false
+
+- id: hexaqual-diagrams
+  name: hexaqual architecture diagrams
+  description: Verify architecture dependency SVG diagrams are fresh and up to date
+  entry: uv run hexaqual deps pydeps --check
+  language: system
+  files: ^packages/.*\.py$
+  pass_filenames: false

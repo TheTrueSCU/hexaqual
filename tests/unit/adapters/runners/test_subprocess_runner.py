@@ -163,3 +163,77 @@ def test_run_pytest_variations(tmp_path: Path):
         mock_exec.return_value = (1, "1 failed", "Traceback", 0.5)
         file_res = adapter.run_pytest(file_target, tmp_path)
         assert file_res.status == CheckStatus.FAIL
+
+
+def test_run_diagrams_variations(tmp_path: Path):
+    """Verify run_diagrams for skip conditions, check mode, and fix mode."""
+    adapter = SubprocessToolRunnerAdapter()
+    file_target = SanityTarget("f.py", "file", tmp_path / "f.py", (), ())
+    pkg_target = SanityTarget("my_pkg", "package", tmp_path / "my_pkg", (), ())
+
+    # 1. Non-package target skips
+    res_skip_kind = adapter.run_diagrams(file_target, tmp_path)
+    assert res_skip_kind.status == CheckStatus.SKIP
+    assert "packages only" in res_skip_kind.details
+
+    # 2. Missing docs/assets/pydeps directory skips
+    res_no_dir = adapter.run_diagrams(pkg_target, tmp_path)
+    assert res_no_dir.status == CheckStatus.SKIP
+    assert "No docs/assets/pydeps directory" in res_no_dir.details
+
+    # Create docs/assets/pydeps
+    (tmp_path / "docs" / "assets" / "pydeps").mkdir(parents=True)
+
+    # 3. Missing dot executable skips
+    with patch("shutil.which", return_value=None):
+        res_no_dot = adapter.run_diagrams(pkg_target, tmp_path)
+        assert res_no_dot.status == CheckStatus.SKIP
+        assert "Graphviz 'dot' not installed" in res_no_dot.details
+
+    # 4. Check mode: up to date
+    with (
+        patch("shutil.which", return_value="/usr/bin/dot"),
+        patch(
+            "hexaqual.adapters.runners.subprocess_runner.check_package_diagram",
+            return_value=(True, "docs/assets/pydeps/my_pkg.svg"),
+        ),
+    ):
+        res_ok = adapter.run_diagrams(pkg_target, tmp_path, fix=False)
+        assert res_ok.status == CheckStatus.PASS
+        assert "Diagram up to date" in res_ok.details
+
+    # 5. Check mode: stale
+    with (
+        patch("shutil.which", return_value="/usr/bin/dot"),
+        patch(
+            "hexaqual.adapters.runners.subprocess_runner.check_package_diagram",
+            return_value=(False, "docs/assets/pydeps/my_pkg.svg"),
+        ),
+    ):
+        res_stale = adapter.run_diagrams(pkg_target, tmp_path, fix=False)
+        assert res_stale.status == CheckStatus.FAIL
+        assert "Diagram stale" in res_stale.details
+
+    # 6. Fix mode: successful generation
+    with (
+        patch("shutil.which", return_value="/usr/bin/dot"),
+        patch(
+            "hexaqual.adapters.runners.subprocess_runner.generate_package_diagram",
+            return_value="docs/assets/pydeps/my_pkg.svg",
+        ),
+    ):
+        res_fixed = adapter.run_diagrams(pkg_target, tmp_path, fix=True)
+        assert res_fixed.status == CheckStatus.PASS
+        assert "Diagram regenerated" in res_fixed.details
+
+    # 7. Fix mode: generation failure
+    with (
+        patch("shutil.which", return_value="/usr/bin/dot"),
+        patch(
+            "hexaqual.adapters.runners.subprocess_runner.generate_package_diagram",
+            return_value=None,
+        ),
+    ):
+        res_fail = adapter.run_diagrams(pkg_target, tmp_path, fix=True)
+        assert res_fail.status == CheckStatus.FAIL
+        assert "Diagram generation failed" in res_fail.details

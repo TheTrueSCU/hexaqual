@@ -41,6 +41,10 @@ def _build_sanity_template_workflow() -> Workflow:
     def _test_parity(ctx: StepContext) -> None:
         pass
 
+    @wf.step("diagrams", trigger_rule=TriggerRule.ALL_SUCCESS_OR_SKIPPED)
+    def _diagrams(ctx: StepContext) -> None:
+        pass
+
     @wf.stage("analysis")
     @wf.step(
         "typecheck",
@@ -83,6 +87,7 @@ sanity_binder = _build_sanity_template_workflow().create_cli_binder(
         "lint": ["--skip-ruff"],
         "all_statements": ["--skip-statements"],
         "test_parity": ["--skip-parity"],
+        "diagrams": ["--skip-diagrams"],
         "typecheck": ["--skip-ty"],
         "pytest": ["--skip-tests"],
     }
@@ -151,6 +156,7 @@ def check(
         skip_complexity="complexity" in merged_skips,
         skip_parity="test_parity" in merged_skips,
         skip_all_statements="all_statements" in merged_skips,
+        skip_diagrams="diagrams" in merged_skips,
         skip_steps=tuple(sorted(merged_skips)),
         max_complexity=max_complexity,
         format_type=format_type,

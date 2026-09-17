@@ -1,5 +1,12 @@
 # CHANGELOG
 
+## v0.4.1 (2026-09-17)
+
+### Highlights & Features
+* **Architecture Diagram Freshness Gate (`hexaqual-diagrams`)**: Introduced automated architecture diagram verification and synchronization via `hexaqual deps pydeps --check` / `--fix`, integrated into `hexaqual sanity` static checks and exposed as a modular pre-commit hook (`hexaqual-diagrams`).
+* **Conditional Diagram Skip**: Automatically skips diagram verification cleanly (`CheckStatus.SKIP`) if Graphviz `dot` is absent or if no `docs/assets/pydeps/` directory exists.
+* **Sanity Step Control (`--skip-diagrams`)**: Added dynamic `--skip-diagrams` workflow option to `hexaqual check` and `hexaqual sanity`.
+
 ## v0.4.0 (2026-09-16)
 
 ### Highlights & Features

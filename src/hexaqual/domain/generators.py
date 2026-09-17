@@ -15,12 +15,14 @@ from hexaqual.domain.base import Command
 
 @dataclass(frozen=True)
 class PydepsDiagramResult:
-    """Represents a generated pydeps dependency diagram result.
+    """Represents a generated or audited pydeps dependency diagram result.
 
     Attributes:
         name: Name of the package or overview diagram.
-        path: Path where the SVG diagram was written.
-        success: Whether the diagram generation succeeded.
+        path: Path where the SVG diagram was written or inspected.
+        success: Whether the diagram generation or verification succeeded.
+        is_stale: Whether the diagram on disk was determined to be out of date.
+        details: Diagnostic explanation or failure message.
 
     Notes/Architectural Intent:
         Encapsulates individual diagram output metadata for multi-format
@@ -30,15 +32,18 @@ class PydepsDiagramResult:
     name: str
     path: str
     success: bool = True
+    is_stale: bool = False
+    details: str = ""
 
 
 @dataclass(frozen=True)
 class PydepsReport:
-    """Summary report of pydeps architecture diagram generation.
+    """Summary report of pydeps architecture diagram generation or verification.
 
     Attributes:
-        results: Tuple of generated diagram results.
-        is_successful: True if all requested diagrams generated successfully.
+        results: Tuple of generated or audited diagram results.
+        is_successful: True if all requested diagrams generated or verified successfully.
+        is_check: Whether this report represents a read-only freshness check.
 
     Notes/Architectural Intent:
         Represents the immutable aggregate output of pydeps diagram generation
@@ -47,13 +52,16 @@ class PydepsReport:
 
     results: tuple[PydepsDiagramResult, ...] = ()
     is_successful: bool = True
+    is_check: bool = False
 
 
 class GeneratePydepsCommand(Command):
-    """CQRS Command to generate architecture dependency diagrams via pydeps.
+    """CQRS Command to generate or verify architecture dependency diagrams via pydeps.
 
     Attributes:
-        packages: Optional tuple of specific package names to generate diagrams for.
+        packages: Optional tuple of specific package names to process diagrams for.
+        check_only: Whether to perform read-only freshness validation without writing files.
+        fix: Whether to regenerate diagrams explicitly.
 
     Notes/Architectural Intent:
         Dispatches diagram generation through the governance bus, decoupling
@@ -61,6 +69,8 @@ class GeneratePydepsCommand(Command):
     """
 
     packages: tuple[str, ...] = ()
+    check_only: bool = False
+    fix: bool = False
 
 
 @dataclass(frozen=True)

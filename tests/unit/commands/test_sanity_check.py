@@ -162,6 +162,7 @@ def test_parser_and_main(tmp_path: Path) -> None:
                 "--skip-complexity",
                 "--skip-parity",
                 "--skip-statements",
+                "--skip-diagrams",
                 "--skip",
                 "lint",
                 "-mx",
@@ -178,6 +179,7 @@ def test_parser_and_main(tmp_path: Path) -> None:
     assert parsed.skip_complexity is True
     assert parsed.skip_parity is True
     assert parsed.skip_all_statements is True
+    assert parsed.skip_diagrams is True
     assert parsed.skip_steps == ["lint"]
     assert parsed.max_complexity == 20
     assert parsed.format == "json"

@@ -16,6 +16,7 @@ from hexaqual.domain.base import Command
 __all__ = [
     "AuditComplexityCommand",
     "CheckAllStatementsCommand",
+    "CheckDiagramsCommand",
     "CheckResult",
     "CheckStatus",
     "CheckTestParityCommand",
@@ -122,6 +123,25 @@ class RunPytestCommand(Command):
     skip: bool = False
 
 
+class CheckDiagramsCommand(Command):
+    """CQRS Command to verify or fix architecture dependency diagrams for a target.
+
+    Attributes:
+        target: Target component to audit.
+        repo_root: Repository root path.
+        fix: Whether to automatically regenerate stale diagrams.
+        skip: Whether to skip running diagram checks.
+
+    Notes/Architectural Intent:
+        Dispatched during sanity check battery to verify or update SVG architecture diagrams.
+    """
+
+    target: SanityTarget
+    repo_root: Path
+    fix: bool = False
+    skip: bool = False
+
+
 class RunSanityCheckCommand(Command):
     """Composite command orchestrating full sanity check battery across targets."""
 
@@ -134,5 +154,6 @@ class RunSanityCheckCommand(Command):
     skip_complexity: bool = False
     skip_parity: bool = False
     skip_all_statements: bool = False
+    skip_diagrams: bool = False
     skip_steps: tuple[str, ...] = ()
     max_complexity: int = 25

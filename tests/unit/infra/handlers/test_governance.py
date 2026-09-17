@@ -11,6 +11,7 @@ from unittest.mock import MagicMock
 from hexaqual.domain.governance import (
     AuditComplexityCommand,
     CheckAllStatementsCommand,
+    CheckDiagramsCommand,
     CheckResult,
     CheckStatus,
     CheckTestParityCommand,
@@ -25,6 +26,7 @@ from hexaqual.infra.dispatcher import CommandDispatcher
 from hexaqual.infra.handlers.governance import (
     AuditComplexityHandler,
     CheckAllStatementsHandler,
+    CheckDiagramsHandler,
     CheckTestParityHandler,
     RunDeptryHandler,
     RunLinterHandler,
@@ -44,6 +46,7 @@ def test_leaf_governance_handlers():
     mock_runner.run_complexipy.return_value = expected_res
     mock_runner.run_all_statements.return_value = expected_res
     mock_runner.run_test_parity.return_value = expected_res
+    mock_runner.run_diagrams.return_value = expected_res
     mock_runner.run_deptry.return_value = expected_res
     mock_runner.run_pytest.return_value = expected_res
 
@@ -79,6 +82,18 @@ def test_leaf_governance_handlers():
         == expected_res
     )
     mock_runner.run_test_parity.assert_called_once()
+
+    h_diag = CheckDiagramsHandler(mock_runner)
+    assert (
+        h_diag.handle(CheckDiagramsCommand(target=target, repo_root=Path("/tmp"), fix=False))
+        == expected_res
+    )
+    mock_runner.run_diagrams.assert_called_once()
+
+    skip_diag_res = h_diag.handle(
+        CheckDiagramsCommand(target=target, repo_root=Path("/tmp"), skip=True)
+    )
+    assert skip_diag_res.status == CheckStatus.SKIP
 
     h_deptry = RunDeptryHandler(mock_runner)
     assert h_deptry.handle(RunDeptryCommand(target=target, skip=False)) == expected_res
@@ -116,9 +131,9 @@ def test_run_sanity_check_handler_composite_dispatch():
 
     report = handler.handle(cmd)
     assert report.exit_code == 0
-    # Package target should dispatch: linter, ty, complexipy, all_statements, parity, deptry, pytest = 7 calls
-    assert mock_bus.dispatch.call_count == 7
-    assert len(report.results) == 7
+    # Package target should dispatch: linter, ty, complexipy, all_statements, parity, diagrams, deptry, pytest = 8 calls
+    assert mock_bus.dispatch.call_count == 8
+    assert len(report.results) == 8
 
 
 def test_run_sanity_check_handler_skip_flags():
@@ -144,13 +159,14 @@ def test_run_sanity_check_handler_skip_flags():
         skip_complexity=True,
         skip_parity=True,
         skip_all_statements=True,
+        skip_diagrams=True,
         skip_steps=("lint",),
     )
     report = handler.handle(cmd)
     assert report.exit_code == 0
-    # 5 steps are skipped immediately; deptry and pytest are dispatched with skip=True
-    assert mock_bus.dispatch.call_count == 2
-    assert len(report.results) == 7
+    # 5 steps are skipped immediately; diagrams, deptry, and pytest are dispatched with skip=True
+    assert mock_bus.dispatch.call_count == 3
+    assert len(report.results) == 8
 
 
 def test_run_sanity_check_handler_with_failures():

@@ -15,17 +15,28 @@ from hexaqual.domain.generators import (
 
 def test_pydeps_domain_models() -> None:
     """Verify PydepsDiagramResult and PydepsReport instantiation and immutability."""
-    res = PydepsDiagramResult(name="core", path="docs/core.svg", success=True)
+    res = PydepsDiagramResult(
+        name="core",
+        path="docs/core.svg",
+        success=True,
+        is_stale=False,
+        details="",
+    )
     assert res.name == "core"
     assert res.path == "docs/core.svg"
     assert res.success is True
+    assert res.is_stale is False
+    assert res.details == ""
 
-    report = PydepsReport(results=(res,), is_successful=True)
+    report = PydepsReport(results=(res,), is_successful=True, is_check=True)
     assert len(report.results) == 1
     assert report.is_successful is True
+    assert report.is_check is True
 
-    cmd = GeneratePydepsCommand(packages=("core", "events"))
+    cmd = GeneratePydepsCommand(packages=("core", "events"), check_only=True, fix=False)
     assert cmd.packages == ("core", "events")
+    assert cmd.check_only is True
+    assert cmd.fix is False
 
 
 def test_usage_docs_domain_models() -> None:
