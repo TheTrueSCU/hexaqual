@@ -7,8 +7,11 @@ Notes/Architectural Intent:
 
 from __future__ import annotations
 
+from collections.abc import Generator
 from pathlib import Path
 from unittest.mock import patch
+
+import pytest
 
 from hexaqual.utils.pydeps import (
     _output_dir,
@@ -19,6 +22,13 @@ from hexaqual.utils.pydeps import (
     generate_overview_diagram,
     generate_package_diagram,
 )
+
+
+@pytest.fixture(autouse=True)
+def mock_dot_available() -> Generator[None]:
+    """Provide a mock dot executable path so unit tests don't depend on system graphviz."""
+    with patch("shutil.which", return_value="/usr/bin/dot"):
+        yield
 
 
 def test_output_dir(tmp_path: Path) -> None:

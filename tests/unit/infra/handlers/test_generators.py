@@ -2,8 +2,11 @@
 
 from __future__ import annotations
 
+from collections.abc import Generator
 from pathlib import Path
 from unittest.mock import patch
+
+import pytest
 
 from hexaqual.domain.generators import (
     GenerateArchonTestsCommand,
@@ -15,6 +18,13 @@ from hexaqual.infra.handlers.generators import (
     GeneratePydepsHandler,
     GenerateUsageDocsHandler,
 )
+
+
+@pytest.fixture(autouse=True)
+def mock_dot_available() -> Generator[None]:
+    """Provide a mock dot executable path so unit tests don't depend on system graphviz."""
+    with patch("shutil.which", return_value="/usr/bin/dot"):
+        yield
 
 
 def test_generate_pydeps_handler(tmp_path: Path) -> None:
