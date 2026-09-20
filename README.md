@@ -74,6 +74,7 @@ Hexaqual subsumes all developer quality tools into a single unified entrypoint (
 | `hexaqual imports` | `check`, `generate` | Verify and generate import-linter contracts for hexagonal boundary enforcement. |
 | `hexaqual refactor` | `alphabetize`, `rename`, `extract`, `move`, `run` | Automated code refactoring and AST-level symbol alphabetization via Rope. |
 | `hexaqual docs` | `usage`, `publish` | Verify/regenerate USAGE.md catalogs and publish Medium articles. |
+| `hexaqual agents` | `sync`, `check`, `list` | Synchronize and verify universal `.agents` guardrails (rules, workflows, skills). |
 | `hexaqual complexity` | — | Audit cognitive complexity across functions and methods via complexipy. |
 
 ```bash
@@ -156,9 +157,65 @@ graph LR
 
 ---
 
+## 🤖 Universal AI Guardrails & Agent Management (`.agents/`)
+
+Hexaqual acts as the single source of truth for AI pair programming assistants (Antigravity CLI, Cursor, Claude Code, Windsurf) across the entire `hexa-` family (`hexastack`, `hexaqueue`, `hexaflow`, `hexaqual`).
+
+It implements a **Two-Tier Architecture**:
+1. **Universal Guardrails (Managed by `hexaqual`)**: Bundled rules (`hexaqual-*.md`), workflows (`hexaqual-*.md`), and skills (`hexaqual_*.py`) that apply universally across every repository.
+2. **Family-Member Guardrails (Local to `X`)**: Repository-specific rules (`hexa<X>-*.md`) that define project-specific invariants (e.g., `hexaqueue-elevation.md`, `hexaflow-dag-invariants.md`). These local assets are preserved untouched during synchronizations.
+
+### Bundled Universal Catalog
+
+| Category | File | Description |
+|---|---|---|
+| **Rule** | `hexaqual-boundaries.md` | Enforce hexagonal layer isolation (`domain/` -> `ports/` -> `adapters/` -> `infra/`). |
+| **Rule** | `hexaqual-test-authoring.md` | 1:1 test parity, `__init__.py` mirroring, pure ABC port mocking, side-effect-free assertions. |
+| **Rule** | `hexaqual-hermetic-testing.md` | Hermetically sealed test fixtures, `tmp_path`, zero global state or socket pollution. |
+| **Rule** | `hexaqual-docstrings.md` | Mandatory Google docstrings with `Args:`, `Returns:`, `Raises:`, and `Notes/Architectural Intent:`. |
+| **Rule** | `hexaqual-workspace.md` | Monorepo hierarchy, subpackage import boundaries, casefold-sorted `__all__` exports. |
+| **Rule** | `hexaqual-typing.md` | Python 3.13 generic syntax (`class C[T]:`), zero bare `Any` across domain boundaries. |
+| **Rule** | `hexaqual-property-testing.md`| Hypothesis stateful fuzzing (`RuleBasedStateMachine`) for state machines and schedulers. |
+| **Rule** | `hexaqual-security.md` | Prohibition of `shell=True`, path traversal guards, secret scanning, least-privilege defaults. |
+| **Rule** | `hexaqual-sync.md` | Guardrail invariant to execute `hexaqual agents sync` upon dependency upgrades. |
+| **Workflow** | `hexaqual-pre-commit.md` | Fast pre-commit gate (`hexaqual sanity -a --skip-tests`, docs freshness, agent sync). |
+| **Workflow** | `hexaqual-pre-push.md` | Full pre-push gate: format drift -> sanity with tests -> graphify -> pre-commit hooks. |
+| **Workflow** | `hexaqual-pre-release.md`| Pre-release packaging audit, doc freeze, PyPI availability, reproducible wheel check. |
+| **Workflow** | `hexaqual-scaffold-unit.md` | Scaffold domain entity, port, adapter, and mirrored unit test file. |
+| **Workflow** | `hexaqual-mutation.md` | Targeted mutation analysis and actionable mutant triage. |
+| **Workflow** | `hexaqual-sync.md` | Synchronize shared agent guardrails from installed `hexaqual`. |
+| **Skill** | `hexaqual_audit_complexity.py`| Fast function cognitive complexity linter (<= 25 via `complexipy`). |
+| **Skill** | `hexaqual_audit_docstrings.py`| AST docstring auditor checking for Google docstrings & Architectural Intent. |
+| **Skill** | `hexaqual_scaffold_test_parity.py`| Git-aware test mirror and `__init__.py` scaffolding helper. |
+
+### CLI Synchronization & Drift Verification
+
+```bash
+# Synchronize universal guardrails to current repository (preserves local hexaX-* rules)
+uv run hexaqual agents sync
+
+# Dry-run simulation of synchronization
+uv run hexaqual agents sync --dry-run
+
+# Verify repository guardrails match the installed hexaqual version (pre-commit gate)
+uv run hexaqual agents check
+
+# List all universal bundled rules, workflows, and skills
+uv run hexaqual agents list
+```
+
+### Root Pointer (`AGENTS.md`) & Dynamic Reloading
+
+- **Aggregated Index**: `hexaqual agents sync` creates a root `AGENTS.md` indexing all active rules, workflows, and skills (both universal `hexaqual-*` and project-specific `hexa<X>-*` assets). This ensures single-file agent tools (like GitHub Copilot Workspace) maintain full context.
+- **VCS Hygiene**: `hexaqual agents sync` ensures `.gitignore` excludes `.agents/*/hexaqual-*` so upstream assets are never committed to git. Maintainers may commit `AGENTS.md` for GitHub visibility or add it to local `.git/info/exclude` to keep the root directory clean.
+- **Per-Turn Dynamic Reloading**: In Antigravity CLI/IDE, rule files under `.agents/rules/` and `AGENTS.md` are dynamically reloaded at the start of each user prompt, so synced guardrails take effect immediately on the next interaction.
+
+---
+
 ## 🏛️ Architecture & Documentation
 
 - **[Architecture & Design Guide](docs/architecture.md)**: Hexagonal boundaries, CQRS command bus, and architectural invariants.
+- **[AI Agent Governance Guide](docs/agents-guide.md)**: Universal `.agents/` rules, SDLC workflows, colocated skills, and VCS hygiene.
 - **[CLI Reference Catalog](USAGE.md)**: Full unrolled command and subcommand trees with exhaustive option listings.
 
 ---

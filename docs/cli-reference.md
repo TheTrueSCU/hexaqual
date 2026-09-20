@@ -180,6 +180,40 @@ hexaqual release publish
 
 ---
 
+## 9. AI Guardrails & Agent Governance (`agents`)
+
+Manages, synchronizes, and audits universal `.agents/` guardrails across repositories while preserving local domain rules.
+
+```bash
+# Synchronize managed guardrails to the target repository (default: current working directory)
+hexaqual agents sync
+
+# Target an explicit repository or .agents directory
+hexaqual agents sync --target /path/to/repo
+
+# Simulate synchronization without writing files to disk
+hexaqual agents sync --dry-run
+
+# Check for drift between local .agents/ and installed hexaqual (exits 1 if drifted)
+hexaqual agents check
+
+# List all bundled universal rules, workflows, and skills
+hexaqual agents list
+```
+
+### Root `AGENTS.md` & Reload Lifecycle
+
+1. **Root Pointer (`AGENTS.md`)**:
+   - `hexaqual agents sync` generates an aggregated `AGENTS.md` at the repository root indexing all active rules, workflows, and skills (both universal `hexaqual-*` and local `hexa<X>-*` assets).
+   - This ensures tools that only inspect a single root file (such as GitHub Copilot Workspace or Claude Code) immediately see the full guardrails suite.
+2. **Git Cleanliness via `.git/info/exclude`**:
+   - To keep repository git status clean, `hexaqual agents sync` automatically appends `AGENTS.md` to `.git/info/exclude` if a `.git` repository directory is present.
+3. **Dynamic Reloading**:
+   - **Antigravity / AGY CLI**: Re-reads `.agents/rules/*.md` and `AGENTS.md` at the start of each conversation turn. Any synced updates take effect on the very next prompt without restarting.
+   - **Pre-Commit Enforcement**: The `hexaqual-agents` pre-commit hook ensures files cannot drift from the installed `hexaqual` distribution.
+
+---
+
 ## Output Formatting (`-f / --format`)
 
 All diagnostic commands support uniform `-f / --format` flags:

@@ -2,6 +2,12 @@
 
 from __future__ import annotations
 
+from hexaqual.domain.agents import (
+    AgentAsset,
+    AgentAssetKind,
+    AgentCheckReport,
+    AgentSyncReport,
+)
 from hexaqual.domain.analysis import (
     CodeQlScanReport,
     FuzzRunCommand,
@@ -108,6 +114,10 @@ from hexaqual.domain.testing import (
 )
 
 __all__ = [
+    "AgentAsset",
+    "AgentAssetKind",
+    "AgentCheckReport",
+    "AgentSyncReport",
     "AlertSeverity",
     "AlphabetizeCodeCommand",
     "AlphabetizeCodeReport",

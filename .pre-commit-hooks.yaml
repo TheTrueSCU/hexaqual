@@ -65,3 +65,11 @@
   language: system
   files: ^packages/.*\.py$
   pass_filenames: false
+
+- id: hexaqual-agents
+  name: hexaqual agent assets integrity
+  description: Ensure shared .agents rules, workflows, and skills are in sync with hexaqual
+  entry: uv run hexaqual agents check
+  language: system
+  files: ^(\.agents/|pyproject\.toml|uv\.lock)$
+  pass_filenames: false

@@ -13,6 +13,12 @@ import typer
 from rich.console import Console
 
 from hexaqual import __version__
+from hexaqual.cli.agents import (
+    agents_app,
+    agents_check,
+    agents_list,
+    agents_sync,
+)
 from hexaqual.cli.check import check, complexity, register_check_commands, sanity
 from hexaqual.cli.deps import (
     deps_app,
@@ -62,6 +68,10 @@ from hexaqual.cli.test import (
 )
 
 __all__ = [
+    "agents_app",
+    "agents_check",
+    "agents_list",
+    "agents_sync",
     "app",
     "check",
     "complexity",
@@ -125,6 +135,7 @@ console = Console()
 register_check_commands(app)
 
 # Mount modular sub-applications
+app.add_typer(agents_app)
 app.add_typer(statements_app)
 app.add_typer(parity_app)
 app.add_typer(test_app)

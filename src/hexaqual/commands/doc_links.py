@@ -108,9 +108,10 @@ def _discover_markdown_files(base_path: Path) -> list[Path]:
 def _extract_raw_links(line: str) -> list[str]:
     """Extract inline and reference link targets from a single text line."""
     links: list[str] = []
-    for match in LINK_PATTERN.finditer(line):
+    clean_line = re.sub(r"`[^`]*`", "", line)
+    for match in LINK_PATTERN.finditer(clean_line):
         links.append(match.group(1).strip())
-    ref_match = REF_LINK_PATTERN.match(line)
+    ref_match = REF_LINK_PATTERN.match(clean_line)
     if ref_match:
         links.append(ref_match.group(1).strip())
     return links

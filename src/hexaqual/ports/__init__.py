@@ -1,5 +1,9 @@
 """Ports package exports for hexaqual."""
 
+from hexaqual.ports.agents import (
+    AgentAssetPort,
+    AgentPresenterPort,
+)
 from hexaqual.ports.analysis import (
     AnalysisPresenterPort,
 )
@@ -31,6 +35,8 @@ from hexaqual.ports.testing import (
 )
 
 __all__ = [
+    "AgentAssetPort",
+    "AgentPresenterPort",
     "AnalysisPresenterPort",
     "DependencyAuditorPort",
     "DependencyPresenterPort",

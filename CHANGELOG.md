@@ -1,5 +1,19 @@
 # CHANGELOG
 
+## v0.5.0 (2026-09-19)
+
+### Highlights & Features
+* **Universal AI Guardrails & Agent Management (`hexaqual agents`)**: Introduced a first-class subsystem to bundle, synchronize, audit, and inspect shared `.agents/` rules, workflows, and skills across repositories (`sync`, `check`, `list`).
+* **Bundled Universal Assets**: Packaged 9 universal rules (`hexaqual-boundaries`, `hexaqual-test-authoring`, `hexaqual-hermetic-testing`, `hexaqual-docstrings`, `hexaqual-workspace`, `hexaqual-typing`, `hexaqual-property-testing`, `hexaqual-security`, `hexaqual-sync`), 6 SDLC-aligned workflows (`hexaqual-pre-commit`, `hexaqual-pre-push`, `hexaqual-pre-release`, `hexaqual-scaffold-unit`, `hexaqual-mutation`, `hexaqual-sync`), and 3 agent skills (`hexaqual_audit_complexity.py`, `hexaqual_audit_docstrings.py`, `hexaqual_scaffold_test_parity.py`).
+* **Repo-Specific Asset Preservation**: Strict preservation of local unmanaged rules (`hexa<X>-*.md`, `graphify.md`), ensuring individual family members can layer domain constraints without clobbering upstream standards.
+* **Modular Pre-Commit Hook (`hexaqual-agents`)**: Added pre-commit gate verifying that managed assets in `.agents/` remain byte-for-byte identical to the installed `hexaqual` distribution.
+* **Root `AGENTS.md` Index & Git Exclusion**: Automatically generates and refreshes an aggregated `AGENTS.md` index at repository root and registers it in `.git/info/exclude` to support single-file agent tools without git clutter.
+* **SDLC-Aligned Gate Names**: Renamed pre-flight workflows to `hexaqual-pre-commit`, `hexaqual-pre-push`, and `hexaqual-pre-release` to create intuitive symmetry with git hook lifecycles.
+
+### Fixes & Reliability
+* **Fast Pre-Commit Sanity Execution**: Fixed CLI wrapper argument forwarding so `--skip-tests` dynamically bypasses pytest in `hexaqual sanity -a --skip-tests`, reducing pre-commit runtime from ~97s to <1s.
+* **Documentation Link Checking in Code Spans**: Filtered out inline backtick code spans in `hexaqual docs links` to prevent false positive link parsing on Python generic syntax like `[T](item: T)`.
+
 ## v0.4.2 (2026-09-17)
 
 ### Fixes & Reliability

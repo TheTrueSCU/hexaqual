@@ -100,5 +100,6 @@ uv run hexaqual sanity -a --skip-tests
 
 - [Architecture & Design](architecture.md) — Hexagonal layers, CQRS dispatching, and design invariants.
 - [CLI Command Catalog](cli-reference.md) — Comprehensive command and flag documentation.
+- [AI Agent Governance](agents-guide.md) — Universal `.agents/` rules, workflows, skills, and VCS hygiene.
 - [Pre-Commit Integration](pre-commit-guide.md) — Setting up fast pre-commit hooks.
 - [CI/CD & GitHub Actions](ci-cd-integration.md) — Automated PR quality gates, reproducible builds, and OpenSSF Gold workflows.

@@ -45,6 +45,7 @@ Usage: hexaqual [OPTIONS] COMMAND [ARGS]...
 │ sanity      Execute the sanity check pipeline (alias for 'check').           │
 │ complexity  Audit cognitive complexity using complexipy.                     │
 │ version     Display the current Hexaqual version.                            │
+│ agents      Manage, synchronize, and verify universal .agents guardrails.    │
 │ statements  Audit and format __all__ statements.                             │
 │ parity      Audit test symmetry and optional extras parity.                  │
 │ test        Test execution, coverage audits, and architecture verification.  │
@@ -61,6 +62,105 @@ Usage: hexaqual [OPTIONS] COMMAND [ARGS]...
 ---
 
 ## 🛠️ Complete Subcommand Tree Reference
+
+### `hexaqual agents`
+
+```text
+Usage: hexaqual agents [OPTIONS] COMMAND [ARGS]...
+
+ Manage, synchronize, and verify universal .agents guardrails.
+
+╭─ Options ────────────────────────────────────────────────────────────────────╮
+│ --help          Show this message and exit.                                  │
+╰──────────────────────────────────────────────────────────────────────────────╯
+╭─ Commands ───────────────────────────────────────────────────────────────────╮
+│ sync   Synchronize universal rules, workflows, and skills to target          │
+│        repository.                                                           │
+│ check  Check whether managed .agents assets in target repository match       │
+│        hexaqual.                                                             │
+│ list   List all universal agent rules, workflows, and skills bundled in      │
+│        hexaqual.                                                             │
+╰──────────────────────────────────────────────────────────────────────────────╯
+```
+
+#### `hexaqual agents check`
+
+```text
+Usage: hexaqual agents check [OPTIONS]
+
+ Check whether managed .agents assets in target repository match hexaqual.
+
+ Args:
+     target: Optional path to the repository root or .agents directory.
+     format_type: Output presentation format.
+
+ Raises:
+     typer.Exit: If drift or missing assets are detected (exit code 1).
+
+ Notes/Architectural Intent:
+     Deterministic pre-commit and CI verification gate.
+
+╭─ Options ────────────────────────────────────────────────────────────────────╮
+│ --target  -t      <path>  Target repository root or .agents directory.       │
+│ --format  -f      <str>   Output format (table, json, markdown).             │
+│                           [default: table]                                   │
+│ --help                    Show this message and exit.                        │
+╰──────────────────────────────────────────────────────────────────────────────╯
+```
+
+#### `hexaqual agents list`
+
+```text
+Usage: hexaqual agents list [OPTIONS]
+
+ List all universal agent rules, workflows, and skills bundled in hexaqual.
+
+ Args:
+     format_type: Output presentation format.
+
+ Raises:
+     typer.Exit: If catalog rendering fails.
+
+ Notes/Architectural Intent:
+     Informational inspection command for developers and AI agents.
+
+╭─ Options ────────────────────────────────────────────────────────────────────╮
+│ --format  -f      <str>  Output format (table, json, markdown).              │
+│                          [default: table]                                    │
+│ --help                   Show this message and exit.                         │
+╰──────────────────────────────────────────────────────────────────────────────╯
+```
+
+#### `hexaqual agents sync`
+
+```text
+Usage: hexaqual agents sync [OPTIONS]
+
+ Synchronize universal rules, workflows, and skills to target repository.
+
+ Args:
+     target: Optional path to the repository root or .agents directory.
+     dry_run: Whether to simulate changes without writing to disk.
+     format_type: Output presentation format.
+
+ Raises:
+     typer.Exit: If synchronization fails.
+
+ Notes/Architectural Intent:
+     Overwrites managed assets (prefixed with hexaqual-) while strictly
+ preserving
+     unmanaged local repository rules and workflows (e.g. hexaqueue-*,
+ hexaflow-*).
+
+╭─ Options ────────────────────────────────────────────────────────────────────╮
+│ --target   -t      <path>  Target repository root or .agents directory.      │
+│ --dry-run                  Simulate synchronization without writing files to │
+│                            disk.                                             │
+│ --format   -f      <str>   Output format (table, json, markdown).            │
+│                            [default: table]                                  │
+│ --help                     Show this message and exit.                       │
+╰──────────────────────────────────────────────────────────────────────────────╯
+```
 
 ### `hexaqual architectural`
 

@@ -1,5 +1,11 @@
 """Presenters package export for hexaqual."""
 
+from hexaqual.adapters.presenters.agents import (
+    JsonAgentPresenterAdapter,
+    MarkdownAgentPresenterAdapter,
+    RichAgentPresenterAdapter,
+    create_agent_presenter,
+)
 from hexaqual.adapters.presenters.analysis import (
     JsonAnalysisPresenterAdapter,
     MarkdownAnalysisPresenterAdapter,
@@ -78,6 +84,7 @@ __all__ = [
     "build_checks_table",
     "build_repo_status_table",
     "build_security_comments_table",
+    "create_agent_presenter",
     "create_analysis_presenter",
     "create_dependency_presenter",
     "create_generator_presenter",
@@ -86,6 +93,7 @@ __all__ = [
     "create_pypi_presenter",
     "create_refactoring_presenter",
     "create_testing_presenter",
+    "JsonAgentPresenterAdapter",
     "JsonAnalysisPresenterAdapter",
     "JsonDependencyPresenterAdapter",
     "JsonGeneratorPresenterAdapter",
@@ -94,6 +102,7 @@ __all__ = [
     "JsonPyPiPresenterAdapter",
     "JsonRefactoringPresenterAdapter",
     "JsonTestingPresenterAdapter",
+    "MarkdownAgentPresenterAdapter",
     "MarkdownAnalysisPresenterAdapter",
     "MarkdownDependencyPresenterAdapter",
     "MarkdownGeneratorPresenterAdapter",
@@ -116,6 +125,7 @@ __all__ = [
     "render_security_comments_json",
     "render_security_comments_plain",
     "resolve_output_format",
+    "RichAgentPresenterAdapter",
     "RichAnalysisPresenterAdapter",
     "RichDependencyPresenterAdapter",
     "RichGeneratorPresenterAdapter",

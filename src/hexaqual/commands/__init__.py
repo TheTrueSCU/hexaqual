@@ -1,5 +1,10 @@
 """Commands package export for hexaqual."""
 
+from hexaqual.commands.agents import (
+    check_agents_command,
+    list_agents_command,
+    sync_agents_command,
+)
 from hexaqual.commands.all_statements import (
     check_main as all_statements_check_main,
 )
@@ -91,6 +96,7 @@ from hexaqual.commands.test_parity import (
 __all__ = [
     "all_statements_check_main",
     "all_statements_fix_main",
+    "check_agents_command",
     "checks_main",
     "code_scanning_main",
     "codeql_scan_main",
@@ -101,6 +107,7 @@ __all__ = [
     "import_linter_generate_main",
     "import_linter_run_main",
     "inline_snapshot_main",
+    "list_agents_command",
     "mutmut_inspect_main",
     "mutmut_run_main",
     "pr_examine_main",
@@ -117,5 +124,6 @@ __all__ = [
     "rope_run_main",
     "sanity_check_main",
     "security_main",
+    "sync_agents_command",
     "test_parity_main",
 ]

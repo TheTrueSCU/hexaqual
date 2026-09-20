@@ -94,6 +94,67 @@ sanity_binder = _build_sanity_template_workflow().create_cli_binder(
 )
 
 
+def _execute_sanity_pipeline(
+    packages: list[str] | None,
+    examples: list[str] | None,
+    all_targets: bool,
+    fix: bool,
+    skip: list[str] | None,
+    max_complexity: int,
+    format_type: str,
+    skip_steps: set[str] | None,
+    files: list[str] | None,
+) -> None:
+    """Execute shared sanity pipeline across targets.
+
+    Args:
+        packages: Optional sequence of package names to audit.
+        examples: Optional sequence of example project names to audit.
+        all_targets: Whether to audit all packages unconditionally.
+        fix: Whether to auto-apply formatting and lint fixes.
+        skip: Optional list of explicit step names to skip.
+        max_complexity: Cognitive complexity ceiling.
+        format_type: Output presentation format.
+        skip_steps: Step names dynamically skipped via CLI flags.
+        files: Optional explicit file or directory targets.
+
+    Raises:
+        typer.Exit: If any sanity checks fail.
+    """
+    from hexaqual.commands.sanity_check import resolve_targets, run_sanity_check
+    from hexaqual.utils.workspace import get_repo_root
+
+    repo_root = get_repo_root()
+    targets = resolve_targets(
+        packages=packages,
+        examples=examples,
+        files=files or [],
+        all_targets=all_targets,
+        repo_root=repo_root,
+    )
+    merged_skips = set(skip_steps or set())
+    if skip:
+        merged_skips.update(skip)
+
+    exit_code = run_sanity_check(
+        targets=targets,
+        repo_root=repo_root,
+        fix=fix,
+        skip_tests="pytest" in merged_skips,
+        skip_deptry="deptry" in merged_skips,
+        skip_typecheck="typecheck" in merged_skips,
+        skip_complexity="complexity" in merged_skips,
+        skip_parity="test_parity" in merged_skips,
+        skip_all_statements="all_statements" in merged_skips,
+        skip_diagrams="diagrams" in merged_skips,
+        skip_steps=tuple(sorted(merged_skips)),
+        max_complexity=max_complexity,
+        format_type=format_type,
+    )
+    if exit_code != 0:
+        raise typer.Exit(code=exit_code)
+
+
 @sanity_binder.apply
 def check(
     packages: list[str] | None = typer.Option(None, "-p", "--package", help="Target package(s)."),
@@ -131,38 +192,17 @@ def check(
     Notes/Architectural Intent:
         Primary entrypoint for local pre-commit verification and CI pipelines.
     """
-    from hexaqual.commands.sanity_check import resolve_targets, run_sanity_check
-    from hexaqual.utils.workspace import get_repo_root
-
-    repo_root = get_repo_root()
-    targets = resolve_targets(
+    _execute_sanity_pipeline(
         packages=packages,
         examples=examples,
-        files=files or [],
         all_targets=all_targets,
-        repo_root=repo_root,
-    )
-    merged_skips = set(skip_steps or set())
-    if skip:
-        merged_skips.update(skip)
-
-    exit_code = run_sanity_check(
-        targets=targets,
-        repo_root=repo_root,
         fix=fix,
-        skip_tests="pytest" in merged_skips,
-        skip_deptry="deptry" in merged_skips,
-        skip_typecheck="typecheck" in merged_skips,
-        skip_complexity="complexity" in merged_skips,
-        skip_parity="test_parity" in merged_skips,
-        skip_all_statements="all_statements" in merged_skips,
-        skip_diagrams="diagrams" in merged_skips,
-        skip_steps=tuple(sorted(merged_skips)),
+        skip=skip,
         max_complexity=max_complexity,
         format_type=format_type,
+        skip_steps=skip_steps,
+        files=files,
     )
-    if exit_code != 0:
-        raise typer.Exit(code=exit_code)
 
 
 @sanity_binder.apply
@@ -202,7 +242,7 @@ def sanity(
     Notes/Architectural Intent:
         Convenience alias matching legacy sanity-check naming.
     """
-    check(
+    _execute_sanity_pipeline(
         packages=packages,
         examples=examples,
         all_targets=all_targets,

@@ -114,6 +114,16 @@ Ensures that CLI `USAGE.md` documentation stays synchronized with actual Typer C
     - id: hexaqual-usage-docs
 ```
 
+### 7. `hexaqual-agents`
+Enforces that universal `.agents/` guardrails (rules, workflows, skills) stay synchronized with the installed `hexaqual` package. Rejects commits if managed assets have drifted, instructing the developer to run `uv run hexaqual agents sync`.
+
+```yaml
+- repo: https://github.com/TheTrueSCU/hexaqual
+  rev: v0.4.3
+  hooks:
+    - id: hexaqual-agents
+```
+
 ---
 
 ## ⚡ Performance Optimization Guidelines
