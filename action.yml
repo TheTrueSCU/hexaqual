@@ -31,6 +31,10 @@ inputs:
     description: "Whether to cache ~/.cache/pre-commit"
     required: false
     default: "true"
+  skip-hooks:
+    description: "Comma-separated pre-commit hook IDs to skip in CI (passed as SKIP env var). Defaults to 'hexaqual-agents' because synced agent assets are gitignored and not present on clean CI checkouts."
+    required: false
+    default: "hexaqual-agents"
 
 runs:
   using: "composite"
@@ -62,6 +66,8 @@ runs:
     - name: Run Pre-Commit Quality Checks
       if: ${{ inputs.mode == 'pre-commit' }}
       shell: bash
+      env:
+        SKIP: ${{ inputs.skip-hooks }}
       run: uv run pre-commit run --all-files
 
     - name: Run Hexaqual Sanity

@@ -1,5 +1,10 @@
 # CHANGELOG
 
+## v0.5.1 (2026-09-20)
+
+### Fixes & Reliability
+* **GitHub Action `skip-hooks` Input (`action.yml`)**: Added `skip-hooks` input (default: `hexaqual-agents`) to the reusable `TheTrueSCU/hexaqual` GitHub Action. The `SKIP` environment variable is now passed to `pre-commit run --all-files` in CI, preventing the `hexaqual-agents` hook from failing on clean checkouts where synced agent assets are absent from `.gitignore` by design. Consumers requiring no-skip behaviour can pass `skip-hooks: ""` explicitly.
+
 ## v0.5.0 (2026-09-19)
 
 ### Highlights & Features
