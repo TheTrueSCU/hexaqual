@@ -39,7 +39,7 @@ diagrams = [
     "pydeps>=3.0.7",
 ]
 mutmut = [
-    "mutmut<3",
+    "mutmut<4",
 ]
 rope = [
     "rope>=1.14.0",
