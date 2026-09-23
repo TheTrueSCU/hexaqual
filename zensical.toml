@@ -9,7 +9,8 @@ nav = [
     { "CLI Command Catalog" = "cli-reference.md" },
     { "AI Agent Governance" = "agents-guide.md" },
     { "Pre-Commit Integration" = "pre-commit-guide.md" },
-    { "CI/CD & GitHub Actions" = "ci-cd-integration.md" }
+    { "CI/CD & GitHub Actions" = "ci-cd-integration.md" },
+    { "Ecosystem Architecture" = "ecosystem.md" }
 ]
 
 [project.markdown_extensions]
