@@ -31,8 +31,6 @@ Cross-linking convention:
 
 from __future__ import annotations
 
-import argparse
-import os
 import re
 import sys
 from dataclasses import dataclass, field
@@ -42,8 +40,6 @@ from typing import Any
 import httpx
 import yaml
 from rich.console import Console
-from rich.panel import Panel
-from rich.table import Table
 
 from hexaqual.utils.workspace import get_repo_root
 
@@ -262,12 +258,13 @@ def _resolve_cross_links(body: str, slug_map: dict[str, str]) -> str:
 # ---------------------------------------------------------------------------
 
 
-def _resolve_article_path(slug: str) -> Path:
+def _resolve_article_path(slug: str, medium_dir: Path | None = None) -> Path:
     """Resolve the absolute path to a docs/medium article by slug or path.
 
     Args:
         slug: File stem, filename, or path (e.g. "ai-guardrails-manifesto"
               or "docs/medium/ai-guardrails-manifesto.md").
+        medium_dir: Optional path to the medium drafts directory.
 
     Returns:
         Resolved absolute Path to the markdown file.
@@ -287,9 +284,13 @@ def _resolve_article_path(slug: str) -> Path:
     if candidate.exists():
         return candidate.resolve()
 
-    root = get_repo_root()
-    medium_dir = root / "docs" / "medium"
+    if medium_dir is None:
+        root = get_repo_root()
+        medium_dir = root / "docs" / "medium"
+
     name = Path(slug).stem
+    if (medium_dir / f"{name}.md").exists():
+        return (medium_dir / f"{name}.md").resolve()
     for path in medium_dir.glob("*.md"):
         if path.stem == name or path.name == name:
             return path
@@ -542,59 +543,99 @@ def _update_docs_links(repo_root: Path, slug_map: dict[str, str]) -> int:
 
 
 # Publication order for the blog index (topological sort from publishing strategy)
-_BLOG_PUBLICATION_ORDER: list[tuple[str, str, str]] = [
+_BLOG_PUBLICATION_ORDER: list[tuple[str, str, str, str]] = [
     (
         "10",
         "ai-guardrails-manifesto",
-        "What 20 Years of Python Taught Me About Building in the AI Era",
-    ),
-    ("0", "what-is-hexastack", "What Is Hexastack?"),
-    (
-        "6",
-        "ai-native-backend-mcp",
-        "Your FastAPI Service, Now AI-Native: LLM Agents + MCP",
+        "What 20 Years of Python Infrastructure Taught Me About Building in the Age of AI Coding Assistants",
+        "Manifesto",
     ),
     (
         "5",
         "uv-monorepo",
-        "Managing 17 Python Packages: The `uv` Workspace Monorepo Pattern",
+        "Managing 17 Python Packages Without Losing Your Mind: The `uv` Workspace Monorepo Pattern",
+        "Tooling",
+    ),
+    ("0", "what-is-hexastack", "What Is Hexastack?", "Overview"),
+    (
+        "6",
+        "ai-native-backend-mcp",
+        "Your FastAPI Service, Now AI-Native: LLM Agents + MCP",
+        "AI / MCP",
+    ),
+    (
+        "15",
+        "ast-knowledge-graphs-ai-agents",
+        "Why Context Dumps Break AI Coding Agents: Navigating Codebases with AST Knowledge Graphs",
+        "AI Tooling",
     ),
     (
         "1",
         "hexagonal-fastapi-cqrs",
         "Stop Writing Spaghetti FastAPI: Hexagonal Architecture + CQRS",
+        "Architecture",
+    ),
+    (
+        "12",
+        "hexaflow-in-process-workflows",
+        "You Probably Don't Need Temporal: Lightweight In-Process Workflows in Python",
+        "Workflows",
     ),
     (
         "3",
         "mutation-testing-openssf",
         "90%+ Coverage Isn't Enough: Mutation Testing + OpenSSF Gold",
+        "Quality",
     ),
     (
         "2",
         "transactional-outbox-nats",
         "The Dual-Write Trap: Transactional Outbox with NATS JetStream",
+        "Events",
     ),
     (
         "7",
         "feature-flags-openfeature",
         "Beyond `if os.getenv`: Feature Flags with OpenFeature",
+        "Flags",
     ),
     (
         "8",
         "observability-ports",
         "Logging and Tracing That Don't Fight Your Architecture",
+        "Observability",
+    ),
+    (
+        "13",
+        "hexaqual-architecture-linting",
+        "Stop Reviewing Architecture in PRs: Automating Hexagonal Boundaries and Test Parity",
+        "Governance",
     ),
     (
         "11",
         "hipaa-fedramp-compliance",
         "Building for HIPAA and FedRAMP: Architecture as Compliance",
+        "Compliance",
     ),
     (
         "9",
         "grpc-fastapi-dual-protocol",
         "gRPC and REST from the Same Service, Without Spaghetti",
+        "gRPC",
     ),
-    ("4", "nicegui-reactive-devtools", "Reactive DevTools in Python with NiceGUI"),
+    (
+        "14",
+        "hexaqueue-distributed-batch",
+        "Reimagining Slurm for Modern Python: Distributed Batch Scheduling with Heartbeats and DAGs",
+        "Distributed Batch",
+    ),
+    ("4", "nicegui-reactive-devtools", "Reactive DevTools in Python with NiceGUI", "DevTools"),
+    (
+        "16",
+        "four-pillars-hexa-ecosystem",
+        "From In-Process DAGs to Distributed Clusters: Designing a Four-Pillar Python Ecosystem",
+        "Ecosystem Capstone",
+    ),
 ]
 
 
@@ -629,13 +670,16 @@ def _regenerate_blog_index(repo_root: Path, medium_dir: Path) -> None:
             continue
 
     rows: list[str] = []
-    for num, slug, title in _BLOG_PUBLICATION_ORDER:
+    for num, slug, title, topic in _BLOG_PUBLICATION_ORDER:
         fm = fm_map.get(slug)
         devto = f"[Read →]({fm.devto_url})" if fm and fm.devto_url else "—"
         medium = f"[Read →]({fm.medium_url})" if fm and fm.medium_url else "—"
-        rows.append(f"| {num} | {title} | {devto} | {medium} |")
+        rows.append(f"| {num} | {title} | {topic} | {devto} | {medium} |")
 
-    table = "| # | Title | DEV.to | Medium |\n|---|-------|--------|--------|\n" + "\n".join(rows)
+    table = (
+        "| # | Title | Topic | DEV.to | Medium |\n"
+        "|---|-------|-------|--------|--------|\n" + "\n".join(rows)
+    )
 
     # Splice the table into the existing index, replacing the old one
     content = blog_index.read_text(encoding="utf-8")
@@ -716,28 +760,20 @@ def _update_readme_registry(medium_dir: Path) -> None:
 
 
 # ---------------------------------------------------------------------------
-# Status display
+# Status and syndication helpers for CQRS handler
 # ---------------------------------------------------------------------------
 
 
-def _show_status(medium_dir: Path) -> None:
-    """Print a rich table showing the publish state of all articles.
+def get_article_status_table(medium_dir: Path) -> list[tuple[str, str, str, str, str]]:
+    """Return status tuple rows for all articles under docs/medium/.
 
     Args:
-        medium_dir: Path to the docs/medium/ directory.
+        medium_dir: Path to docs/medium/ staging directory.
 
-    Notes/Architectural Intent:
-        Reads front matter from every article file.  State is derived from
-        which tracking fields are populated: draft (devto_id set) → published
-        (devto_url set) → syndicated (medium_url set).
+    Returns:
+        List of (slug, state, devto_id, devto_url, medium_url) tuples.
     """
-    table = Table(title="docs/medium — Article Status", box=None)
-    table.add_column("Slug", style="bold")
-    table.add_column("State")
-    table.add_column("DEV.to ID")
-    table.add_column("DEV.to URL")
-    table.add_column("Medium URL")
-
+    rows: list[tuple[str, str, str, str, str]] = []
     for md_file in sorted(medium_dir.glob("*.md")):
         if md_file.name == "README.md":
             continue
@@ -746,283 +782,186 @@ def _show_status(medium_dir: Path) -> None:
             p = _parse_article(text, md_file)
             fm = p.front_matter
         except SystemExit:
-            table.add_row(md_file.stem, "[red]parse error[/]", "—", "—", "—")
+            rows.append((md_file.stem, "parse error", "—", "—", "—"))
             continue
 
         if fm.medium_url:
-            state = "[green]syndicated[/]"
+            state = "syndicated"
         elif fm.devto_url:
-            state = "[blue]published[/]"
+            state = "published"
         elif fm.devto_id:
-            state = "[yellow]draft[/]"
+            state = "draft"
         else:
-            state = "[dim]local[/]"
+            state = "local"
 
-        table.add_row(
-            md_file.stem,
-            state,
-            str(fm.devto_id) if fm.devto_id else "—",
-            fm.devto_url or "—",
-            fm.medium_url or "—",
+        rows.append(
+            (
+                md_file.stem,
+                state,
+                str(fm.devto_id) if fm.devto_id else "—",
+                fm.devto_url or "—",
+                fm.medium_url or "—",
+            )
         )
-
-    console.print(table)
-
-
-# ---------------------------------------------------------------------------
-# CLI
-# ---------------------------------------------------------------------------
+    return rows
 
 
-def _build_parser() -> argparse.ArgumentParser:
-    """Build the argument parser for medium-publish.
-
-    Returns:
-        Configured ArgumentParser instance.
-
-    Notes/Architectural Intent:
-        Mirrors UX conventions of other hexastack-tools commands: subcommands
-        are modelled as flags rather than positional subparsers to keep the
-        interface simple for solo use.
-    """
-    parser = argparse.ArgumentParser(
-        prog="medium-publish",
-        description=(
-            "Manage docs/medium drafts on DEV.to. "
-            "Two-pass workflow: upload drafts → publish in order → import to Medium."
-        ),
-    )
-    parser.add_argument(
-        "slug",
-        nargs="?",
-        default=None,
-        help="Article filename stem (e.g. 'ai-guardrails-manifesto'). "
-        "Required unless --all-drafts or --status is set.",
-    )
-    parser.add_argument(
-        "--publish",
-        action="store_true",
-        default=False,
-        help="Publish the draft on DEV.to (PATCH draft→published, capture URL).",
-    )
-    parser.add_argument(
-        "--all-drafts",
-        action="store_true",
-        default=False,
-        help="Upload ALL local articles without a devto_id as drafts.",
-    )
-    parser.add_argument(
-        "--status",
-        action="store_true",
-        default=False,
-        help="Show a status table of all articles and their publish state.",
-    )
-    parser.add_argument(
-        "--medium-url",
-        default=None,
-        metavar="URL",
-        help="Record the Medium URL for a slug after manual import.",
-    )
-    parser.add_argument(
-        "--api-key",
-        default=None,
-        help="DEV.to API key (overrides DEVTO_API_KEY env var).",
-    )
-    parser.add_argument(
-        "--dry-run",
-        action="store_true",
-        default=False,
-        help="Parse and display payload without making any API calls.",
-    )
-    parser.add_argument(
-        "-f",
-        "--format",
-        choices=["table", "json", "markdown"],
-        default="table",
-        help="Output presentation format (default: table).",
-    )
-    return parser
-
-
-def _require_api_key(args: argparse.Namespace) -> str:
-    """Resolve and validate the DEV.to API key.
-
-    Args:
-        args: Parsed CLI arguments.
-
-    Returns:
-        API key string.
-
-    Raises:
-        SystemExit: If no key is available and dry-run is not set.
-    """
-    key = args.api_key or os.environ.get("DEVTO_API_KEY", "")
-    if not key and not args.dry_run:
-        console.print(
-            "[red]Error:[/] No DEV.to API key found.\n"
-            "Set [bold]DEVTO_API_KEY[/] or pass [bold]--api-key[/].\n\n"
-            "Get a key at: [link]https://dev.to/settings/extensions[/link]"
-        )
-        sys.exit(1)
-    return key
-
-
-def _handle_status_mode(args: argparse.Namespace, medium_dir: Path) -> None:
-    """Handle --status mode presentation via presenter or table."""
-    if getattr(args, "format", "table") != "table":
-        from hexaqual.adapters.presenters.refactoring import (
-            create_refactoring_presenter,
-        )
-        from hexaqual.domain.refactoring import PublishMediumArticlesCommand
-        from hexaqual.infra.bootstrap import create_governance_bus
-
-        bus = create_governance_bus()
-        presenter = create_refactoring_presenter(args.format)
-        report = bus.dispatch(PublishMediumArticlesCommand(dry_run=True))
-        presenter.present_medium_publish(report)
-        return
-    _show_status(medium_dir)
-
-
-def _handle_medium_url_mode(args: argparse.Namespace, medium_dir: Path) -> None:
-    """Handle recording a Medium URL for a published article."""
-    if not args.slug:
-        console.print("[red]Error:[/] Provide a slug with --medium-url.")
-        sys.exit(1)
-    article_path = _resolve_article_path(args.slug)
+def record_medium_url(
+    slug: str,
+    medium_url: str,
+    repo_root: Path,
+    dry_run: bool = False,
+    medium_dir: Path | None = None,
+) -> tuple[str, str]:
+    """Record Medium syndicated URL in front matter and update registry."""
+    medium_dir = medium_dir or (repo_root / "docs" / "medium")
+    article_path = _resolve_article_path(slug, medium_dir=medium_dir)
     payload = _parse_article(article_path.read_text("utf-8"), article_path)
-    payload.front_matter.medium_url = args.medium_url
-    if not args.dry_run:
+    payload.front_matter.medium_url = medium_url
+    if not dry_run:
         _write_front_matter(payload)
         _update_readme_registry(medium_dir)
-        console.print(f"[green]✓[/] Recorded Medium URL for [bold]{args.slug}[/]")
+        _regenerate_blog_index(repo_root, medium_dir)
+    return payload.slug, f"Recorded Medium URL: {medium_url}"
 
 
-def run_main() -> None:
-    """Entrypoint for the medium-publish CLI command.
+def upload_all_drafts(
+    medium_dir: Path,
+    api_key: str,
+    dry_run: bool = False,
+) -> list[tuple[str, str]]:
+    """Upload all unposted articles as drafts to DEV.to."""
+    unposted = _all_unposted_articles(medium_dir)
+    slug_map = _build_slug_url_map(medium_dir)
+    details: list[tuple[str, str]] = []
 
-    Notes/Architectural Intent:
-        Dispatches to one of four modes based on flags:
-        ``--status`` → show table; ``--all-drafts`` → bulk draft upload;
-        ``--medium-url`` → record a Medium URL; positional slug → single
-        article draft upload or publish (with ``--publish``).
+    for payload in unposted:
+        if dry_run:
+            details.append((payload.slug, "[dry-run] would upload as draft"))
+            continue
+        result = _upload_draft(payload, api_key, slug_map)
+        devto_id = result.get("id")
+        payload.front_matter.devto_id = devto_id
+        _write_front_matter(payload)
+        details.append((payload.slug, f"Uploaded draft devto_id={devto_id}"))
 
-    Raises:
-        SystemExit: On missing arguments, file not found, or API errors.
-    """
-    parser = _build_parser()
-    args = parser.parse_args()
-    medium_dir = _get_medium_dir()
+    if not dry_run and unposted:
+        _update_readme_registry(medium_dir)
+    return details
 
-    # --status: no API key needed
-    if args.status:
-        _handle_status_mode(args, medium_dir)
-        return
 
-    # --medium-url: record a Medium URL after manual import
-    if args.medium_url:
-        _handle_medium_url_mode(args, medium_dir)
-        return
-
-    api_key = _require_api_key(args)
+def publish_or_upload_single(
+    slug_or_path: str,
+    publish: bool,
+    api_key: str,
+    repo_root: Path,
+    dry_run: bool = False,
+    medium_dir: Path | None = None,
+) -> tuple[str, str]:
+    """Upload single draft or publish article to DEV.to."""
+    medium_dir = medium_dir or (repo_root / "docs" / "medium")
+    article_path = _resolve_article_path(slug_or_path, medium_dir=medium_dir)
+    payload = _parse_article(article_path.read_text("utf-8"), article_path)
     slug_map = _build_slug_url_map(medium_dir)
 
-    # --all-drafts: bulk draft upload
-    if args.all_drafts:
-        unposted = _all_unposted_articles(medium_dir)
-        if not unposted:
-            console.print("[green]All articles already have a devto_id.[/]")
-            return
-        console.print(f"Uploading [bold]{len(unposted)}[/] articles as drafts…")
-        for payload in unposted:
-            if args.dry_run:
-                console.print(f"  [dim]dry-run:[/] would upload [bold]{payload.slug}[/]")
-                continue
-            result = _upload_draft(payload, api_key, slug_map)
-            payload.front_matter.devto_id = result.get("id")
-            _write_front_matter(payload)
-            console.print(
-                f"  [green]✓[/] {payload.slug} → devto_id={payload.front_matter.devto_id}"
-            )
-        _update_readme_registry(medium_dir)
-        return
+    if dry_run:
+        action = "PUBLISH" if publish else "DRAFT UPLOAD"
+        return payload.slug, f"[dry-run] would execute {action}"
 
-    # Single-article mode: slug is required
-    if not args.slug:
-        parser.print_help()
-        sys.exit(1)
-
-    article_path = _resolve_article_path(args.slug)
-    payload = _parse_article(article_path.read_text("utf-8"), article_path)
-    fm = payload.front_matter
-
-    # Preview table
-    table = Table(title=f"[bold]{payload.slug}[/]", show_header=False, box=None)
-    table.add_row("Title", fm.title)
-    table.add_row("Tags", ", ".join(_devto_tags(fm.tags)) or "—")
-    table.add_row("DEV.to ID", str(fm.devto_id) if fm.devto_id else "[dim]not set[/]")
-    table.add_row("DEV.to URL", fm.devto_url or "[dim]not set[/]")
-    table.add_row("Mode", "[blue]PUBLISH[/]" if args.publish else "[yellow]DRAFT UPLOAD[/]")
-    console.print(table)
-
-    if args.dry_run:
-        console.print("[dim]--dry-run: no API call made.[/]")
-        return
-
-    if args.publish:
-        # Pass 2: publish existing draft
+    if publish:
         result = _publish_draft(payload, api_key, slug_map)
-        devto_url: str = result.get("url", "")
-        devto_id: int = result.get("id", fm.devto_id)
+        devto_url = str(result.get("url", ""))
+        devto_id = result.get("id", payload.front_matter.devto_id)
         payload.front_matter.devto_id = devto_id
         payload.front_matter.devto_url = devto_url
         _write_front_matter(payload)
         slug_map[payload.slug] = devto_url
         _update_readme_registry(medium_dir)
-        repo_root = get_repo_root()
-        n_docs = _update_docs_links(repo_root, slug_map)
+        _update_docs_links(repo_root, slug_map)
         _regenerate_blog_index(repo_root, medium_dir)
-        if n_docs:
-            console.print(f"  [dim]Resolved devto:// links in {n_docs} doc page(s)[/]")
+        return payload.slug, f"Published -> {devto_url}"
 
-        console.print(
-            Panel.fit(
-                f"[green]✓ Published on DEV.to[/]\n\n"
-                f"  [bold]URL :[/] {devto_url}\n"
-                f"  [bold]ID  :[/] {devto_id}\n\n"
-                f"[bold]Next — syndicate to Medium:[/]\n"
-                f"  1. Go to [link={MEDIUM_IMPORT_URL}]{MEDIUM_IMPORT_URL}[/link]\n"
-                f"  2. Paste: [bold]{devto_url}[/bold]\n"
-                f"  3. Then run: medium-publish {payload.slug} "
-                f"--medium-url <medium-url>",
-                title="medium-publish",
-                border_style="green",
-            )
-        )
-    else:
-        # Pass 1: upload as draft
-        result = _upload_draft(payload, api_key, slug_map)
-        devto_id = result.get("id")
-        payload.front_matter.devto_id = devto_id
-        _write_front_matter(payload)
+    result = _upload_draft(payload, api_key, slug_map)
+    devto_id = result.get("id")
+    payload.front_matter.devto_id = devto_id
+    _write_front_matter(payload)
+    _update_readme_registry(medium_dir)
+    return payload.slug, f"Uploaded draft devto_id={devto_id}"
+
+
+def sync_all_links(
+    medium_dir: Path,
+    api_key: str,
+    repo_root: Path,
+    dry_run: bool = False,
+) -> list[tuple[str, str]]:
+    """Re-resolve cross-links and update DEV.to for all published articles."""
+    slug_map = _build_slug_url_map(medium_dir)
+    results: list[tuple[str, str]] = []
+
+    for md_file in sorted(medium_dir.glob("*.md")):
+        if md_file.name == "README.md":
+            continue
+        try:
+            text = md_file.read_text(encoding="utf-8")
+            payload = _parse_article(text, md_file)
+            fm = payload.front_matter
+            if fm.devto_id is None or not fm.devto_url:
+                continue
+
+            resolved_body = _resolve_cross_links(payload.body_markdown, slug_map)
+            if not dry_run:
+                article: dict[str, Any] = {
+                    "published": True,
+                    "body_markdown": resolved_body,
+                    "ai_disclosure": "ai_assisted",
+                }
+                if series := fm.extra.get("series"):
+                    article["series"] = str(series)
+                if fm.canonical_url or fm.devto_url:
+                    article["canonical_url"] = fm.canonical_url or fm.devto_url
+
+                _devto_request(
+                    "PATCH",
+                    f"/articles/{fm.devto_id}",
+                    api_key,
+                    json={"article": article},
+                )
+                results.append((payload.slug, f"Synced links -> {fm.devto_url}"))
+            else:
+                results.append((payload.slug, f"[dry-run] would sync links -> {fm.devto_url}"))
+        except Exception as exc:
+            results.append((md_file.stem, f"Error: {exc}"))
+
+    if not dry_run:
+        _update_docs_links(repo_root, slug_map)
+        _regenerate_blog_index(repo_root, medium_dir)
         _update_readme_registry(medium_dir)
 
-        console.print(
-            Panel.fit(
-                f"[yellow]✓ Uploaded as draft on DEV.to[/]\n\n"
-                f"  [bold]DEV.to ID :[/] {devto_id}\n"
-                f"  [dim]URL is not stored (draft preview links are temporary)[/]\n\n"
-                f"[bold]Next steps:[/]\n"
-                f"  Review at: [link]https://dev.to/dashboard[/link]\n"
-                f"  Publish:   medium-publish {payload.slug} --publish",
-                title="medium-publish",
-                border_style="yellow",
-            )
-        )
+    return results
 
 
 __all__ = [
+    "_all_unposted_articles",
+    "_BLOG_PUBLICATION_ORDER",
+    "_build_slug_url_map",
+    "_devto_request",
+    "_devto_tags",
+    "_get_medium_dir",
+    "_parse_article",
+    "_publish_draft",
+    "_regenerate_blog_index",
+    "_resolve_article_path",
+    "_resolve_cross_links",
+    "_update_docs_links",
+    "_update_readme_registry",
+    "_upload_draft",
+    "_write_front_matter",
     "ArticlePayload",
     "FrontMatter",
-    "run_main",
+    "get_article_status_table",
+    "publish_or_upload_single",
+    "record_medium_url",
+    "sync_all_links",
+    "upload_all_drafts",
 ]

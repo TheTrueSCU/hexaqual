@@ -48,6 +48,32 @@ class RichRefactoringPresenterAdapter(RefactoringPresenterPort):
 
     def present_medium_publish(self, report: MediumPublishReport) -> int:
         """Render article publication outcomes."""
+        if report.status_table:
+            table = Table(
+                title="[bold cyan]docs/medium — Article Status[/bold cyan]",
+                show_header=True,
+                header_style="bold magenta",
+                box=None,
+            )
+            table.add_column("Slug", style="bold")
+            table.add_column("State")
+            table.add_column("DEV.to ID")
+            table.add_column("DEV.to URL")
+            table.add_column("Medium URL")
+
+            for slug, state, devto_id, devto_url, medium_url in report.status_table:
+                styled_state = {
+                    "syndicated": "[green]syndicated[/green]",
+                    "published": "[blue]published[/blue]",
+                    "draft": "[yellow]draft[/yellow]",
+                    "local": "[dim]local[/dim]",
+                    "parse error": "[red]parse error[/red]",
+                }.get(state, state)
+                table.add_row(slug, styled_state, devto_id, devto_url, medium_url)
+
+            self.console.print(table)
+            return 0 if report.is_successful else 1
+
         table = Table(
             title="[bold cyan]Medium & DEV.to Article Publication[/bold cyan]",
             show_header=True,
@@ -95,6 +121,16 @@ class JsonRefactoringPresenterAdapter(RefactoringPresenterPort):
             "published_count": report.published_count,
             "total_count": report.total_count,
             "details": [{"slug": slug, "url": url} for slug, url in report.details],
+            "status_table": [
+                {
+                    "slug": slug,
+                    "state": state,
+                    "devto_id": devto_id,
+                    "devto_url": devto_url,
+                    "medium_url": medium_url,
+                }
+                for slug, state, devto_id, devto_url, medium_url in report.status_table
+            ],
         }
         self.console.print_json(data=data)
         return 0 if report.is_successful else 1
@@ -123,6 +159,19 @@ class MarkdownRefactoringPresenterAdapter(RefactoringPresenterPort):
 
     def present_medium_publish(self, report: MediumPublishReport) -> int:
         """Render article publication report as Markdown table."""
+        if report.status_table:
+            lines = [
+                "### 📝 docs/medium — Article Status",
+                "",
+                "| Slug | State | DEV.to ID | DEV.to URL | Medium URL |",
+                "|---|---|---|---|---|",
+            ]
+            for slug, state, devto_id, devto_url, medium_url in report.status_table:
+                lines.append(f"| `{slug}` | {state} | {devto_id} | {devto_url} | {medium_url} |")
+            lines.append("")
+            self.console.print("\n".join(lines))
+            return 0 if report.is_successful else 1
+
         lines = [
             "### 📝 Medium & DEV.to Publication Report",
             "",

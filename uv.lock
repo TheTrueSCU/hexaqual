@@ -422,7 +422,7 @@ requires-dist = [
     { name = "import-linter", specifier = ">=2.13" },
     { name = "inline-snapshot", specifier = ">=0.35.4" },
     { name = "libcst", specifier = ">=1.9.0" },
-    { name = "mutmut", marker = "extra == 'mutmut'", specifier = "<3" },
+    { name = "mutmut", marker = "extra == 'mutmut'", specifier = "<4" },
     { name = "pydantic", specifier = ">=2.10.0" },
     { name = "pydeps", marker = "extra == 'diagrams'", specifier = ">=3.0.7" },
     { name = "pytest-archon", specifier = ">=0.0.7" },

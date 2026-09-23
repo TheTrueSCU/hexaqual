@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from pathlib import Path
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
 import pytest
 
@@ -17,7 +17,10 @@ from hexaqual.commands.medium_publish import (
     _resolve_cross_links,
     _update_readme_registry,
     _write_front_matter,
-    run_main,
+    get_article_status_table,
+    publish_or_upload_single,
+    record_medium_url,
+    sync_all_links,
 )
 
 # ---------------------------------------------------------------------------
@@ -221,85 +224,60 @@ def test_update_readme_registry_updates_existing(medium_dir: Path) -> None:
 
 
 # ---------------------------------------------------------------------------
-# Dry-run end-to-end
+# Dry-run and Handler Functions
 # ---------------------------------------------------------------------------
 
 
-def test_run_main_dry_run_single(article_file: Path) -> None:
-    """Dry-run for a single article parses without making any HTTP call."""
-    with (
-        patch(
-            "hexaqual.commands.medium_publish._resolve_article_path",
-            return_value=article_file,
-        ),
-        patch(
-            "hexaqual.commands.medium_publish._get_medium_dir",
-            return_value=article_file.parent,
-        ),
-        patch("hexaqual.commands.medium_publish._devto_request") as mock_req,
-        patch("sys.argv", ["medium-publish", "test-article", "--dry-run"]),
-    ):
-        run_main()
+def test_publish_or_upload_single_dry_run(article_file: Path) -> None:
+    """Dry-run single upload produces action outcome without making HTTP call."""
+    with patch("hexaqual.commands.medium_publish._devto_request") as mock_req:
+        slug, msg = publish_or_upload_single(
+            str(article_file),
+            publish=False,
+            api_key="test-key",
+            repo_root=article_file.parent,
+            dry_run=True,
+            medium_dir=article_file.parent,
+        )
+        assert slug == "test-article"
+        assert "[dry-run]" in msg
         mock_req.assert_not_called()
 
 
-def test_run_main_status_no_api_key(medium_dir: Path) -> None:
-    """--status works without an API key."""
-    with (
-        patch(
-            "hexaqual.commands.medium_publish._get_medium_dir",
-            return_value=medium_dir,
-        ),
-        patch("sys.argv", ["medium-publish", "--status"]),
-    ):
-        run_main()  # should not raise
+def test_get_article_status_table(medium_dir: Path) -> None:
+    """Status table gathers status for articles in directory."""
+    table = get_article_status_table(medium_dir)
+    assert len(table) >= 2
+    slugs = {row[0] for row in table}
+    assert "test-article" in slugs
+    assert "uploaded-article" in slugs
 
 
-def test_run_main_status_with_json_format(medium_dir: Path) -> None:
-    """--status with --format json dispatches to governance bus."""
-    with (
-        patch(
-            "hexaqual.commands.medium_publish._get_medium_dir",
-            return_value=medium_dir,
-        ),
-        patch("sys.argv", ["medium-publish", "--status", "--format", "json"]),
-        patch("hexaqual.infra.bootstrap.create_governance_bus") as mock_bus_factory,
-    ):
-        from hexaqual.domain.refactoring import MediumPublishReport
+def test_record_medium_url(article_file: Path) -> None:
+    """Record Medium URL updates front matter."""
+    slug, msg = record_medium_url(
+        str(article_file),
+        "https://medium.com/@user/story",
+        repo_root=article_file.parent,
+        dry_run=False,
+        medium_dir=article_file.parent,
+    )
+    assert slug == "test-article"
+    assert "Recorded Medium URL" in msg
+    assert "https://medium.com/@user/story" in article_file.read_text(encoding="utf-8")
 
-        mock_bus = MagicMock()
-        mock_bus.dispatch.return_value = MediumPublishReport(
-            published_count=0,
-            total_count=0,
-            is_successful=True,
-            details=(),
+
+def test_sync_all_links_dry_run(medium_dir: Path) -> None:
+    """Sync links in dry run mode returns outcomes without HTTP calls."""
+    with patch("hexaqual.commands.medium_publish._devto_request") as mock_req:
+        results = sync_all_links(
+            medium_dir,
+            api_key="test-key",
+            repo_root=medium_dir.parent,
+            dry_run=True,
         )
-        mock_bus_factory.return_value = mock_bus
-        run_main()
-        assert mock_bus.dispatch.called
-
-
-# ---------------------------------------------------------------------------
-# API key guard
-# ---------------------------------------------------------------------------
-
-
-def test_run_main_no_api_key_exits(article_file: Path) -> None:
-    """Missing API key (non-dry-run) causes SystemExit."""
-    with (
-        patch(
-            "hexaqual.commands.medium_publish._resolve_article_path",
-            return_value=article_file,
-        ),
-        patch(
-            "hexaqual.commands.medium_publish._get_medium_dir",
-            return_value=article_file.parent,
-        ),
-        patch.dict("os.environ", {}, clear=True),
-        patch("sys.argv", ["medium-publish", "test-article"]),
-        pytest.raises(SystemExit),
-    ):
-        run_main()
+        assert isinstance(results, list)
+        mock_req.assert_not_called()
 
 
 # ---------------------------------------------------------------------------
@@ -333,6 +311,8 @@ def test_upload_draft_payload_includes_series_and_ai_disclosure(
 
 def test_module_exports() -> None:
     """Public __all__ exports are importable."""
-    assert callable(run_main)
+    assert callable(publish_or_upload_single)
+    assert callable(get_article_status_table)
+    assert callable(sync_all_links)
     assert FrontMatter is not None
     assert ArticlePayload is not None

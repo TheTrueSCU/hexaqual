@@ -34,10 +34,20 @@ def test_publish_medium_articles_handler(tmp_path: Path) -> None:
     """Verify PublishMediumArticlesHandler scans articles and returns report."""
     medium_dir = tmp_path / "docs" / "medium"
     medium_dir.mkdir(parents=True)
-    (medium_dir / "article-1-intro.md").write_text("# Article 1", encoding="utf-8")
+    article_content = "---\ntitle: Article 1\n---\n# Article 1"
+    (medium_dir / "article-1-intro.md").write_text(article_content, encoding="utf-8")
 
     handler = PublishMediumArticlesHandler(root=tmp_path)
-    report = handler.handle(PublishMediumArticlesCommand(dry_run=True))
+    # Test status inspection
+    report = handler.handle(PublishMediumArticlesCommand(status=True))
     assert report.is_successful is True
     assert report.total_count == 1
-    assert len(report.details) == 1
+    assert len(report.status_table) == 1
+
+    # Test single-article dry-run
+    single_report = handler.handle(
+        PublishMediumArticlesCommand(slug="article-1-intro", dry_run=True)
+    )
+    assert single_report.is_successful is True
+    assert single_report.total_count == 1
+    assert len(single_report.details) == 1

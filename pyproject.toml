@@ -77,6 +77,9 @@ python_classes = ["Test*"]
 python_functions = ["test_*"]
 asyncio_mode = "auto"
 addopts = "-ra -q --strict-markers"
+markers = [
+    "integration: End-to-end integration tests across synthetic workspaces.",
+]
 
 [tool.ruff]
 line-length = 100

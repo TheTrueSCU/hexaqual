@@ -107,6 +107,9 @@ def docs_links(
 
 @docs_app.command("publish")
 def docs_publish(
+    slug: str | None = typer.Argument(
+        None, help="Article filename stem (e.g. 'ai-guardrails-manifesto') or path."
+    ),
     manifest: Path | None = typer.Option(
         None, "-m", "--manifest", help="Path to articles manifest or directory."
     ),
@@ -116,18 +119,43 @@ def docs_publish(
     publish: bool = typer.Option(
         False, "--publish", help="Publish live articles (otherwise draft upload mode)."
     ),
+    all_drafts: bool = typer.Option(
+        False, "--all-drafts", help="Upload all local articles without devto_id as drafts."
+    ),
+    status: bool = typer.Option(
+        False, "--status", help="Show a status table of all articles and their publish state."
+    ),
+    sync_links: bool = typer.Option(
+        False,
+        "--sync-links",
+        help="Re-resolve and update cross-links on DEV.to across all published articles.",
+    ),
+    medium_url: str | None = typer.Option(
+        None, "--medium-url", help="Record the Medium URL for a slug after manual import."
+    ),
+    api_key: str | None = typer.Option(
+        None, "--api-key", help="DEV.to API key (overrides DEVTO_API_KEY env var)."
+    ),
     format_type: str = format_option(
         default="table",
         help_text="Output presentation format (table, json, markdown, auto).",
     ),
+    root: Path | None = typer.Option(None, "--root", help="Workspace root directory."),
 ) -> None:
     """Syndicate or publish documentation articles to DEV.to / Medium.
 
     Args:
+        slug: Article slug or path to process.
         manifest: Optional path to article markdown files.
         dry_run: Validate without network writes.
         publish: Publish live articles.
+        all_drafts: Upload all unposted articles as drafts.
+        status: Show status table.
+        sync_links: Re-resolve cross-links across published articles.
+        medium_url: Record syndicated Medium URL.
+        api_key: DEV.to integration API key.
         format_type: Output presentation format.
+        root: Workspace root directory.
 
     Raises:
         typer.Exit: If publication fails.
@@ -140,14 +168,20 @@ def docs_publish(
     from hexaqual.infra.bootstrap import create_governance_bus
     from hexaqual.utils.workspace import get_repo_root
 
-    root = get_repo_root()
-    bus = create_governance_bus(repo_root=root)
+    repo_root = root or get_repo_root()
+    bus = create_governance_bus(repo_root=repo_root)
     resolved_fmt = resolve_format(format_type, default_tty="table", default_pipe="json")
     presenter = create_refactoring_presenter(resolved_fmt)
     cmd = PublishMediumArticlesCommand(
+        slug=slug,
         manifest_path=manifest,
         dry_run=dry_run,
         publish=publish,
+        all_drafts=all_drafts,
+        status=status,
+        sync_links=sync_links,
+        medium_url=medium_url,
+        api_key=api_key,
     )
     report = bus.dispatch(cmd)
     exit_code = presenter.present_medium_publish(report)

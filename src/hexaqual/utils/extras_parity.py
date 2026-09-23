@@ -114,14 +114,22 @@ def audit_extras_parity(repo_root: Path) -> list[ExtraParityViolation]:
     if not packages_dir.is_dir():
         return []
 
-    umbrella_toml = packages_dir / "hexastack" / "pyproject.toml"
-    if not umbrella_toml.is_file():
+    umbrella_toml: Path | None = None
+    umbrella_name = "hexastack"
+    for cand in ("hexastack", "hexaqueue", "umbrella_pkg", "umbrella", repo_root.name):
+        cand_path = packages_dir / cand / "pyproject.toml"
+        if cand_path.is_file():
+            umbrella_toml = cand_path
+            umbrella_name = cand
+            break
+
+    if umbrella_toml is None or not umbrella_toml.is_file():
         return [
             ExtraParityViolation(
-                subpackage="hexastack",
+                subpackage="umbrella",
                 extra_name="<root>",
                 dependencies=(),
-                suggested_fix="Missing packages/hexastack/pyproject.toml file.",
+                suggested_fix="Missing umbrella package pyproject.toml under packages/.",
             )
         ]
 
@@ -134,7 +142,7 @@ def audit_extras_parity(repo_root: Path) -> list[ExtraParityViolation]:
     violations: list[ExtraParityViolation] = []
     for pkg_dir in get_package_directories(repo_root):
         if pkg_dir.name not in (
-            "hexastack",
+            umbrella_name,
             "hexaqual",
             "hexastack_tools",
             "hexastack-tools",

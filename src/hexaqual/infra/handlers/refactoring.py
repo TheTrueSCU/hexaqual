@@ -181,34 +181,146 @@ class PublishMediumArticlesHandler:
         self._root = root or get_repo_root()
 
     def handle(self, command: PublishMediumArticlesCommand) -> MediumPublishReport:
-        """Execute article publication or dry-run validation.
+        """Execute article publication, status inspection, or link syncing.
 
         Args:
             command: PublishMediumArticlesCommand with publication options.
 
         Returns:
-            MediumPublishReport detailing publication counts and links.
+            MediumPublishReport detailing publication counts, status, and links.
 
         Notes/Architectural Intent:
-            Inspects docs/medium drafts and verifies front-matter or resolves URLs.
+            Coordinates draft uploads, publication on DEV.to, cross-link
+            resolution, and documentation synchronization across the monorepo.
         """
-        medium_dir = self._root / "docs" / "medium"
+        import os
+
+        from hexaqual.commands.medium_publish import (
+            get_article_status_table,
+            publish_or_upload_single,
+            record_medium_url,
+            sync_all_links,
+            upload_all_drafts,
+        )
+
+        medium_dir = self._resolve_medium_dir(command.manifest_path)
         if not medium_dir.is_dir():
             return MediumPublishReport(
                 published_count=0,
                 total_count=0,
-                is_successful=True,
-                details=(),
+                is_successful=False,
+                details=(("error", f"Directory does not exist: {medium_dir}"),),
             )
 
-        articles = list(medium_dir.glob("article-*.md"))
-        details = [(a.stem, f"file://{a.absolute()}") for a in articles]
-        return MediumPublishReport(
-            published_count=len(articles) if not command.dry_run else 0,
-            total_count=len(articles),
-            is_successful=True,
-            details=tuple(details),
-        )
+        if command.status:
+            table = get_article_status_table(medium_dir)
+            return MediumPublishReport(
+                published_count=len(table),
+                total_count=len(table),
+                is_successful=True,
+                status_table=tuple(table),
+            )
+
+        if command.medium_url:
+            if not command.slug:
+                return MediumPublishReport(
+                    is_successful=False,
+                    details=(("error", "Provide a slug with --medium-url."),),
+                )
+            slug, msg = record_medium_url(
+                command.slug,
+                command.medium_url,
+                self._root,
+                dry_run=command.dry_run,
+                medium_dir=medium_dir,
+            )
+            return MediumPublishReport(
+                published_count=1,
+                total_count=1,
+                is_successful=True,
+                details=((slug, msg),),
+            )
+
+        api_key = command.api_key or os.environ.get("DEVTO_API_KEY", "")
+        if not api_key and not command.dry_run:
+            return MediumPublishReport(
+                is_successful=False,
+                details=(
+                    (
+                        "error",
+                        "No DEV.to API key found. Set DEVTO_API_KEY or pass --api-key.",
+                    ),
+                ),
+            )
+
+        if command.sync_links:
+            results = sync_all_links(
+                medium_dir,
+                api_key,
+                self._root,
+                dry_run=command.dry_run,
+            )
+            return MediumPublishReport(
+                published_count=len(results),
+                total_count=len(results),
+                is_successful=True,
+                details=tuple(results),
+            )
+
+        if command.all_drafts:
+            results = upload_all_drafts(
+                medium_dir,
+                api_key,
+                dry_run=command.dry_run,
+            )
+            return MediumPublishReport(
+                published_count=len(results),
+                total_count=len(results),
+                is_successful=True,
+                details=tuple(results),
+            )
+
+        target = command.slug
+        if not target and command.manifest_path and command.manifest_path.is_file():
+            target = str(command.manifest_path)
+
+        if not target:
+            return MediumPublishReport(
+                is_successful=False,
+                details=(
+                    (
+                        "error",
+                        "Provide an article slug or pass --status / --all-drafts / --sync-links.",
+                    ),
+                ),
+            )
+
+        try:
+            slug, msg = publish_or_upload_single(
+                target,
+                publish=command.publish,
+                api_key=api_key,
+                repo_root=self._root,
+                dry_run=command.dry_run,
+                medium_dir=medium_dir,
+            )
+            return MediumPublishReport(
+                published_count=1,
+                total_count=1,
+                is_successful=True,
+                details=((slug, msg),),
+            )
+        except Exception as exc:
+            return MediumPublishReport(
+                is_successful=False,
+                details=((target, f"Failed: {exc}"),),
+            )
+
+    def _resolve_medium_dir(self, manifest_path: Path | None) -> Path:
+        """Resolve the medium drafts directory path."""
+        if manifest_path:
+            return manifest_path if manifest_path.is_dir() else manifest_path.parent
+        return self._root / "docs" / "medium"
 
 
 __all__ = [
