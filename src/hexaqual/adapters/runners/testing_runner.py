@@ -14,8 +14,8 @@ from typing import Any
 
 from coverage import CoverageData
 
+from hexaqual.adapters.code_analysis.coverage import parse_git_diff_hunks
 from hexaqual.ports.testing import TestingRunnerPort
-from hexaqual.utils.coverage import parse_git_diff_hunks
 
 __all__ = [
     "SubprocessTestingRunnerAdapter",

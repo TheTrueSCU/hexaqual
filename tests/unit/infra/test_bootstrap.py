@@ -274,7 +274,7 @@ def test_create_governance_bus_wires_and_dispatches():
         fuzz_res = bus.dispatch(FuzzRunCommand())
         assert isinstance(fuzz_res, FuzzRunReport)
 
-    with patch("hexaqual.utils.workspace.get_package_directories", return_value=[]):
+    with patch("hexaqual.adapters.workspace.get_package_directories", return_value=[]):
         snap_res = bus.dispatch(UpdateInlineSnapshotsCommand())
         assert isinstance(snap_res, InlineSnapshotsReport)
 

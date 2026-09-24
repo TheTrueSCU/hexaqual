@@ -66,7 +66,7 @@ def test_run(
         Driving adapter delegating to pytest runner adapter and forwarding
         any additional unknown options or flags directly to pytest.
     """
-    from hexaqual.commands.pytest_runner import run_main
+    from hexaqual.adapters.code_analysis.pytest_runner import run_main
 
     argv: list[str] = []
     if package:
@@ -107,9 +107,17 @@ def test_boundary(
     Notes/Architectural Intent:
         Audits branch coverage assertions across test suites.
     """
-    from hexaqual.commands.coverage import boundary_audit_main
+    from hexaqual.adapters.presenters.testing import create_testing_presenter
+    from hexaqual.adapters.workspace import get_repo_root
+    from hexaqual.domain.testing import AuditTestBoundariesCommand
+    from hexaqual.infra.bootstrap import create_governance_bus
 
-    exit_code = boundary_audit_main() or 0
+    root = get_repo_root()
+    cov_file = root / ".coverage"
+    bus = create_governance_bus(repo_root=root)
+    report = bus.dispatch(AuditTestBoundariesCommand(coverage_file=cov_file))
+    presenter = create_testing_presenter(format_type)
+    exit_code = presenter.present_boundary_audit(report)
     if exit_code != 0:
         raise typer.Exit(code=exit_code)
 
@@ -129,9 +137,17 @@ def test_impact(
     Notes/Architectural Intent:
         Accelerates local feedback loops by running only affected test paths.
     """
-    from hexaqual.commands.coverage import impact_main
+    from hexaqual.adapters.presenters.testing import create_testing_presenter
+    from hexaqual.adapters.workspace import get_repo_root
+    from hexaqual.domain.testing import RunImpactedTestsCommand
+    from hexaqual.infra.bootstrap import create_governance_bus
 
-    exit_code = impact_main() or 0
+    root = get_repo_root()
+    cov_file = root / ".coverage"
+    bus = create_governance_bus(repo_root=root)
+    report = bus.dispatch(RunImpactedTestsCommand(coverage_file=cov_file))
+    presenter = create_testing_presenter(format_type)
+    exit_code = presenter.present_impact_analysis(report)
     if exit_code != 0:
         raise typer.Exit(code=exit_code)
 
@@ -151,9 +167,17 @@ def test_redundancy(
     Notes/Architectural Intent:
         Identifies duplicate test execution paths to optimize CI test efficiency.
     """
-    from hexaqual.commands.coverage import redundancy_audit_main
+    from hexaqual.adapters.presenters.testing import create_testing_presenter
+    from hexaqual.adapters.workspace import get_repo_root
+    from hexaqual.domain.testing import AuditTestRedundancyCommand
+    from hexaqual.infra.bootstrap import create_governance_bus
 
-    exit_code = redundancy_audit_main() or 0
+    root = get_repo_root()
+    cov_file = root / ".coverage"
+    bus = create_governance_bus(repo_root=root)
+    report = bus.dispatch(AuditTestRedundancyCommand(coverage_file=cov_file))
+    presenter = create_testing_presenter(format_type)
+    exit_code = presenter.present_redundancy_audit(report)
     if exit_code != 0:
         raise typer.Exit(code=exit_code)
 
@@ -230,13 +254,13 @@ def test_snapshot(
     from pathlib import Path
 
     from hexaqual.adapters.presenters.analysis import create_analysis_presenter
-    from hexaqual.domain.analysis import UpdateInlineSnapshotsCommand
-    from hexaqual.infra.bootstrap import create_governance_bus
-    from hexaqual.utils.workspace import (
+    from hexaqual.adapters.workspace import (
         get_package_directories,
         get_package_directory,
         get_repo_root,
     )
+    from hexaqual.domain.analysis import UpdateInlineSnapshotsCommand
+    from hexaqual.infra.bootstrap import create_governance_bus
 
     root = get_repo_root()
     targets: list[Path] = []
@@ -278,9 +302,9 @@ def test_archon(
         Driving adapter dispatching GenerateArchonTestsCommand across the governance bus.
     """
     from hexaqual.adapters.presenters.generators import create_generator_presenter
+    from hexaqual.adapters.workspace import get_repo_root
     from hexaqual.domain.generators import GenerateArchonTestsCommand
     from hexaqual.infra.bootstrap import create_governance_bus
-    from hexaqual.utils.workspace import get_repo_root
 
     root = get_repo_root()
     bus = create_governance_bus(repo_root=root)

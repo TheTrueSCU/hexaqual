@@ -9,6 +9,11 @@ from __future__ import annotations
 
 import re
 
+from hexaqual.adapters.code_analysis.mutmut import classify_mutant_line
+from hexaqual.adapters.workspace import (
+    get_package_directories,
+    get_package_directory,
+)
 from hexaqual.domain.testing import (
     AuditTestBoundariesCommand,
     AuditTestRedundancyCommand,
@@ -25,11 +30,6 @@ from hexaqual.domain.testing import (
     RunMutationTestsCommand,
 )
 from hexaqual.ports.testing import TestingRunnerPort
-from hexaqual.utils.mutmut import classify_mutant_line
-from hexaqual.utils.workspace import (
-    get_package_directories,
-    get_package_directory,
-)
 
 __all__ = [
     "AuditTestBoundariesHandler",

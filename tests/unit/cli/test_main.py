@@ -21,7 +21,7 @@ def test_cli_version() -> None:
 
 def test_cli_check_invokes_runner() -> None:
     """Test hexaqual check subcommand delegates to sanity check runner."""
-    with patch("hexaqual.commands.sanity_check.run_sanity_check", return_value=0) as mock_run:
+    with patch("hexaqual.cli.check._execute_sanity_pipeline") as mock_run:
         res = runner.invoke(app, ["check", "--skip-tests"])
         assert res.exit_code == 0
         assert mock_run.called
@@ -29,7 +29,7 @@ def test_cli_check_invokes_runner() -> None:
 
 def test_cli_sanity_alias_invokes_runner() -> None:
     """Test hexaqual sanity alias delegates to sanity check runner."""
-    with patch("hexaqual.commands.sanity_check.run_sanity_check", return_value=0) as mock_run:
+    with patch("hexaqual.cli.check._execute_sanity_pipeline") as mock_run:
         res = runner.invoke(app, ["sanity", "--skip-tests"])
         assert res.exit_code == 0
         assert mock_run.called
@@ -86,7 +86,7 @@ def test_cli_docs_help() -> None:
 
 def test_cli_statements_check() -> None:
     """Test statements check subcommand."""
-    with patch("hexaqual.utils.all_statements.check_file_all", return_value=[]):
+    with patch("hexaqual.adapters.code_analysis.all_statements.check_file_all", return_value=[]):
         res = runner.invoke(app, ["statements", "check"])
         assert res.exit_code == 0
 
@@ -94,8 +94,14 @@ def test_cli_statements_check() -> None:
 def test_cli_parity_test() -> None:
     """Test parity test subcommand."""
     with (
-        patch("hexaqual.utils.test_parity.check_test_directories_inits", return_value=[]),
-        patch("hexaqual.utils.test_parity.check_src_to_test_symmetry", return_value=[]),
+        patch(
+            "hexaqual.adapters.code_analysis.test_parity.check_test_directories_inits",
+            return_value=[],
+        ),
+        patch(
+            "hexaqual.adapters.code_analysis.test_parity.check_src_to_test_symmetry",
+            return_value=[],
+        ),
     ):
         res = runner.invoke(app, ["parity", "test"])
         assert res.exit_code == 0

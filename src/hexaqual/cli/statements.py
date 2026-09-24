@@ -43,9 +43,9 @@ def statements_check(
     Notes/Architectural Intent:
         Driving adapter delegating to AST statement inspection and governance presenter.
     """
+    from hexaqual.adapters.code_analysis.all_statements import check_file_all
     from hexaqual.adapters.presenters.governance import create_governance_presenter
-    from hexaqual.utils.all_statements import check_file_all
-    from hexaqual.utils.workspace import get_repo_root, resolve_target_python_files
+    from hexaqual.infra.workspace import get_repo_root, resolve_target_python_files
 
     root = get_repo_root()
     py_files = resolve_target_python_files(files=files, packages=packages, repo_root=root)
@@ -77,9 +77,9 @@ def statements_fix(
     Notes/Architectural Intent:
         Driving adapter sorting, deduplicating, and formatting __all__ statements.
     """
+    from hexaqual.adapters.code_analysis.all_statements import fix_file_all
     from hexaqual.adapters.presenters.governance import create_governance_presenter
-    from hexaqual.utils.all_statements import fix_file_all
-    from hexaqual.utils.workspace import get_repo_root, resolve_target_python_files
+    from hexaqual.infra.workspace import get_repo_root, resolve_target_python_files
 
     root = get_repo_root()
     py_files = resolve_target_python_files(files=files, packages=packages, repo_root=root)

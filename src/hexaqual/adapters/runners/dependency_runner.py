@@ -10,26 +10,26 @@ from __future__ import annotations
 import subprocess
 from pathlib import Path
 
+from hexaqual.adapters.code_analysis.extras_parity import (
+    audit_extras_parity as check_extras,
+)
+from hexaqual.adapters.code_analysis.extras_parity import (
+    generate_extras_mermaid_diagram as make_mermaid,
+)
+from hexaqual.adapters.code_analysis.import_linter import update_pyproject_toml
+from hexaqual.adapters.code_analysis.pydeps import generate_all_diagrams
+from hexaqual.adapters.workspace import (
+    check_tool_availability as check_tool_avail,
+)
+from hexaqual.adapters.workspace import (
+    get_package_directories,
+)
 from hexaqual.domain.dependencies import (
     DeptryPackageResult,
     ExtrasAuditResult,
     ImportLinterPackageResult,
 )
 from hexaqual.ports.dependencies import DependencyAuditorPort
-from hexaqual.utils.extras_parity import (
-    audit_extras_parity as check_extras,
-)
-from hexaqual.utils.extras_parity import (
-    generate_extras_mermaid_diagram as make_mermaid,
-)
-from hexaqual.utils.import_linter import update_pyproject_toml
-from hexaqual.utils.pydeps import generate_all_diagrams
-from hexaqual.utils.workspace import (
-    check_tool_availability as check_tool_avail,
-)
-from hexaqual.utils.workspace import (
-    get_package_directories,
-)
 
 __all__ = [
     "SubprocessDependencyAuditorAdapter",

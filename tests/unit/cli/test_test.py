@@ -20,7 +20,9 @@ def test_test_help() -> None:
 
 def test_test_run() -> None:
     """Test test run command delegates to pytest runner."""
-    with patch("hexaqual.commands.pytest_runner.run_main", return_value=0) as mock_run:
+    with patch(
+        "hexaqual.adapters.code_analysis.pytest_runner.run_main", return_value=0
+    ) as mock_run:
         res = runner.invoke(
             cli_test_app,
             [
@@ -55,26 +57,50 @@ def test_test_run() -> None:
 
 def test_test_boundary() -> None:
     """Test test boundary audit command."""
-    with patch("hexaqual.commands.coverage.boundary_audit_main", return_value=0) as mock_audit:
+    mock_bus = MagicMock()
+    mock_pres = MagicMock()
+    mock_pres.present_boundary_audit.return_value = 0
+    with (
+        patch("hexaqual.infra.bootstrap.create_governance_bus", return_value=mock_bus),
+        patch(
+            "hexaqual.adapters.presenters.testing.create_testing_presenter", return_value=mock_pres
+        ),
+    ):
         res = runner.invoke(cli_test_app, ["boundary"])
         assert res.exit_code == 0
-        assert mock_audit.called
+        assert mock_bus.dispatch.called
 
 
 def test_test_impact() -> None:
     """Test test impact command."""
-    with patch("hexaqual.commands.coverage.impact_main", return_value=0) as mock_impact:
+    mock_bus = MagicMock()
+    mock_pres = MagicMock()
+    mock_pres.present_impact_analysis.return_value = 0
+    with (
+        patch("hexaqual.infra.bootstrap.create_governance_bus", return_value=mock_bus),
+        patch(
+            "hexaqual.adapters.presenters.testing.create_testing_presenter", return_value=mock_pres
+        ),
+    ):
         res = runner.invoke(cli_test_app, ["impact"])
         assert res.exit_code == 0
-        assert mock_impact.called
+        assert mock_bus.dispatch.called
 
 
 def test_test_redundancy() -> None:
     """Test test redundancy audit command."""
-    with patch("hexaqual.commands.coverage.redundancy_audit_main", return_value=0) as mock_red:
+    mock_bus = MagicMock()
+    mock_pres = MagicMock()
+    mock_pres.present_redundancy_audit.return_value = 0
+    with (
+        patch("hexaqual.infra.bootstrap.create_governance_bus", return_value=mock_bus),
+        patch(
+            "hexaqual.adapters.presenters.testing.create_testing_presenter", return_value=mock_pres
+        ),
+    ):
         res = runner.invoke(cli_test_app, ["redundancy"])
         assert res.exit_code == 0
-        assert mock_red.called
+        assert mock_bus.dispatch.called
 
 
 def test_test_fuzz() -> None:

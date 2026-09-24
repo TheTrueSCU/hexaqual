@@ -22,6 +22,7 @@ from hexaflow import (
     WorkflowExecutionState,
 )
 
+from hexaqual.adapters.workspace import get_package_directories, get_repo_root
 from hexaqual.domain.pypi import (
     BuildPackagesCommand,
     CheckPyPiReleasesCommand,
@@ -38,7 +39,6 @@ from hexaqual.domain.pypi import (
     VerifyReproducibleBuildCommand,
 )
 from hexaqual.ports.pypi import PyPiClientPort
-from hexaqual.utils.workspace import get_package_directories, get_repo_root
 
 __all__ = [
     "BuildPackagesHandler",

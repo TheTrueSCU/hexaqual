@@ -58,9 +58,9 @@ def gh_pr(
     """
     from hexaqual.adapters.github.client import GitHubHttpAdapter
     from hexaqual.adapters.presenters.github import create_github_presenter
+    from hexaqual.adapters.workspace import get_repo_root
     from hexaqual.domain.github import ExaminePrCommand
     from hexaqual.infra.bootstrap import create_governance_bus
-    from hexaqual.utils.workspace import get_repo_root
 
     root = get_repo_root()
     presenter = create_github_presenter(output_format=format_type)
@@ -101,9 +101,9 @@ def gh_checks(
     """
     from hexaqual.adapters.github.client import GitHubHttpAdapter
     from hexaqual.adapters.presenters.github import create_github_presenter
+    from hexaqual.adapters.workspace import get_repo_root
     from hexaqual.domain.github import InspectChecksCommand
     from hexaqual.infra.bootstrap import create_governance_bus
-    from hexaqual.utils.workspace import get_repo_root
 
     root = get_repo_root()
     with GitHubHttpAdapter() as client:
@@ -134,9 +134,9 @@ def gh_repo(
     """
     from hexaqual.adapters.github.client import GitHubHttpAdapter
     from hexaqual.adapters.presenters.github import create_github_presenter
+    from hexaqual.adapters.workspace import get_repo_root
     from hexaqual.domain.github import InspectRepoCommand
     from hexaqual.infra.bootstrap import create_governance_bus
-    from hexaqual.utils.workspace import get_repo_root
 
     root = get_repo_root()
     with GitHubHttpAdapter() as client:
@@ -165,9 +165,9 @@ def gh_security(
     """
     from hexaqual.adapters.github.client import GitHubHttpAdapter
     from hexaqual.adapters.presenters.github import create_github_presenter
+    from hexaqual.adapters.workspace import get_repo_root
     from hexaqual.domain.github import InspectSecurityCommentsCommand
     from hexaqual.infra.bootstrap import create_governance_bus
-    from hexaqual.utils.workspace import get_repo_root
 
     root = get_repo_root()
     with GitHubHttpAdapter() as client:
@@ -196,9 +196,9 @@ def gh_code_scanning(
     """
     from hexaqual.adapters.github.client import GitHubHttpAdapter
     from hexaqual.adapters.presenters.github import create_github_presenter
+    from hexaqual.adapters.workspace import get_repo_root
     from hexaqual.domain.github import InspectCodeScanningCommand
     from hexaqual.infra.bootstrap import create_governance_bus
-    from hexaqual.utils.workspace import get_repo_root
 
     root = get_repo_root()
     with GitHubHttpAdapter() as client:

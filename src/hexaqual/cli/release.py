@@ -2,7 +2,8 @@
 
 Notes/Architectural Intent:
     Driving adapter exposing package building, verification against PyPI registry,
-    reproducible build audits, and dependency-ordered smart publishing.
+    reproducible build audits, and dependency-ordered smart publishing via the
+    governance CommandDispatcher bus.
 """
 
 from __future__ import annotations
@@ -11,6 +12,16 @@ from pathlib import Path
 
 import typer
 from rich.console import Console
+
+from hexaqual.adapters.presenters.pypi import create_pypi_presenter
+from hexaqual.adapters.publishers.pypi import PyPiPublisherAdapter
+from hexaqual.domain.pypi import (
+    BuildPackagesCommand,
+    CheckPyPiReleasesCommand,
+    PublishPackagesCommand,
+    VerifyReproducibleBuildCommand,
+)
+from hexaqual.infra.bootstrap import create_governance_bus
 
 __all__ = [
     "release_app",
@@ -48,9 +59,12 @@ def release_build(
     Notes/Architectural Intent:
         Builds reproducible distribution packages.
     """
-    from hexaqual.commands.pypi import build_all_packages
-
-    exit_code = build_all_packages(out_dir=dist_dir, format_name=format_type)
+    bus = create_governance_bus(pypi_client=PyPiPublisherAdapter())
+    report = bus.dispatch(BuildPackagesCommand(target_dist=dist_dir))
+    if not report.results:
+        raise typer.Exit(code=1)
+    presenter = create_pypi_presenter(format_type, console=console)
+    exit_code = presenter.present_build(report)
     if exit_code != 0:
         raise typer.Exit(code=exit_code)
 
@@ -74,17 +88,12 @@ def release_check(
     Notes/Architectural Intent:
         Queries PyPI to verify current version status.
     """
-    from hexaqual.adapters.presenters.pypi import create_pypi_presenter
-    from hexaqual.adapters.runners.pypi_runner import SubprocessPyPiRunnerAdapter
-    from hexaqual.commands.pypi import _DelegatingPyPiClient
-    from hexaqual.domain.pypi import CheckPyPiReleasesCommand
-    from hexaqual.infra.bootstrap import create_governance_bus
-
-    client = _DelegatingPyPiClient(SubprocessPyPiRunnerAdapter())
-    bus = create_governance_bus(pypi_client=client)
+    bus = create_governance_bus(pypi_client=PyPiPublisherAdapter())
     report = bus.dispatch(CheckPyPiReleasesCommand(package_name=package))
     presenter = create_pypi_presenter(format_type, console=console)
-    presenter.present_check(report)
+    exit_code = presenter.present_check(report)
+    if exit_code != 0:
+        raise typer.Exit(code=exit_code)
 
 
 @release_app.command("publish")
@@ -112,21 +121,27 @@ def release_publish(
     Notes/Architectural Intent:
         Smart publisher skipping published versions and respecting rate limits.
     """
-    from hexaqual.commands.pypi import build_all_packages, publish_packages
-
+    bus = create_governance_bus(pypi_client=PyPiPublisherAdapter())
     if build:
-        build_rc = build_all_packages(out_dir=dist_dir, format_name=format_type)
-        if build_rc != 0:
+        build_report = bus.dispatch(BuildPackagesCommand(target_dist=dist_dir))
+        if not build_report.results:
             console.print("[bold red]Failed to build packages. Aborting publish.[/bold red]")
+            raise typer.Exit(code=1)
+        presenter = create_pypi_presenter(format_type, console=console)
+        build_rc = presenter.present_build(build_report)
+        if build_rc != 0:
             raise typer.Exit(code=build_rc)
 
-    exit_code = publish_packages(
-        dist_dir=dist_dir,
-        token=token,
-        delay=delay,
-        skip_existing=not force,
-        format_name=format_type,
+    report = bus.dispatch(
+        PublishPackagesCommand(
+            dist_dir=dist_dir,
+            token=token,
+            delay=delay,
+            skip_existing=not force,
+        )
     )
+    presenter = create_pypi_presenter(format_type, console=console)
+    exit_code = presenter.present_publish(report)
     if exit_code != 0:
         raise typer.Exit(code=exit_code)
 
@@ -146,8 +161,9 @@ def release_reproducible(
     Notes/Architectural Intent:
         Builds twice in clean isolated environments and compares SHA256 hashes.
     """
-    from hexaqual.commands.pypi import verify_reproducible_builds
-
-    exit_code = verify_reproducible_builds(format_name=format_type)
+    bus = create_governance_bus(pypi_client=PyPiPublisherAdapter())
+    report = bus.dispatch(VerifyReproducibleBuildCommand())
+    presenter = create_pypi_presenter(format_type, console=console)
+    exit_code = presenter.present_reproducible(report)
     if exit_code != 0:
         raise typer.Exit(code=exit_code)

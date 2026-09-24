@@ -81,7 +81,7 @@ def test_docs_links_success() -> None:
 
     mock_report = DocLinksReport(is_successful=True, total_links_count=5)
     with (
-        patch("hexaqual.commands.doc_links.scan_doc_links", return_value=mock_report),
+        patch("hexaqual.adapters.code_analysis.doc_links.scan_doc_links", return_value=mock_report),
         patch(
             "hexaqual.adapters.presenters.generators.RichGeneratorPresenterAdapter.present_doc_links",
             return_value=0,
@@ -100,7 +100,7 @@ def test_docs_links_failure() -> None:
         broken_links=(BrokenDocLink("readme.md", 1, "bad.md", "does not exist"),),
     )
     with (
-        patch("hexaqual.commands.doc_links.scan_doc_links", return_value=mock_report),
+        patch("hexaqual.adapters.code_analysis.doc_links.scan_doc_links", return_value=mock_report),
         patch(
             "hexaqual.adapters.presenters.generators.RichGeneratorPresenterAdapter.present_doc_links",
             return_value=1,

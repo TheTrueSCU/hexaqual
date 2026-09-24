@@ -78,7 +78,7 @@ def test_deps_pydeps_success() -> None:
     mock_presenter.present_pydeps.return_value = 0
 
     with (
-        patch("hexaqual.utils.workspace.ensure_tool_installed"),
+        patch("hexaqual.adapters.workspace.ensure_tool_installed"),
         patch("hexaqual.infra.bootstrap.create_governance_bus") as mock_bus_factory,
         patch(
             "hexaqual.adapters.presenters.generators.create_generator_presenter",
@@ -102,7 +102,7 @@ def test_deps_pydeps_failure() -> None:
     mock_presenter.present_pydeps.return_value = 1
 
     with (
-        patch("hexaqual.utils.workspace.ensure_tool_installed"),
+        patch("hexaqual.adapters.workspace.ensure_tool_installed"),
         patch("hexaqual.infra.bootstrap.create_governance_bus") as mock_bus_factory,
         patch(
             "hexaqual.adapters.presenters.generators.create_generator_presenter",
@@ -125,13 +125,13 @@ def test_deps_linter_success(tmp_path: Path) -> None:
     mock_presenter.present_import_linter.return_value = 0
 
     with (
-        patch("hexaqual.utils.workspace.ensure_tool_installed"),
-        patch("hexaqual.utils.workspace.get_repo_root", return_value=tmp_path),
+        patch("hexaqual.adapters.workspace.ensure_tool_installed"),
+        patch("hexaqual.adapters.workspace.get_repo_root", return_value=tmp_path),
         patch(
-            "hexaqual.utils.workspace.get_packages_directory", return_value=tmp_path / "packages"
+            "hexaqual.adapters.workspace.get_packages_directory", return_value=tmp_path / "packages"
         ),
         patch(
-            "hexaqual.utils.workspace.get_package_directories",
+            "hexaqual.adapters.workspace.get_package_directories",
             return_value=[tmp_path / "packages" / "core"],
         ),
         patch("hexaqual.infra.bootstrap.create_governance_bus") as mock_bus_factory,
@@ -156,13 +156,13 @@ def test_deps_linter_failure(tmp_path: Path) -> None:
     mock_presenter.present_import_linter.return_value = 1
 
     with (
-        patch("hexaqual.utils.workspace.ensure_tool_installed"),
-        patch("hexaqual.utils.workspace.get_repo_root", return_value=tmp_path),
+        patch("hexaqual.adapters.workspace.ensure_tool_installed"),
+        patch("hexaqual.adapters.workspace.get_repo_root", return_value=tmp_path),
         patch(
-            "hexaqual.utils.workspace.get_packages_directory", return_value=tmp_path / "packages"
+            "hexaqual.adapters.workspace.get_packages_directory", return_value=tmp_path / "packages"
         ),
         patch(
-            "hexaqual.utils.workspace.get_package_directories",
+            "hexaqual.adapters.workspace.get_package_directories",
             return_value=[tmp_path / "packages" / "core"],
         ),
         patch("hexaqual.infra.bootstrap.create_governance_bus") as mock_bus_factory,
@@ -184,9 +184,9 @@ def test_deps_linter_generate(tmp_path: Path) -> None:
     """Test deps linter-generate dispatches config generation command."""
     mock_bus = MagicMock()
     with (
-        patch("hexaqual.utils.workspace.get_repo_root", return_value=tmp_path),
+        patch("hexaqual.adapters.workspace.get_repo_root", return_value=tmp_path),
         patch(
-            "hexaqual.utils.workspace.get_package_directories",
+            "hexaqual.adapters.workspace.get_package_directories",
             return_value=[tmp_path / "packages" / "core"],
         ),
         patch("hexaqual.infra.bootstrap.create_governance_bus", return_value=mock_bus),
@@ -206,7 +206,7 @@ def test_deps_deptry_success() -> None:
     mock_pres.present_deptry_audit.return_value = 0
 
     with (
-        patch("hexaqual.utils.workspace.ensure_tool_installed"),
+        patch("hexaqual.adapters.workspace.ensure_tool_installed"),
         patch("hexaqual.infra.bootstrap.create_governance_bus", return_value=mock_bus),
         patch(
             "hexaqual.adapters.presenters.dependency.create_dependency_presenter",
@@ -227,7 +227,7 @@ def test_deps_deptry_failure() -> None:
     mock_pres.present_deptry_audit.return_value = 1
 
     with (
-        patch("hexaqual.utils.workspace.ensure_tool_installed"),
+        patch("hexaqual.adapters.workspace.ensure_tool_installed"),
         patch("hexaqual.infra.bootstrap.create_governance_bus", return_value=mock_bus),
         patch(
             "hexaqual.adapters.presenters.dependency.create_dependency_presenter",

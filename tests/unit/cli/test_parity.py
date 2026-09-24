@@ -21,8 +21,14 @@ def test_parity_help() -> None:
 def test_parity_test_clean() -> None:
     """Test parity test with zero errors."""
     with (
-        patch("hexaqual.utils.test_parity.check_test_directories_inits", return_value=[]),
-        patch("hexaqual.utils.test_parity.check_src_to_test_symmetry", return_value=[]),
+        patch(
+            "hexaqual.adapters.code_analysis.test_parity.check_test_directories_inits",
+            return_value=[],
+        ),
+        patch(
+            "hexaqual.adapters.code_analysis.test_parity.check_src_to_test_symmetry",
+            return_value=[],
+        ),
     ):
         res = runner.invoke(parity_app, ["test"])
         assert res.exit_code == 0
@@ -32,10 +38,13 @@ def test_parity_test_violations() -> None:
     """Test parity test with missing inits or asymmetry."""
     with (
         patch(
-            "hexaqual.utils.test_parity.check_test_directories_inits",
+            "hexaqual.adapters.code_analysis.test_parity.check_test_directories_inits",
             return_value=["missing __init__.py"],
         ),
-        patch("hexaqual.utils.test_parity.check_src_to_test_symmetry", return_value=[]),
+        patch(
+            "hexaqual.adapters.code_analysis.test_parity.check_src_to_test_symmetry",
+            return_value=[],
+        ),
     ):
         res = runner.invoke(parity_app, ["test"])
         assert res.exit_code == 1
@@ -58,7 +67,7 @@ def test_parity_extras() -> None:
 def test_parity_architecture_clean() -> None:
     """Test parity architecture with zero errors."""
     with patch(
-        "hexaqual.utils.test_parity.check_architecture_test_parity",
+        "hexaqual.adapters.code_analysis.test_parity.check_architecture_test_parity",
         return_value=[],
     ):
         res = runner.invoke(parity_app, ["architecture"])
@@ -68,7 +77,7 @@ def test_parity_architecture_clean() -> None:
 def test_parity_architecture_violations() -> None:
     """Test parity architecture with detected errors."""
     with patch(
-        "hexaqual.utils.test_parity.check_architecture_test_parity",
+        "hexaqual.adapters.code_analysis.test_parity.check_architecture_test_parity",
         return_value=["Missing architecture tests in packages/foo/tests/architecture"],
     ):
         res = runner.invoke(parity_app, ["architecture"])

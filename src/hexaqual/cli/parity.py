@@ -40,12 +40,12 @@ def parity_test(
     Notes/Architectural Intent:
         Driving adapter verifying src/ and tests/unit/ parity and __init__.py presence.
     """
-    from hexaqual.adapters.presenters.governance import create_governance_presenter
-    from hexaqual.utils.test_parity import (
+    from hexaqual.adapters.code_analysis.test_parity import (
         check_src_to_test_symmetry,
         check_test_directories_inits,
     )
-    from hexaqual.utils.workspace import get_repo_root
+    from hexaqual.adapters.presenters.governance import create_governance_presenter
+    from hexaqual.infra.workspace import get_repo_root
 
     root = get_repo_root()
     init_errors = check_test_directories_inits(root)
@@ -79,7 +79,7 @@ def parity_extras(
     from hexaqual.adapters.presenters.dependency import create_dependency_presenter
     from hexaqual.domain.dependencies import AuditExtrasParityCommand
     from hexaqual.infra.bootstrap import create_governance_bus
-    from hexaqual.utils.workspace import get_repo_root
+    from hexaqual.infra.workspace import get_repo_root
 
     root = get_repo_root()
     bus = create_governance_bus(repo_root=root)
@@ -108,9 +108,9 @@ def parity_architecture(
         Driving adapter verifying tests/architecture/test_hexagonal_boundaries.py
         and test directory inits exist across all workspace packages.
     """
+    from hexaqual.adapters.code_analysis.test_parity import check_architecture_test_parity
     from hexaqual.adapters.presenters.governance import create_governance_presenter
-    from hexaqual.utils.test_parity import check_architecture_test_parity
-    from hexaqual.utils.workspace import get_repo_root
+    from hexaqual.infra.workspace import get_repo_root
 
     root = get_repo_root()
     errors = check_architecture_test_parity(root)

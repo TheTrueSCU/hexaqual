@@ -141,16 +141,6 @@ forbidden_modules = [
     "hexaqual.infra",
 ]
 
-[[tool.importlinter.contracts]]
-name = "Forbidden imports for utils"
-type = "forbidden"
-source_modules = ["hexaqual.utils"]
-forbidden_modules = [
-    "hexaqual.domain",
-    "hexaqual.ports",
-    "hexaqual.adapters",
-]
-
 [tool.coverage.run]
 source = ["src/hexaqual"]
 branch = true

@@ -14,7 +14,7 @@ from pathlib import Path
 from hypothesis import given, settings
 from hypothesis import strategies as st
 
-from hexaqual.commands.medium_publish import (
+from hexaqual.adapters.publishers.devto import (
     _BLOG_PUBLICATION_ORDER,
     _regenerate_blog_index,
 )

@@ -14,6 +14,25 @@ import tomllib
 from concurrent.futures import ProcessPoolExecutor
 from pathlib import Path
 
+from hexaqual.adapters.code_analysis.pydeps import (
+    check_overview_diagram,
+    check_package_diagram,
+    generate_overview_diagram,
+    generate_package_diagram,
+)
+from hexaqual.adapters.code_analysis.usage_docs import (
+    extract_command_tree_bfs,
+    extract_subcommands_from_help,
+)
+from hexaqual.adapters.workspace import (
+    get_canonical_scripts,
+    get_package_directories,
+    get_package_directory,
+    get_present_layers,
+    get_repo_root,
+    get_workspace_scripts,
+    resolve_affected_packages,
+)
 from hexaqual.domain.generators import (
     ArchonReport,
     GenerateArchonTestsCommand,
@@ -22,25 +41,6 @@ from hexaqual.domain.generators import (
     PydepsDiagramResult,
     PydepsReport,
     UsageDocsReport,
-)
-from hexaqual.utils.help_extractor import (
-    extract_command_tree_bfs,
-    extract_subcommands_from_help,
-)
-from hexaqual.utils.import_linter import get_present_layers
-from hexaqual.utils.pydeps import (
-    check_overview_diagram,
-    check_package_diagram,
-    generate_overview_diagram,
-    generate_package_diagram,
-)
-from hexaqual.utils.workspace import (
-    get_canonical_scripts,
-    get_package_directories,
-    get_package_directory,
-    get_repo_root,
-    get_workspace_scripts,
-    resolve_affected_packages,
 )
 
 

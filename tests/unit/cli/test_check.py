@@ -17,7 +17,7 @@ def test_register_check_commands() -> None:
     test_app = typer.Typer()
     register_check_commands(test_app)
 
-    with patch("hexaqual.commands.sanity_check.run_sanity_check", return_value=0) as mock_run:
+    with patch("hexaqual.cli.check._execute_sanity_pipeline") as mock_run:
         res = runner.invoke(test_app, ["check", "--skip-tests"])
         assert res.exit_code == 0
         assert mock_run.called
@@ -28,16 +28,14 @@ def test_check_dynamic_skip_options() -> None:
     test_app = typer.Typer()
     register_check_commands(test_app)
 
-    with patch("hexaqual.commands.sanity_check.run_sanity_check", return_value=0) as mock_run:
+    with patch("hexaqual.cli.check._execute_sanity_pipeline") as mock_run:
         res = runner.invoke(test_app, ["check", "--skip-ruff", "--skip-ty", "--skip-tests"])
         assert res.exit_code == 0
         assert mock_run.called
         call_kwargs = mock_run.call_args[1]
-        assert call_kwargs["skip_tests"] is True
-        assert call_kwargs["skip_typecheck"] is True
-        assert "lint" in call_kwargs["skip_steps"]
-        assert "typecheck" in call_kwargs["skip_steps"]
         assert "pytest" in call_kwargs["skip_steps"]
+        assert "typecheck" in call_kwargs["skip_steps"]
+        assert "lint" in call_kwargs["skip_steps"]
 
 
 def test_sanity_alias_command() -> None:
@@ -45,7 +43,7 @@ def test_sanity_alias_command() -> None:
     test_app = typer.Typer()
     register_check_commands(test_app)
 
-    with patch("hexaqual.commands.sanity_check.run_sanity_check", return_value=0) as mock_run:
+    with patch("hexaqual.cli.check._execute_sanity_pipeline") as mock_run:
         res = runner.invoke(test_app, ["sanity", "--skip-tests"])
         assert res.exit_code == 0
         assert mock_run.called
@@ -56,7 +54,7 @@ def test_check_failure_exit_code() -> None:
     test_app = typer.Typer()
     register_check_commands(test_app)
 
-    with patch("hexaqual.commands.sanity_check.run_sanity_check", return_value=1):
+    with patch("hexaqual.cli.check._execute_sanity_pipeline", side_effect=typer.Exit(code=1)):
         res = runner.invoke(test_app, ["check", "--skip-tests"])
         assert res.exit_code == 1
 

@@ -55,13 +55,13 @@ def refactor_alphabetize(
         Dispatches AlphabetizeCodeCommand across the governance bus.
     """
     from hexaqual.adapters.presenters.refactoring import create_refactoring_presenter
-    from hexaqual.domain.refactoring import AlphabetizeCodeCommand
-    from hexaqual.infra.bootstrap import create_governance_bus
-    from hexaqual.utils.workspace import (
+    from hexaqual.adapters.workspace import (
         get_package_directories,
         get_package_directory,
         get_repo_root,
     )
+    from hexaqual.domain.refactoring import AlphabetizeCodeCommand
+    from hexaqual.infra.bootstrap import create_governance_bus
 
     root = get_repo_root()
     target_paths: list[Path] = []
@@ -112,8 +112,8 @@ def refactor_rename(
     """
     import argparse
 
-    from hexaqual.commands.rope import handle_rename
-    from hexaqual.utils.workspace import ensure_tool_installed, get_repo_root
+    from hexaqual.adapters.code_analysis.rope import handle_rename
+    from hexaqual.adapters.workspace import ensure_tool_installed, get_repo_root
 
     ensure_tool_installed("rope", extra_name="rope")
     proj_root = root or get_repo_root()
@@ -161,8 +161,8 @@ def refactor_extract(
     """
     import argparse
 
-    from hexaqual.commands.rope import handle_extract_method
-    from hexaqual.utils.workspace import ensure_tool_installed, get_repo_root
+    from hexaqual.adapters.code_analysis.rope import handle_extract_method
+    from hexaqual.adapters.workspace import ensure_tool_installed, get_repo_root
 
     ensure_tool_installed("rope", extra_name="rope")
     proj_root = root or get_repo_root()
@@ -208,8 +208,8 @@ def refactor_move(
     """
     import argparse
 
-    from hexaqual.commands.rope import handle_move_symbol
-    from hexaqual.utils.workspace import ensure_tool_installed, get_repo_root
+    from hexaqual.adapters.code_analysis.rope import handle_move_symbol
+    from hexaqual.adapters.workspace import ensure_tool_installed, get_repo_root
 
     ensure_tool_installed("rope", extra_name="rope")
     proj_root = root or get_repo_root()
@@ -248,7 +248,7 @@ def refactor_run(
     """
     import sys
 
-    from hexaqual.commands.rope import run_main
+    from hexaqual.adapters.code_analysis.rope import run_main
 
     orig_argv = sys.argv
     try:

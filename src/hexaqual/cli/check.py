@@ -121,8 +121,11 @@ def _execute_sanity_pipeline(
     Raises:
         typer.Exit: If any sanity checks fail.
     """
-    from hexaqual.commands.sanity_check import resolve_targets, run_sanity_check
-    from hexaqual.utils.workspace import get_repo_root
+    from hexaqual.adapters.code_analysis.sanity import resolve_targets
+    from hexaqual.adapters.presenters.governance import create_governance_presenter
+    from hexaqual.adapters.workspace import get_repo_root
+    from hexaqual.domain.governance import RunSanityCheckCommand
+    from hexaqual.infra.bootstrap import create_governance_bus
 
     repo_root = get_repo_root()
     targets = resolve_targets(
@@ -136,8 +139,10 @@ def _execute_sanity_pipeline(
     if skip:
         merged_skips.update(skip)
 
-    exit_code = run_sanity_check(
-        targets=targets,
+    bus = create_governance_bus()
+    presenter = create_governance_presenter(format_type=format_type)
+    cmd = RunSanityCheckCommand(
+        targets=tuple(targets),
         repo_root=repo_root,
         fix=fix,
         skip_tests="pytest" in merged_skips,
@@ -149,8 +154,9 @@ def _execute_sanity_pipeline(
         skip_diagrams="diagrams" in merged_skips,
         skip_steps=tuple(sorted(merged_skips)),
         max_complexity=max_complexity,
-        format_type=format_type,
     )
+    report = bus.dispatch(cmd)
+    exit_code = presenter.present_sanity_dashboard(report)
     if exit_code != 0:
         raise typer.Exit(code=exit_code)
 
@@ -278,12 +284,12 @@ def complexity(
     from pathlib import Path
 
     from hexaqual.adapters.runners.subprocess_runner import SubprocessToolRunnerAdapter
-    from hexaqual.domain.governance import CheckStatus
-    from hexaqual.utils.workspace import (
+    from hexaqual.adapters.workspace import (
         get_package_directories,
         get_package_directory,
         get_repo_root,
     )
+    from hexaqual.domain.governance import CheckStatus
 
     root = get_repo_root()
     runner = SubprocessToolRunnerAdapter()

@@ -12,7 +12,6 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from hexaqual.domain.base import Command
-from hexaqual.utils.extras_parity import ExtraParityViolation
 
 __all__ = [
     "AuditExtrasParityCommand",
@@ -29,6 +28,16 @@ __all__ = [
     "RunUnifiedDepsAuditCommand",
     "UnifiedDependencyAuditReport",
 ]
+
+
+@dataclass(frozen=True)
+class ExtraParityViolation:
+    """Represents a missing or misconfigured optional dependency forwarding rule."""
+
+    subpackage: str
+    extra_name: str
+    dependencies: tuple[str, ...]
+    suggested_fix: str
 
 
 @dataclass(frozen=True)

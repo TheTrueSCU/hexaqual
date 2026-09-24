@@ -14,21 +14,21 @@ import sys
 import time
 from pathlib import Path
 
+from hexaqual.adapters.code_analysis.all_statements import (
+    check_file_all,
+    fix_file_all,
+)
+from hexaqual.adapters.code_analysis.pydeps import (
+    check_package_diagram,
+    generate_package_diagram,
+)
+from hexaqual.adapters.code_analysis.test_parity import check_package_parity
 from hexaqual.domain.governance import (
     CheckResult,
     CheckStatus,
     SanityTarget,
 )
 from hexaqual.ports.governance import ToolRunnerPort
-from hexaqual.utils.all_statements import (
-    check_file_all,
-    fix_file_all,
-)
-from hexaqual.utils.pydeps import (
-    check_package_diagram,
-    generate_package_diagram,
-)
-from hexaqual.utils.test_parity import check_package_parity
 
 __all__ = [
     "find_executable",

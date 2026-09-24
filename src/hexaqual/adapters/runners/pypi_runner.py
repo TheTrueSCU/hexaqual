@@ -13,8 +13,8 @@ from pathlib import Path
 
 import httpx
 
+from hexaqual.adapters.workspace import get_repo_root
 from hexaqual.ports.pypi import PyPiClientPort
-from hexaqual.utils.workspace import get_repo_root
 
 __all__ = [
     "SubprocessPyPiRunnerAdapter",

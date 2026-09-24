@@ -61,8 +61,8 @@ def test_refactor_alphabetize_failure() -> None:
 def test_refactor_rename_success() -> None:
     """Test refactor rename invokes handle_rename."""
     with (
-        patch("hexaqual.utils.workspace.ensure_tool_installed"),
-        patch("hexaqual.commands.rope.handle_rename") as mock_rename,
+        patch("hexaqual.adapters.workspace.ensure_tool_installed"),
+        patch("hexaqual.adapters.code_analysis.rope.handle_rename") as mock_rename,
     ):
         res = runner.invoke(
             refactor_app,
@@ -75,8 +75,11 @@ def test_refactor_rename_success() -> None:
 def test_refactor_rename_failure() -> None:
     """Test refactor rename handles exceptions cleanly."""
     with (
-        patch("hexaqual.utils.workspace.ensure_tool_installed"),
-        patch("hexaqual.commands.rope.handle_rename", side_effect=ValueError("Invalid offset")),
+        patch("hexaqual.adapters.workspace.ensure_tool_installed"),
+        patch(
+            "hexaqual.adapters.code_analysis.rope.handle_rename",
+            side_effect=ValueError("Invalid offset"),
+        ),
     ):
         res = runner.invoke(
             refactor_app,
@@ -88,8 +91,8 @@ def test_refactor_rename_failure() -> None:
 def test_refactor_extract_success() -> None:
     """Test refactor extract invokes handle_extract_method."""
     with (
-        patch("hexaqual.utils.workspace.ensure_tool_installed"),
-        patch("hexaqual.commands.rope.handle_extract_method") as mock_extract,
+        patch("hexaqual.adapters.workspace.ensure_tool_installed"),
+        patch("hexaqual.adapters.code_analysis.rope.handle_extract_method") as mock_extract,
     ):
         res = runner.invoke(
             refactor_app,
@@ -102,9 +105,9 @@ def test_refactor_extract_success() -> None:
 def test_refactor_extract_failure() -> None:
     """Test refactor extract handles exceptions cleanly."""
     with (
-        patch("hexaqual.utils.workspace.ensure_tool_installed"),
+        patch("hexaqual.adapters.workspace.ensure_tool_installed"),
         patch(
-            "hexaqual.commands.rope.handle_extract_method",
+            "hexaqual.adapters.code_analysis.rope.handle_extract_method",
             side_effect=ValueError("Cannot extract"),
         ),
     ):
@@ -118,8 +121,8 @@ def test_refactor_extract_failure() -> None:
 def test_refactor_move_success() -> None:
     """Test refactor move invokes handle_move_symbol."""
     with (
-        patch("hexaqual.utils.workspace.ensure_tool_installed"),
-        patch("hexaqual.commands.rope.handle_move_symbol") as mock_move,
+        patch("hexaqual.adapters.workspace.ensure_tool_installed"),
+        patch("hexaqual.adapters.code_analysis.rope.handle_move_symbol") as mock_move,
     ):
         res = runner.invoke(
             refactor_app,
@@ -132,8 +135,11 @@ def test_refactor_move_success() -> None:
 def test_refactor_move_failure() -> None:
     """Test refactor move handles exceptions cleanly."""
     with (
-        patch("hexaqual.utils.workspace.ensure_tool_installed"),
-        patch("hexaqual.commands.rope.handle_move_symbol", side_effect=ValueError("Cannot move")),
+        patch("hexaqual.adapters.workspace.ensure_tool_installed"),
+        patch(
+            "hexaqual.adapters.code_analysis.rope.handle_move_symbol",
+            side_effect=ValueError("Cannot move"),
+        ),
     ):
         res = runner.invoke(
             refactor_app,
@@ -144,7 +150,7 @@ def test_refactor_move_failure() -> None:
 
 def test_refactor_run_success() -> None:
     """Test refactor run invokes run_main."""
-    with patch("hexaqual.commands.rope.run_main", return_value=0) as mock_run:
+    with patch("hexaqual.adapters.code_analysis.rope.run_main", return_value=0) as mock_run:
         res = runner.invoke(refactor_app, ["run", "--", "rename", "--help"])
         assert res.exit_code == 0
         assert mock_run.called
@@ -152,6 +158,6 @@ def test_refactor_run_success() -> None:
 
 def test_refactor_run_failure() -> None:
     """Test refactor run handles non-zero exit code."""
-    with patch("hexaqual.commands.rope.run_main", return_value=2):
+    with patch("hexaqual.adapters.code_analysis.rope.run_main", return_value=2):
         res = runner.invoke(refactor_app, ["run"])
         assert res.exit_code == 2

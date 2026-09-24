@@ -57,9 +57,9 @@ def deps_audit(
         Dispatches RunUnifiedDepsAuditCommand across the governance bus.
     """
     from hexaqual.adapters.presenters.dependency import create_dependency_presenter
+    from hexaqual.adapters.workspace import get_repo_root
     from hexaqual.domain.dependencies import RunUnifiedDepsAuditCommand
     from hexaqual.infra.bootstrap import create_governance_bus
-    from hexaqual.utils.workspace import get_repo_root
 
     repo_root = get_repo_root()
     bus = create_governance_bus()
@@ -104,9 +104,9 @@ def deps_pydeps(
         Ensures pydeps availability and dispatches GeneratePydepsCommand.
     """
     from hexaqual.adapters.presenters.generators import create_generator_presenter
+    from hexaqual.adapters.workspace import ensure_tool_installed
     from hexaqual.domain.generators import GeneratePydepsCommand
     from hexaqual.infra.bootstrap import create_governance_bus
-    from hexaqual.utils.workspace import ensure_tool_installed
 
     ensure_tool_installed("pydeps", cli_command="pydeps", extra_name="diagrams")
 
@@ -150,15 +150,15 @@ def deps_linter(
         Enforces clean hexagonal dependencies between domain, ports, adapters, and infra.
     """
     from hexaqual.adapters.presenters.dependency import create_dependency_presenter
-    from hexaqual.domain.dependencies import RunImportLinterCommand
-    from hexaqual.infra.bootstrap import create_governance_bus
-    from hexaqual.utils.workspace import (
+    from hexaqual.adapters.workspace import (
         ensure_tool_installed,
         get_package_directories,
         get_package_directory,
         get_packages_directory,
         get_repo_root,
     )
+    from hexaqual.domain.dependencies import RunImportLinterCommand
+    from hexaqual.infra.bootstrap import create_governance_bus
 
     ensure_tool_installed("importlinter", cli_command="lint-imports", extra_name="governance")
 
@@ -209,13 +209,13 @@ def deps_linter_generate(
         Generates standard forbidden-contract configurations forbidding adapters from
         importing infra, ports from importing adapters/infra, and domain from importing any layer.
     """
-    from hexaqual.domain.dependencies import GenerateImportLinterConfigCommand
-    from hexaqual.infra.bootstrap import create_governance_bus
-    from hexaqual.utils.workspace import (
+    from hexaqual.adapters.workspace import (
         get_package_directories,
         get_package_directory,
         get_repo_root,
     )
+    from hexaqual.domain.dependencies import GenerateImportLinterConfigCommand
+    from hexaqual.infra.bootstrap import create_governance_bus
 
     root = get_repo_root()
     if packages:
@@ -249,9 +249,9 @@ def deps_deptry(
         Driving adapter dispatching RunDeptryAuditCommand across all workspace packages.
     """
     from hexaqual.adapters.presenters.dependency import create_dependency_presenter
+    from hexaqual.adapters.workspace import ensure_tool_installed, get_repo_root
     from hexaqual.domain.dependencies import RunDeptryAuditCommand
     from hexaqual.infra.bootstrap import create_governance_bus
-    from hexaqual.utils.workspace import ensure_tool_installed, get_repo_root
 
     ensure_tool_installed("deptry", cli_command="deptry", extra_name="governance")
 

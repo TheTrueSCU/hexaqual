@@ -11,7 +11,7 @@ from pathlib import Path
 
 import typer
 
-from hexaqual.commands.agents import (
+from hexaqual.adapters.agents.service import (
     check_agents_command,
     list_agents_command,
     sync_agents_command,

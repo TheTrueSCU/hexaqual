@@ -9,6 +9,7 @@ from __future__ import annotations
 
 from typing import Any
 
+from hexaqual.adapters.workspace import get_package_directories
 from hexaqual.domain.dependencies import (
     AuditExtrasParityCommand,
     DependencyAuditItem,
@@ -23,7 +24,6 @@ from hexaqual.domain.dependencies import (
     UnifiedDependencyAuditReport,
 )
 from hexaqual.ports.dependencies import DependencyAuditorPort
-from hexaqual.utils.workspace import get_package_directories
 
 __all__ = [
     "AuditExtrasParityHandler",

@@ -18,6 +18,7 @@ import time
 from pathlib import Path
 from typing import Any
 
+from hexaqual.adapters.workspace import get_repo_root
 from hexaqual.domain.analysis import (
     CodeQlScanReport,
     FuzzRunCommand,
@@ -27,7 +28,6 @@ from hexaqual.domain.analysis import (
     ScanCodeQlCommand,
     UpdateInlineSnapshotsCommand,
 )
-from hexaqual.utils.workspace import get_repo_root
 
 
 def _load_fuzz_module(
@@ -373,7 +373,7 @@ class UpdateInlineSnapshotsHandler:
         Notes/Architectural Intent:
             Runs pytest in single-process mode with --inline-snapshot flags.
         """
-        from hexaqual.utils.workspace import get_package_directories
+        from hexaqual.adapters.workspace import get_package_directories
 
         targets = list(command.targets) if command.targets else get_package_directories(self._root)
 

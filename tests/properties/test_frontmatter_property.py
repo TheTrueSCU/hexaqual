@@ -13,7 +13,7 @@ from pathlib import Path
 from hypothesis import given, settings
 from hypothesis import strategies as st
 
-from hexaqual.commands.medium_publish import (
+from hexaqual.adapters.publishers.devto import (
     ArticlePayload,
     FrontMatter,
     _parse_article,

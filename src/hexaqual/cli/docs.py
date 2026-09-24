@@ -51,7 +51,7 @@ def docs_usage(
     from hexaqual.adapters.presenters.generators import create_generator_presenter
     from hexaqual.domain.generators import GenerateUsageDocsCommand
     from hexaqual.infra.bootstrap import create_governance_bus
-    from hexaqual.utils.workspace import get_repo_root
+    from hexaqual.infra.workspace import get_repo_root
 
     repo_root = root or get_repo_root()
     bus = create_governance_bus(repo_root=repo_root)
@@ -92,9 +92,9 @@ def docs_links(
     Notes/Architectural Intent:
         Driving adapter scanning markdown files for dead links and missing anchors.
     """
+    from hexaqual.adapters.code_analysis.doc_links import scan_doc_links
     from hexaqual.adapters.presenters.generators import create_generator_presenter
-    from hexaqual.commands.doc_links import scan_doc_links
-    from hexaqual.utils.workspace import get_repo_root
+    from hexaqual.infra.workspace import get_repo_root
 
     repo_root = root or get_repo_root()
     resolved_fmt = resolve_format(format_type, default_tty="table", default_pipe="json")
@@ -166,7 +166,7 @@ def docs_publish(
     from hexaqual.adapters.presenters.refactoring import create_refactoring_presenter
     from hexaqual.domain.refactoring import PublishMediumArticlesCommand
     from hexaqual.infra.bootstrap import create_governance_bus
-    from hexaqual.utils.workspace import get_repo_root
+    from hexaqual.infra.workspace import get_repo_root
 
     repo_root = root or get_repo_root()
     bus = create_governance_bus(repo_root=repo_root)
