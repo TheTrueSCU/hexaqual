@@ -3,6 +3,8 @@
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
+import pytest
+
 from hexaqual.adapters.code_analysis.rope import (
     alphabetize_main,
     get_line_offsets,
@@ -122,3 +124,163 @@ def test_alphabetize_main_execution(tmp_path: Path) -> None:
         code = alphabetize_main([str(py_file), "--format", "json"])
         assert code == 0
         assert mock_sort.called
+
+
+def test_handle_rename(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """Verify handle_rename refactors symbol name in project."""
+    import argparse
+
+    from hexaqual.adapters.code_analysis.rope import handle_rename
+
+    monkeypatch.chdir(tmp_path)
+    mod = tmp_path / "sample_rename.py"
+    mod.write_text("my_var = 123\nprint(my_var)\n", encoding="utf-8")
+
+    args = argparse.Namespace(
+        root=str(tmp_path),
+        file="sample_rename.py",
+        line=1,
+        col=1,
+        new_name="renamed_var",
+        dry_run=False,
+    )
+    handle_rename(args)
+    content = mod.read_text(encoding="utf-8")
+    assert "renamed_var = 123" in content
+
+
+def test_handle_extract_method(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """Verify handle_extract_method extracts line range into a function."""
+    import argparse
+
+    from hexaqual.adapters.code_analysis.rope import handle_extract_method
+
+    monkeypatch.chdir(tmp_path)
+    calc = tmp_path / "sample_calc.py"
+    calc.write_text(
+        "def main():\n    a = 1\n    b = 2\n    return a + b\n",
+        encoding="utf-8",
+    )
+
+    args = argparse.Namespace(
+        root=str(tmp_path),
+        file="sample_calc.py",
+        start_line=2,
+        end_line=3,
+        name="compute_vals",
+        dry_run=False,
+    )
+    handle_extract_method(args)
+    content = calc.read_text(encoding="utf-8")
+    assert "compute_vals" in content
+
+
+def test_handle_sort_methods(tmp_path: Path) -> None:
+    """Verify _handle_sort_methods sorts methods and handles missing files."""
+    from hexaqual.adapters.code_analysis.rope import _handle_sort_methods
+
+    f = tmp_path / "unordered.py"
+    f.write_text("def z(): pass\ndef a(): pass\n", encoding="utf-8")
+
+    res = _handle_sort_methods(f, root_dir=tmp_path)
+    assert res is True
+    assert f.read_text(encoding="utf-8").find("def a") < f.read_text(encoding="utf-8").find("def z")
+
+    # Already sorted file
+    res_sorted = _handle_sort_methods(f, root_dir=tmp_path)
+    assert res_sorted is False
+
+    # Missing file
+    res_missing = _handle_sort_methods(tmp_path / "missing.py", root_dir=tmp_path)
+    assert res_missing is False
+
+
+def test_handle_extract_var(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """Verify handle_extract_var extracts an expression into a variable."""
+    import argparse
+
+    from hexaqual.adapters.code_analysis.rope import handle_extract_var
+
+    monkeypatch.chdir(tmp_path)
+    var_file = tmp_path / "sample_var.py"
+    var_file.write_text("def get_num():\n    return 10 + 20\n", encoding="utf-8")
+
+    args = argparse.Namespace(
+        root=str(tmp_path),
+        file="sample_var.py",
+        start_line=2,
+        start_col=12,
+        end_line=2,
+        end_col=19,
+        name="my_sum",
+        dry_run=False,
+    )
+    handle_extract_var(args)
+    content = var_file.read_text(encoding="utf-8")
+    assert "my_sum" in content
+
+
+def test_handle_inline(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """Verify handle_inline inlines a variable."""
+    import argparse
+
+    from hexaqual.adapters.code_analysis.rope import handle_inline
+
+    monkeypatch.chdir(tmp_path)
+    inline_file = tmp_path / "sample_inline.py"
+    inline_file.write_text("x = 10\ny = x + 5\n", encoding="utf-8")
+
+    args = argparse.Namespace(
+        root=str(tmp_path),
+        file="sample_inline.py",
+        line=1,
+        col=1,
+        dry_run=False,
+    )
+    handle_inline(args)
+    content = inline_file.read_text(encoding="utf-8")
+    assert "10 + 5" in content
+
+
+def test_handle_find_occurrences(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """Verify handle_find_occurrences locates occurrences of a symbol."""
+    import argparse
+
+    from hexaqual.adapters.code_analysis.rope import handle_find_occurrences
+
+    monkeypatch.chdir(tmp_path)
+    occ_file = tmp_path / "sample_occ.py"
+    occ_file.write_text("val = 42\nprint(val)\n", encoding="utf-8")
+
+    args = argparse.Namespace(
+        root=str(tmp_path),
+        file="sample_occ.py",
+        line=1,
+        col=1,
+    )
+    handle_find_occurrences(args)
+
+
+def test_handle_change_signature(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """Verify handle_change_signature reorders function parameters."""
+    import argparse
+
+    from hexaqual.adapters.code_analysis.rope import handle_change_signature
+
+    monkeypatch.chdir(tmp_path)
+    sig_file = tmp_path / "sample_sig.py"
+    sig_file.write_text("def func(a, b):\n    return a + b\n", encoding="utf-8")
+
+    args = argparse.Namespace(
+        root=str(tmp_path),
+        file="sample_sig.py",
+        line=1,
+        col=5,
+        order="1,0",
+        removals=None,
+        additions=None,
+        dry_run=False,
+    )
+    handle_change_signature(args)
+    content = sig_file.read_text(encoding="utf-8")
+    assert "def func(b, a):" in content

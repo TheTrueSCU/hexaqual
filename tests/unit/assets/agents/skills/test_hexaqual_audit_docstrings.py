@@ -72,3 +72,29 @@ def lacking_intent_fn(x: int):
     violations = audit_file_docstrings(dirty_py)
     violations_count = len(violations)
     assert violations_count >= 2
+
+
+def test_audit_docstrings_class_and_main(tmp_path: Path) -> None:
+    """Verify audit_file_docstrings inspects classes and main executes."""
+    from unittest.mock import patch
+
+    from hexaqual.assets.agents.skills.hexaqual_audit_docstrings import main
+
+    dirty_class_py = tmp_path / "dirty_class.py"
+    dirty_class_py.write_text(
+        '"""Module doc.\n\nNotes/Architectural Intent:\n    Intent.\n"""\n\n'
+        "class UndocumentedClass:\n"
+        "    def method(self):\n"
+        "        pass\n",
+        encoding="utf-8",
+    )
+
+    violations = audit_file_docstrings(dirty_class_py)
+    assert len(violations) >= 1
+
+    with (
+        patch("sys.argv", ["skill", str(dirty_class_py)]),
+        patch("sys.exit") as mock_exit,
+    ):
+        main()
+        assert mock_exit.called

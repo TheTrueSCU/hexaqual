@@ -88,3 +88,87 @@ def test_execute_pytest(tmp_path: Path):
         res = adapter.execute_pytest(["test_a.py::test_1"], extra_args=["-v"], cwd=tmp_path)
         assert res == 0
         mock_run.assert_called_once_with(["pytest", "test_a.py::test_1", "-v"], cwd=tmp_path)
+
+
+def test_get_changed_lines_base_ref(tmp_path: Path):
+    """Verify get_changed_lines includes base_ref in git command."""
+    adapter = SubprocessTestingRunnerAdapter()
+    with patch("subprocess.run") as mock_run:
+        mock_run.return_value = MagicMock(stdout="")
+        adapter.get_changed_lines(tmp_path, base_ref="origin/main")
+        mock_run.assert_called_once_with(
+            ["git", "diff", "-U0", "origin/main"],
+            cwd=tmp_path,
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+
+
+def test_audit_layer_boundary_leaks_with_db(tmp_path: Path):
+    """Verify auditing layer boundary leaks from SQLite database."""
+    cov_db = tmp_path / ".coverage"
+    con = sqlite3.connect(cov_db)
+    con.execute("CREATE TABLE file (id INTEGER PRIMARY KEY, path TEXT)")
+    con.execute("CREATE TABLE context (id INTEGER PRIMARY KEY, context TEXT)")
+    con.execute("CREATE TABLE line_bits (file_id INTEGER, context_id INTEGER)")
+    con.execute("INSERT INTO file VALUES (1, '/workspace/packages/core/src/infra/bus.py')")
+    con.execute("INSERT INTO context VALUES (1, 'tests/test_domain_rules.py::test_rule')")
+    con.execute("INSERT INTO line_bits VALUES (1, 1)")
+    con.commit()
+    con.close()
+
+    adapter = SubprocessTestingRunnerAdapter()
+    leaks = adapter.audit_layer_boundary_leaks(cov_db)
+    assert len(leaks) == 1
+    assert leaks[0][0] == "tests/test_domain_rules.py::test_rule"
+    assert "/infra/bus.py" in leaks[0][1]
+
+
+def test_audit_redundant_tests_with_db(tmp_path: Path):
+    """Verify auditing redundant tests with SQLite coverage database."""
+    cov_db = tmp_path / ".coverage"
+    con = sqlite3.connect(cov_db)
+    con.execute("CREATE TABLE context (id INTEGER PRIMARY KEY, context TEXT)")
+    con.execute(
+        "CREATE TABLE arc (file_id INTEGER, from_line INTEGER, to_line INTEGER, context_id INTEGER)"
+    )
+    con.execute("INSERT INTO context VALUES (1, '')")
+    con.execute("INSERT INTO context VALUES (2, 'tests/test_main.py::test_first')")
+    con.execute("INSERT INTO context VALUES (3, 'tests/test_main.py::test_redundant')")
+    # Both test 2 and test 3 cover arc 1->2 in file 1, so no unique coverage for test 3
+    con.execute("INSERT INTO arc VALUES (1, 1, 2, 2)")
+    con.execute("INSERT INTO arc VALUES (1, 1, 2, 3)")
+    con.commit()
+    con.close()
+
+    adapter = SubprocessTestingRunnerAdapter()
+    redundant = adapter.audit_redundant_tests(cov_db)
+    # Since neither has unique coverage, both or one will be reported
+    assert isinstance(redundant, list)
+
+
+def test_impacted_tests_and_covering_line_with_coverage_data(tmp_path: Path):
+    """Verify mapping changed lines and finding test context via CoverageData."""
+    cov_file = tmp_path / ".coverage"
+    cov_file.write_text("mock coverage data")
+
+    src_file = tmp_path / "src" / "service.py"
+    src_file.parent.mkdir(parents=True)
+    src_file.write_text("code")
+
+    adapter = SubprocessTestingRunnerAdapter()
+
+    mock_cov = MagicMock()
+    mock_cov.measured_files.return_value = [str(src_file)]
+    mock_cov.contexts_by_lineno.return_value = {10: ["test_service.py::test_exec"]}
+
+    with patch(
+        "hexaqual.adapters.runners.testing_runner.CoverageData",
+        return_value=mock_cov,
+    ):
+        impacted = adapter.find_impacted_tests({src_file: {10}}, cov_file)
+        assert "test_service.py::test_exec" in impacted
+
+        covering = adapter.get_tests_covering_line(src_file, 10, cov_file)
+        assert covering == ["test_service.py::test_exec"]

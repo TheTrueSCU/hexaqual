@@ -237,3 +237,46 @@ def test_deps_deptry_failure() -> None:
         res = runner.invoke(deps_app, ["deptry"])
         exit_code = res.exit_code
         assert exit_code == 1
+
+
+def test_deps_linter_with_files(tmp_path: Path) -> None:
+    """Test deps linter resolves packages matching explicit file paths."""
+    pkgs = tmp_path / "packages"
+    core = pkgs / "core"
+    core.mkdir(parents=True)
+    (core / "pyproject.toml").write_text("[project]\nname='core'\n", encoding="utf-8")
+    src_file = core / "src" / "mod.py"
+
+    mock_bus = MagicMock()
+    mock_pres = MagicMock()
+    mock_pres.present_import_linter.return_value = 0
+
+    with (
+        patch("hexaqual.adapters.workspace.ensure_tool_installed"),
+        patch("hexaqual.adapters.workspace.get_repo_root", return_value=tmp_path),
+        patch("hexaqual.adapters.workspace.get_packages_directory", return_value=pkgs),
+        patch("hexaqual.adapters.workspace.get_package_directories", return_value=[core]),
+        patch("hexaqual.infra.bootstrap.create_governance_bus", return_value=mock_bus),
+        patch(
+            "hexaqual.adapters.presenters.dependency.create_dependency_presenter",
+            return_value=mock_pres,
+        ),
+    ):
+        res = runner.invoke(deps_app, ["linter", str(src_file), "outside/file.py"])
+        assert res.exit_code == 0
+        assert mock_bus.dispatch.called
+
+
+def test_deps_linter_generate_package_option(tmp_path: Path) -> None:
+    """Test deps linter-generate with explicit -p package."""
+    mock_bus = MagicMock()
+    core = tmp_path / "packages" / "core"
+
+    with (
+        patch("hexaqual.adapters.workspace.get_repo_root", return_value=tmp_path),
+        patch("hexaqual.adapters.workspace.get_package_directory", return_value=core),
+        patch("hexaqual.infra.bootstrap.create_governance_bus", return_value=mock_bus),
+    ):
+        res = runner.invoke(deps_app, ["linter-generate", "-p", "core"])
+        assert res.exit_code == 0
+        mock_bus.dispatch.assert_called_once()

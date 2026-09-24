@@ -87,6 +87,24 @@ def test_markdown_mutation_presenter():
     presenter.present_mutation_summary(report)
     assert "| `hexastack_core` | 5 | 1 | 2 | 2 |" in buf.getvalue()
 
+    buf.truncate(0)
+    buf.seek(0)
+    res = presenter.present_actionable_mutants(report)
+    assert res == 1
+    assert "### Actionable Surviving Mutants" in buf.getvalue()
+
+
+def test_json_actionable_mutants_presenter():
+    """Verify JsonTestingPresenterAdapter serializes actionable mutants."""
+    buf = io.StringIO()
+    console = Console(file=buf, color_system=None)
+    presenter = JsonTestingPresenterAdapter(console)
+
+    report = _sample_report()
+    res = presenter.present_actionable_mutants(report)
+    assert res == 1
+    assert '"id": "42"' in buf.getvalue()
+
 
 def test_boundary_audit_presenters():
     """Verify boundary audit presentations."""
@@ -94,13 +112,19 @@ def test_boundary_audit_presenters():
     console = Console(file=buf, color_system=None)
     rich_p = RichTestingPresenterAdapter(console)
     json_p = JsonTestingPresenterAdapter(console)
+    md_p = MarkdownTestingPresenterAdapter(console)
 
     clean = BoundaryAuditReport(leaks=())
     assert rich_p.present_boundary_audit(clean) == 0
+    assert md_p.present_boundary_audit(clean) == 0
 
+    buf.truncate(0)
+    buf.seek(0)
     leaky = BoundaryAuditReport(leaks=(BoundaryAuditItem("test_1", "leak.py"),))
     assert rich_p.present_boundary_audit(leaky) == 1
     assert json_p.present_boundary_audit(leaky) == 1
+    assert md_p.present_boundary_audit(leaky) == 1
+    assert "| `test_1` | `leak.py` |" in buf.getvalue()
 
 
 def test_redundancy_and_impact_presenters():
@@ -108,9 +132,18 @@ def test_redundancy_and_impact_presenters():
     buf = io.StringIO()
     console = Console(file=buf, color_system=None)
     rich_p = RichTestingPresenterAdapter(console)
+    json_p = JsonTestingPresenterAdapter(console)
+    md_p = MarkdownTestingPresenterAdapter(console)
 
     red = RedundancyAuditReport(redundant_tests=("test_foo",))
     assert rich_p.present_redundancy_audit(red) == 0
+    assert json_p.present_redundancy_audit(red) == 0
+    assert md_p.present_redundancy_audit(red) == 0
+    assert "test_foo" in buf.getvalue()
+
+    red_empty = RedundancyAuditReport(redundant_tests=())
+    assert rich_p.present_redundancy_audit(red_empty) == 0
+    assert md_p.present_redundancy_audit(red_empty) == 0
 
     impact = ImpactedTestsReport(
         changed_files=("mod.py",),
@@ -118,3 +151,13 @@ def test_redundancy_and_impact_presenters():
         dry_run=True,
     )
     assert rich_p.present_impact_analysis(impact) == 0
+    assert json_p.present_impact_analysis(impact) == 0
+    assert md_p.present_impact_analysis(impact) == 0
+
+    impact_clean = ImpactedTestsReport(
+        changed_files=(),
+        impacted_tests=(),
+        dry_run=False,
+    )
+    assert rich_p.present_impact_analysis(impact_clean) == 0
+    assert md_p.present_impact_analysis(impact_clean) == 0

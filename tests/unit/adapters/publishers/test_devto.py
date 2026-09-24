@@ -316,3 +316,87 @@ def test_module_exports() -> None:
     assert callable(sync_all_links)
     assert FrontMatter is not None
     assert ArticlePayload is not None
+
+
+def test_devto_publisher_adapter_methods() -> None:
+    """Verify DevToPublisherAdapter list, get, create, and update via mock transport."""
+    import httpx
+
+    from hexaqual.adapters.publishers.devto import DevToPublisherAdapter
+
+    def mock_handler(request: httpx.Request) -> httpx.Response:
+        if request.url.path == "/api/articles/me":
+            return httpx.Response(200, json=[{"id": 101, "title": "My Article"}])
+        if request.url.path == "/api/articles/101":
+            if request.method == "GET":
+                return httpx.Response(200, json={"id": 101, "title": "My Article"})
+            if request.method == "PATCH":
+                return httpx.Response(200, json={"id": 101, "updated": True})
+        if request.url.path == "/api/articles" and request.method == "POST":
+            return httpx.Response(201, json={"id": 202, "title": "New Article"})
+        return httpx.Response(404, json={"error": "not found"})
+
+    client = httpx.Client(transport=httpx.MockTransport(mock_handler))
+    adapter = DevToPublisherAdapter(api_key="mock_key", client=client)
+
+    articles = adapter.list_articles()
+    assert len(articles) == 1
+    assert articles[0]["id"] == 101
+
+    article = adapter.get_article(101)
+    assert article["title"] == "My Article"
+
+    missing = adapter.get_article(999)
+    assert missing == {}
+
+    created = adapter.create_article({"title": "New Article"})
+    assert created["id"] == 202
+
+    updated = adapter.update_article(101, {"title": "Updated"})
+    assert updated["updated"] is True
+
+
+def test_upload_all_drafts(medium_dir: Path) -> None:
+    """Verify upload_all_drafts in dry-run and live modes."""
+    from hexaqual.adapters.publishers.devto import upload_all_drafts
+
+    # 1. Dry run mode
+    dry_results = upload_all_drafts(medium_dir, api_key="dummy", dry_run=True)
+    assert len(dry_results) >= 1
+    assert "[dry-run]" in dry_results[0][1]
+
+    # 2. Live mode with mock
+    with patch(
+        "hexaqual.adapters.publishers.devto._upload_draft",
+        return_value={"id": 777},
+    ):
+        live_results = upload_all_drafts(medium_dir, api_key="dummy", dry_run=False)
+        assert len(live_results) >= 1
+        assert "Uploaded draft devto_id=777" in live_results[0][1]
+
+
+def test_record_medium_url_with_directory(medium_dir: Path) -> None:
+    """Verify record_medium_url updates markdown front matter in medium_dir."""
+    from hexaqual.adapters.publishers.devto import record_medium_url
+
+    repo_root = medium_dir.parent
+    slug, msg = record_medium_url(
+        slug="test-article",
+        medium_url="https://medium.com/@user/test-article",
+        repo_root=repo_root,
+        dry_run=True,
+        medium_dir=medium_dir,
+    )
+    assert slug == "test-article"
+    assert "https://medium.com" in msg
+
+    slug, msg = record_medium_url(
+        slug="test-article",
+        medium_url="https://medium.com/@user/test-article",
+        repo_root=repo_root,
+        dry_run=False,
+        medium_dir=medium_dir,
+    )
+    assert "Recorded" in msg
+    content = (medium_dir / "test-article.md").read_text()
+    assert "medium_url" in content

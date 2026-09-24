@@ -228,3 +228,135 @@ def test_pydeps_missing_dot_handling(tmp_path: Path) -> None:
         check_ov_ok, check_ov_msg = check_overview_diagram(tmp_path)
         assert check_ov_ok is True
         assert "Graphviz 'dot' not installed" in check_ov_msg
+
+
+def test_pydeps_entry_point_fallback_and_exceptions(tmp_path: Path) -> None:
+    """Verify entry point detection for single subfolder and exception handling in pydeps."""
+    # 1. Single subfolder in src/
+    pkg = tmp_path / "custom_pkg"
+    (pkg / "src" / "internal_mod").mkdir(parents=True)
+    with patch("hexaqual.adapters.code_analysis.pydeps.pydeps") as mock_pydeps:
+        res = generate_package_diagram(pkg, tmp_path)
+        assert res is not None
+        mock_pydeps.assert_called_once()
+
+    # 2. generate_package_diagram exception
+    with patch("hexaqual.adapters.code_analysis.pydeps.pydeps", side_effect=RuntimeError("boom")):
+        res_err = generate_package_diagram(pkg, tmp_path)
+        assert res_err is None
+
+    # 3. generate_overview_diagram exception
+    with patch("hexaqual.adapters.code_analysis.pydeps.pydeps", side_effect=RuntimeError("boom")):
+        res_ov_err = generate_overview_diagram(tmp_path)
+        assert res_ov_err is None
+
+
+def test_check_package_and_overview_diagram_exceptions_and_mismatches(tmp_path: Path) -> None:
+    """Verify check_package_diagram and check_overview_diagram error and mismatch branches."""
+    # 1. check_overview_diagram without packages dir
+    with patch(
+        "hexaqual.adapters.code_analysis.pydeps.get_packages_directory",
+        return_value=tmp_path / "nonexistent_pkgs",
+    ):
+        ok_no_pkg, msg_no_pkg = check_overview_diagram(tmp_path)
+        assert ok_no_pkg is True
+        assert "No packages directory found" in msg_no_pkg
+
+    # 2. check_package_diagram failed tmp file generation
+    pkg = tmp_path / "my_pkg"
+    (pkg / "src" / "my_pkg").mkdir(parents=True)
+    svg_dir = tmp_path / "docs" / "assets" / "pydeps"
+    svg_dir.mkdir(parents=True)
+    (svg_dir / "my_pkg.svg").write_bytes(b"<svg>1</svg>")
+
+    with patch("hexaqual.adapters.code_analysis.pydeps.pydeps"):
+        ok_no_tmp, msg_no_tmp = check_package_diagram(pkg, tmp_path)
+        assert ok_no_tmp is False
+        assert "Failed to generate comparison diagram" in msg_no_tmp
+
+    # 3. check_package_diagram exception
+    with patch(
+        "hexaqual.adapters.code_analysis.pydeps.pydeps", side_effect=RuntimeError("pydeps crash")
+    ):
+        ok_exc, msg_exc = check_package_diagram(pkg, tmp_path)
+        assert ok_exc is False
+        assert "Error verifying diagram" in msg_exc
+
+    # 4. check_overview_diagram failed tmp file generation
+    pkgs = tmp_path / "packages"
+    pkgs.mkdir(parents=True)
+    (svg_dir / "hexastack_packages.svg").write_bytes(b"<svg>old</svg>")
+
+    with patch("hexaqual.adapters.code_analysis.pydeps.pydeps"):
+        ok_ov_tmp, msg_ov_tmp = check_overview_diagram(tmp_path)
+        assert ok_ov_tmp is False
+        assert "Failed to generate comparison overview diagram" in msg_ov_tmp
+
+    # 5. check_overview_diagram mismatch
+    def write_diff_overview(*args: object, **kwargs: object) -> None:
+        out = Path(str(kwargs.get("output")))
+        out.write_bytes(b"<svg>different</svg>")
+
+    with patch("hexaqual.adapters.code_analysis.pydeps.pydeps", side_effect=write_diff_overview):
+        ok_diff, msg_diff = check_overview_diagram(tmp_path)
+        assert ok_diff is False
+        assert "hexastack_packages.svg" in msg_diff
+
+    # 6. check_overview_diagram exception
+    with patch(
+        "hexaqual.adapters.code_analysis.pydeps.pydeps", side_effect=RuntimeError("ov crash")
+    ):
+        ok_ov_exc, msg_ov_exc = check_overview_diagram(tmp_path)
+        assert ok_ov_exc is False
+        assert "Error verifying overview diagram" in msg_ov_exc
+
+
+def test_generate_and_check_all_diagrams_execution_modes(tmp_path: Path) -> None:
+    """Verify generate_all_diagrams and check_all_diagrams in sequential and parallel modes."""
+    import concurrent.futures
+
+    pkg = tmp_path / "packages" / "hexastack_core"
+    (pkg / "src" / "hexastack_core").mkdir(parents=True)
+
+    with (
+        patch("hexaqual.adapters.code_analysis.pydeps.ensure_tool_installed"),
+        patch(
+            "hexaqual.adapters.code_analysis.pydeps.generate_overview_diagram",
+            return_value="ov.svg",
+        ),
+        patch(
+            "hexaqual.adapters.code_analysis.pydeps.generate_package_diagram",
+            return_value="pkg.svg",
+        ),
+        patch(
+            "hexaqual.adapters.code_analysis.pydeps.check_overview_diagram",
+            return_value=(True, "ov.svg"),
+        ),
+        patch(
+            "hexaqual.adapters.code_analysis.pydeps.check_package_diagram",
+            return_value=(True, "pkg.svg"),
+        ),
+        patch(
+            "hexaqual.adapters.code_analysis.pydeps.ProcessPoolExecutor",
+            concurrent.futures.ThreadPoolExecutor,
+        ),
+    ):
+        # 1. generate_all_diagrams sequential with explicit packages
+        gen_seq = generate_all_diagrams(tmp_path, packages=[pkg], parallel=False)
+        assert len(gen_seq) == 1
+        assert gen_seq[0] == ("hexastack_core", "pkg.svg")
+
+        # 2. generate_all_diagrams parallel with all packages (including overview)
+        gen_par = generate_all_diagrams(tmp_path, packages=[pkg], parallel=True)
+        assert len(gen_par) == 1
+        assert gen_par[0] == ("hexastack_core", "pkg.svg")
+
+        # 3. check_all_diagrams sequential
+        chk_seq = check_all_diagrams(tmp_path, packages=[pkg], parallel=False)
+        assert len(chk_seq) == 1
+        assert chk_seq[0] == ("hexastack_core", "pkg.svg", True)
+
+        # 4. check_all_diagrams parallel
+        chk_par = check_all_diagrams(tmp_path, packages=[pkg], parallel=True)
+        assert len(chk_par) == 1
+        assert chk_par[0] == ("hexastack_core", "pkg.svg", True)

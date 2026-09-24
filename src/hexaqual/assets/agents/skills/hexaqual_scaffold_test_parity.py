@@ -78,7 +78,7 @@ def find_source_files_needing_parity(root: Path) -> list[tuple[Path, Path]]:
             continue
         filepath_str = parts[-1]
         p = root / filepath_str
-        if not (p.suffix == ".py" and "src/" in p.parts and not p.name.startswith("__")):
+        if not (p.suffix == ".py" and "src" in p.parts and not p.name.startswith("__")):
             continue
 
         # Find package root relative to src

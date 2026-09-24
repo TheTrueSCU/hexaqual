@@ -40,3 +40,30 @@ def test_check_complexity_clean(tmp_path: Path) -> None:
     with patch("subprocess.run", return_value=mock_res):
         res = check_complexity(str(sample_file))
         assert res == 0
+
+
+def test_check_complexity_nonzero(tmp_path: Path) -> None:
+    """Verify check_complexity returns non-zero when complexipy fails."""
+    sample_file = tmp_path / "complex.py"
+    sample_file.write_text("def too_complex(): pass\n", encoding="utf-8")
+
+    mock_res = MagicMock(returncode=1, stdout="Too complex", stderr="")
+    with patch("subprocess.run", return_value=mock_res):
+        res = check_complexity(str(sample_file))
+        assert res == 1
+
+
+def test_complexity_main_execution() -> None:
+    """Verify main entrypoint invokes check_complexity and handles exit."""
+    from hexaqual.assets.agents.skills.hexaqual_audit_complexity import main
+
+    with (
+        patch("sys.argv", ["skill", "src/"]),
+        patch(
+            "hexaqual.assets.agents.skills.hexaqual_audit_complexity.check_complexity",
+            return_value=0,
+        ),
+        patch("sys.exit") as mock_exit,
+    ):
+        main()
+        mock_exit.assert_called_once_with(0)

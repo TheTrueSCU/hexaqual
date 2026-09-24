@@ -162,7 +162,12 @@ def handle_change_signature(args: argparse.Namespace) -> None:
         args: Parsed CLI namespace.
     """
     from rope.base.project import Project
-    from rope.refactor.change_signature import ChangeSignature
+    from rope.refactor.change_signature import (
+        ArgumentAdder,
+        ArgumentRemover,
+        ArgumentReorderer,
+        ChangeSignature,
+    )
 
     proj = Project(args.root)
     try:
@@ -170,27 +175,29 @@ def handle_change_signature(args: argparse.Namespace) -> None:
         offset = get_offset(Path(args.file), args.line, args.col)
 
         changer = ChangeSignature(proj, res, offset)
-        normalizer = changer.get_args()
-
-        if args.removals:
-            for idx in sorted([int(x.strip()) for x in args.removals.split(",")], reverse=True):
-                normalizer.remove(idx)
+        changers: list[Any] = []
 
         if args.order:
             new_order = [int(x.strip()) for x in args.order.split(",")]
-            normalizer.reorder(new_order)
+            changers.append(ArgumentReorderer(new_order))
+
+        if args.removals:
+            for idx in sorted([int(x.strip()) for x in args.removals.split(",")], reverse=True):
+                changers.append(ArgumentRemover(idx))
 
         if args.additions:
             adds = json.loads(args.additions)
             for add in adds:
-                normalizer.add(
-                    index=add["index"],
-                    name=add["name"],
-                    default=add.get("default", None),
-                    value=add.get("value", None),
+                changers.append(
+                    ArgumentAdder(
+                        index=add["index"],
+                        name=add["name"],
+                        default=add.get("default", None),
+                        value=add.get("value", None),
+                    )
                 )
 
-        changes = changer.get_changes(normalizer)
+        changes = changer.get_changes(changers)
         _apply_changes(proj, changes, getattr(args, "dry_run", False))
         console.print(
             f"[green]✓ Updated signature for function at {args.file}:{args.line}:{args.col} across project.[/green]"
@@ -282,7 +289,8 @@ def handle_find_occurrences(args: argparse.Namespace) -> None:
         res = proj.get_resource(args.file)
         offset = get_offset(Path(args.file), args.line, args.col)
         name = worder.Worder(res.read()).get_word_at(offset)
-        pyname = evaluate.eval_location(res, offset)
+        pymodule = proj.get_pymodule(res)
+        pyname = evaluate.eval_location(pymodule, offset)
 
         if pyname is None:
             console.print(
@@ -291,7 +299,7 @@ def handle_find_occurrences(args: argparse.Namespace) -> None:
             return
 
         finder = create_finder(proj, name, pyname)
-        occurrences = list(finder.find_occurrences())
+        occurrences = list(finder.find_occurrences(res))
 
         console.print(
             f"\n[bold cyan]Found {len(occurrences)} occurrence(s) for symbol '{name}' ({args.file}:{args.line}:{args.col}):[/bold cyan]"
