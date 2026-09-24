@@ -8,16 +8,19 @@
 [![Python 3.13+](https://img.shields.io/badge/python-3.13+-blue.svg)](https://www.python.org/downloads/)
 [![License: Apache 2.0](https://img.shields.io/badge/license-Apache%202.0-blue.svg)](LICENSE)
 
+[![Governs Hexastack](https://img.shields.io/badge/governs-hexastack-blueviolet.svg)](https://dopplereffect.us/hexastack/)
+[![Governs Hexaqueue](https://img.shields.io/badge/governs-hexaqueue-blue.svg)](https://dopplereffect.us/hexaqueue/)
+[![Governs Hexaflow](https://img.shields.io/badge/governs-hexaflow-0284c7.svg)](https://dopplereffect.us/hexaflow/)
+[![Powered by Hexaflow](https://img.shields.io/badge/powered%20by-hexaflow-0284c7.svg)](https://dopplereffect.us/hexaflow/)
 [![Code style: ruff](https://img.shields.io/badge/code%20style-ruff-000000.svg)](https://github.com/astral-sh/ruff)
 [![Type checker: ty](https://img.shields.io/badge/type%20checker-ty-blueviolet.svg)](https://github.com/astral-sh/ty)
-[![Powered by Hexaflow](https://img.shields.io/badge/powered%20by-hexaflow-0284c7.svg)](https://dopplereffect.us/hexaflow/)
-[![Governed by Hexaqual](https://img.shields.io/badge/governed%20by-hexaqual-10b981.svg)](https://dopplereffect.us/hexaqual/)
 
 [![OpenSSF Scorecard](https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fapi.scorecard.dev%2Fprojects%2Fgithub.com%2FTheTrueSCU%2Fhexaqual&query=%24.score&label=OpenSSF%20Scorecard&color=blue)](https://securityscorecards.dev/viewer/?uri=github.com/TheTrueSCU/hexaqual)
 [![OpenSSF Best Practices](https://www.bestpractices.dev/projects/14749/badge)](https://www.bestpractices.dev/projects/14749)
 [![OpenSSF Best Practices: Progress](https://img.shields.io/cii/percentage/14749?label=OpenSSF%20Best%20Practices%3A%20Progress)](https://www.bestpractices.dev/projects/14749)
 
-> 🌊 **Execution DAGs powered by [Hexaflow](https://dopplereffect.us/hexaflow/)** · 🛡️ **Universal quality & governance engine for [Hexastack](https://dopplereffect.us/hexastack/), [Hexaqueue](https://dopplereffect.us/hexaqueue/), and [Hexaflow](https://dopplereffect.us/hexaflow/)**
+> 🛡️ **Universal quality & governance engine for [Hexastack](https://dopplereffect.us/hexastack/), [Hexaqueue](https://dopplereffect.us/hexaqueue/), and [Hexaflow](https://dopplereffect.us/hexaflow/)** · 🌊 **Execution DAGs powered by [Hexaflow](https://dopplereffect.us/hexaflow/)**
+
 
 > **Universal Python quality gates, architectural boundary enforcement, and release engineering toolchain.**
 
