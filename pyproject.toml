@@ -1,6 +1,6 @@
 [project]
 name = "hexaqual"
-version = "0.5.1"
+version = "0.6.0"
 description = "Universal Python quality gates, architectural boundary enforcement, and release engineering toolchain."
 readme = "README.md"
 license = "Apache-2.0"

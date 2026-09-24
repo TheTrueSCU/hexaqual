@@ -51,7 +51,7 @@ Usage: hexaqual [OPTIONS] COMMAND [ARGS]...
 │ test        Test execution, coverage audits, and architecture verification.  │
 │ deps        Audit dependencies, generate import diagrams, and check          │
 │             architectural boundaries.                                        │
-│ mutate      Mutation testing execution and triage inspection.                │
+│ mutate      Mutation testing execution and surviving mutant inspection.      │
 │ release     Distribution package building, validation, and PyPI publishing.  │
 │ gh          GitHub repository, PR, and security examination.                 │
 │ docs        Documentation generation and verification.                       │
@@ -487,15 +487,22 @@ Usage: hexaqual docs links [OPTIONS]
 #### `hexaqual docs publish`
 
 ```text
-Usage: hexaqual docs publish [OPTIONS]
+Usage: hexaqual docs publish [OPTIONS] [slug]
 
  Syndicate or publish documentation articles to DEV.to / Medium.
 
  Args:
+     slug: Article slug or path to process.
      manifest: Optional path to article markdown files.
      dry_run: Validate without network writes.
      publish: Publish live articles.
+     all_drafts: Upload all unposted articles as drafts.
+     status: Show status table.
+     sync_links: Re-resolve cross-links across published articles.
+     medium_url: Record syndicated Medium URL.
+     api_key: DEV.to integration API key.
      format_type: Output presentation format.
+     root: Workspace root directory.
 
  Raises:
      typer.Exit: If publication fails.
@@ -504,15 +511,30 @@ Usage: hexaqual docs publish [OPTIONS]
      Driving adapter dispatching PublishMediumArticlesCommand across the
  governance bus.
 
+╭─ Arguments ──────────────────────────────────────────────────────────────────╮
+│   slug      <str>  Article filename stem (e.g. 'ai-guardrails-manifesto') or │
+│                    path.                                                     │
+╰──────────────────────────────────────────────────────────────────────────────╯
 ╭─ Options ────────────────────────────────────────────────────────────────────╮
-│ --manifest  -m      <path>  Path to articles manifest or directory.          │
-│ --dry-run                   Validate without making live HTTP requests.      │
-│ --publish                   Publish live articles (otherwise draft upload    │
-│                             mode).                                           │
-│ --format    -f      <str>   Output presentation format (table, json,         │
-│                             markdown, auto).                                 │
-│                             [default: table]                                 │
-│ --help                      Show this message and exit.                      │
+│ --manifest    -m      <path>  Path to articles manifest or directory.        │
+│ --dry-run                     Validate without making live HTTP requests.    │
+│ --publish                     Publish live articles (otherwise draft upload  │
+│                               mode).                                         │
+│ --all-drafts                  Upload all local articles without devto_id as  │
+│                               drafts.                                        │
+│ --status                      Show a status table of all articles and their  │
+│                               publish state.                                 │
+│ --sync-links                  Re-resolve and update cross-links on DEV.to    │
+│                               across all published articles.                 │
+│ --medium-url          <str>   Record the Medium URL for a slug after manual  │
+│                               import.                                        │
+│ --api-key             <str>   DEV.to API key (overrides DEVTO_API_KEY env    │
+│                               var).                                          │
+│ --format      -f      <str>   Output presentation format (table, json,       │
+│                               markdown, auto).                               │
+│                               [default: table]                               │
+│ --root                <path>  Workspace root directory.                      │
+│ --help                        Show this message and exit.                    │
 ╰──────────────────────────────────────────────────────────────────────────────╯
 ```
 
@@ -731,7 +753,7 @@ Usage: hexaqual gh security [OPTIONS]
 ```text
 Usage: hexaqual mutate [OPTIONS] COMMAND [ARGS]...
 
- Mutation testing execution and triage inspection.
+ Mutation testing execution and surviving mutant inspection.
 
 ╭─ Options ────────────────────────────────────────────────────────────────────╮
 │ --help          Show this message and exit.                                  │
@@ -761,7 +783,8 @@ Usage: hexaqual mutate inspect [OPTIONS]
      typer.Exit: If inspect fails.
 
  Notes/Architectural Intent:
-     Provides high-level triage and actionable surviving mutant analysis.
+     Provides high-level triage and actionable surviving mutant analysis via
+ CQRS bus.
 
 ╭─ Options ────────────────────────────────────────────────────────────────────╮
 │ --package     -p        <str>  Filter by package.                            │
@@ -790,11 +813,11 @@ Usage: hexaqual mutate run [OPTIONS]
      typer.Exit: If mutation testing fails.
 
  Notes/Architectural Intent:
-     Executes mutmut mutation runner across targeted components.
+     Executes mutmut mutation runner across targeted components via CQRS bus.
 
 ╭─ Options ────────────────────────────────────────────────────────────────────╮
-│ --package  -p      <str>  Target package name.                               │
-│ --all      -a             Run across all workspace packages.                 │
+│ --package  -p      <str>  Target package name (e.g. core).                   │
+│ --all      -a             Run across all workspace packages sequentially.    │
 │ --reset    -r             Clear cache and re-run.                            │
 │ --help                    Show this message and exit.                        │
 ╰──────────────────────────────────────────────────────────────────────────────╯
