@@ -98,6 +98,7 @@ def test_create_governance_bus_wires_and_dispatches():
     mock_runner.run_test_parity.return_value = CheckResult(
         "Parity", "test-pkg", CheckStatus.PASS, 0.05
     )
+    mock_runner.run_deptry.return_value = CheckResult("Deptry", "test-pkg", CheckStatus.PASS, 0.05)
     mock_runner.run_pytest.return_value = CheckResult("Pytest", "test-pkg", CheckStatus.PASS, 0.05)
 
     mock_dep_auditor = MagicMock(spec=DependencyAuditorPort)
@@ -169,7 +170,7 @@ def test_create_governance_bus_wires_and_dispatches():
     report = bus.dispatch(sanity_cmd)
     assert isinstance(report, SanityCheckReport)
     assert report.exit_code == 0
-    assert len(report.results) == 6
+    assert len(report.results) == 8
 
     # 3. Test dispatching dependency command
     extras_cmd = AuditExtrasParityCommand(repo_root=Path("/tmp"))

@@ -9,8 +9,10 @@ from __future__ import annotations
 
 import shutil
 import tempfile
+import time
 from concurrent.futures import ProcessPoolExecutor
 from pathlib import Path
+from typing import Any
 
 from pydeps.pydeps import pydeps
 
@@ -19,8 +21,14 @@ from hexaqual.adapters.workspace import (
     get_package_directories,
     get_packages_directory,
 )
+from hexaqual.domain.governance import (
+    CheckResult,
+    CheckStatus,
+    SanityTarget,
+)
 
 __all__ = [
+    "audit_single_target_diagram",
     "check_all_diagrams",
     "check_overview_diagram",
     "check_package_diagram",
@@ -199,6 +207,98 @@ def check_package_diagram(pkg_path: Path, root: Path) -> tuple[bool, str]:
             return False, str(svg_path.relative_to(root))
     except Exception as exc:
         return False, f"Error verifying diagram for {pkg_path.name}: {exc}"
+
+
+def audit_single_target_diagram(
+    target: SanityTarget,
+    repo_root: Path,
+    fix: bool = False,
+    check_fn: Any = check_package_diagram,
+    generate_fn: Any = generate_package_diagram,
+) -> CheckResult:
+    """Audit or regenerate an architecture dependency diagram for a single target.
+
+    Args:
+        target: Target component specification.
+        repo_root: Repository root path.
+        fix: Whether to regenerate the diagram if missing or stale.
+        check_fn: Function checking diagram freshness.
+        generate_fn: Function generating diagram.
+
+    Returns:
+        CheckResult containing outcome and timing diagnostics.
+
+    Notes/Architectural Intent:
+        Isolated pure worker function designed for safe parallel invocation across
+        multiprocessing ProcessPoolExecutor workers.
+    """
+    start = time.perf_counter()
+    if target.kind != "package":
+        return CheckResult(
+            "Architecture Diagrams",
+            target.name,
+            CheckStatus.SKIP,
+            0.0,
+            "Applicable to packages only",
+        )
+
+    pydeps_dir = repo_root / "docs" / "assets" / "pydeps"
+    if not pydeps_dir.is_dir():
+        return CheckResult(
+            "Architecture Diagrams",
+            target.name,
+            CheckStatus.SKIP,
+            0.0,
+            "No docs/assets/pydeps directory",
+        )
+
+    if shutil.which("dot") is None:
+        return CheckResult(
+            "Architecture Diagrams",
+            target.name,
+            CheckStatus.SKIP,
+            0.0,
+            "Graphviz 'dot' not installed",
+        )
+
+    if fix:
+        svg_path = generate_fn(target.path, repo_root)
+        duration = time.perf_counter() - start
+        if svg_path:
+            return CheckResult(
+                "Architecture Diagrams",
+                target.name,
+                CheckStatus.PASS,
+                duration,
+                "Diagram regenerated",
+            )
+        return CheckResult(
+            "Architecture Diagrams",
+            target.name,
+            CheckStatus.FAIL,
+            duration,
+            "Diagram generation failed",
+        )
+
+    is_up_to_date, path_or_reason = check_fn(target.path, repo_root)
+    duration = time.perf_counter() - start
+    if is_up_to_date:
+        return CheckResult(
+            "Architecture Diagrams",
+            target.name,
+            CheckStatus.PASS,
+            duration,
+            "Diagram up to date",
+        )
+
+    return CheckResult(
+        "Architecture Diagrams",
+        target.name,
+        CheckStatus.FAIL,
+        duration,
+        "Diagram stale (run with --fix or 'hexaqual deps pydeps')",
+        error_output=path_or_reason,
+    )
 
 
 def generate_overview_diagram(root: Path) -> str | None:

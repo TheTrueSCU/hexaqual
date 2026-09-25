@@ -19,6 +19,7 @@ from hexaqual.adapters.code_analysis.all_statements import (
     fix_file_all,
 )
 from hexaqual.adapters.code_analysis.pydeps import (
+    audit_single_target_diagram,
     check_package_diagram,
     generate_package_diagram,
 )
@@ -379,72 +380,12 @@ class SubprocessToolRunnerAdapter(ToolRunnerPort):
         Returns:
             CheckResult with diagram status and diagnostics.
         """
-        start = time.perf_counter()
-        if target.kind != "package":
-            return CheckResult(
-                "Architecture Diagrams",
-                target.name,
-                CheckStatus.SKIP,
-                0.0,
-                "Applicable to packages only",
-            )
-
-        pydeps_dir = repo_root / "docs" / "assets" / "pydeps"
-        if not pydeps_dir.is_dir():
-            return CheckResult(
-                "Architecture Diagrams",
-                target.name,
-                CheckStatus.SKIP,
-                0.0,
-                "No docs/assets/pydeps directory",
-            )
-
-        if shutil.which("dot") is None:
-            return CheckResult(
-                "Architecture Diagrams",
-                target.name,
-                CheckStatus.SKIP,
-                0.0,
-                "Graphviz 'dot' not installed",
-            )
-
-        if fix:
-            svg_path = generate_package_diagram(target.path, repo_root)
-            duration = time.perf_counter() - start
-            if svg_path:
-                return CheckResult(
-                    "Architecture Diagrams",
-                    target.name,
-                    CheckStatus.PASS,
-                    duration,
-                    "Diagram regenerated",
-                )
-            return CheckResult(
-                "Architecture Diagrams",
-                target.name,
-                CheckStatus.FAIL,
-                duration,
-                "Diagram generation failed",
-            )
-
-        is_up_to_date, path_or_reason = check_package_diagram(target.path, repo_root)
-        duration = time.perf_counter() - start
-        if is_up_to_date:
-            return CheckResult(
-                "Architecture Diagrams",
-                target.name,
-                CheckStatus.PASS,
-                duration,
-                "Diagram up to date",
-            )
-
-        return CheckResult(
-            "Architecture Diagrams",
-            target.name,
-            CheckStatus.FAIL,
-            duration,
-            "Diagram stale (run with --fix or 'hexaqual deps pydeps')",
-            error_output=path_or_reason,
+        return audit_single_target_diagram(
+            target,
+            repo_root,
+            fix=fix,
+            check_fn=check_package_diagram,
+            generate_fn=generate_package_diagram,
         )
 
     def run_deptry(

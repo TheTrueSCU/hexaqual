@@ -20,6 +20,7 @@ __all__ = [
     "CheckResult",
     "CheckStatus",
     "CheckTestParityCommand",
+    "DiagramAuditTask",
     "RunDeptryCommand",
     "RunLinterCommand",
     "RunPytestCommand",
@@ -47,6 +48,15 @@ class SanityTarget:
     path: Path
     src_paths: tuple[Path, ...]
     test_paths: tuple[Path, ...]
+
+
+@dataclass(frozen=True)
+class DiagramAuditTask:
+    """Specification for auditing or generating a package diagram."""
+
+    target: SanityTarget
+    repo_root: Path
+    fix: bool = False
 
 
 @dataclass(frozen=True)
@@ -140,6 +150,7 @@ class CheckDiagramsCommand(Command):
     repo_root: Path
     fix: bool = False
     skip: bool = False
+    precomputed_result: CheckResult | None = None
 
 
 class RunSanityCheckCommand(Command):

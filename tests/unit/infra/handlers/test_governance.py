@@ -6,7 +6,7 @@ Notes/Architectural Intent:
 """
 
 from pathlib import Path
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, patch
 
 from hexaqual.domain.governance import (
     AuditComplexityCommand,
@@ -15,6 +15,7 @@ from hexaqual.domain.governance import (
     CheckResult,
     CheckStatus,
     CheckTestParityCommand,
+    DiagramAuditTask,
     RunDeptryCommand,
     RunLinterCommand,
     RunPytestCommand,
@@ -33,6 +34,7 @@ from hexaqual.infra.handlers.governance import (
     RunPytestHandler,
     RunSanityCheckHandler,
     RunTypecheckHandler,
+    _audit_diagram_worker,
 )
 from hexaqual.ports.governance import ToolRunnerPort
 
@@ -185,3 +187,67 @@ def test_run_sanity_check_handler_with_failures():
     report = handler.handle(cmd)
     assert report.exit_code == 1
     assert any(r.status == CheckStatus.FAIL for r in report.results)
+
+
+def test_audit_diagram_worker():
+    """Verify _audit_diagram_worker executes audit_single_target_diagram."""
+    target = SanityTarget("pkg1", "package", Path("/tmp/pkg1"), (Path("/tmp/pkg1/src"),), ())
+    task = DiagramAuditTask(target=target, repo_root=Path("/tmp"), fix=False)
+    with patch(
+        "hexaqual.infra.handlers.governance.audit_single_target_diagram",
+        return_value=CheckResult("Architecture Diagrams", "pkg1", CheckStatus.PASS, 0.05),
+    ) as mock_audit:
+        res = _audit_diagram_worker(task)
+        assert res.status == CheckStatus.PASS
+        assert res.target_name == "pkg1"
+        mock_audit.assert_called_once_with(target, Path("/tmp"), fix=False)
+
+
+def test_run_sanity_check_handler_parallel_diagrams(tmp_path: Path):
+    """Verify parallel diagram execution precomputes results for multiple packages."""
+    pydeps_dir = tmp_path / "docs" / "assets" / "pydeps"
+    pydeps_dir.mkdir(parents=True)
+
+    t1 = SanityTarget("p1", "package", tmp_path / "p1", (tmp_path / "p1/src",), ())
+    t2 = SanityTarget("p2", "package", tmp_path / "p2", (tmp_path / "p2/src",), ())
+
+    mock_bus = MagicMock(spec=CommandDispatcher)
+    pass_res = CheckResult("SubCheck", "target", CheckStatus.PASS, 0.01)
+    mock_bus.dispatch.return_value = pass_res
+
+    handler = RunSanityCheckHandler(mock_bus)
+    cmd = RunSanityCheckCommand(
+        targets=(t1, t2),
+        repo_root=tmp_path,
+        skip_tests=True,
+        skip_deptry=True,
+        skip_typecheck=True,
+        skip_complexity=True,
+        skip_parity=True,
+        skip_all_statements=True,
+        skip_steps=("lint",),
+    )
+
+    with (
+        patch("shutil.which", return_value="/usr/bin/dot"),
+        patch(
+            "hexaqual.infra.handlers.governance.audit_single_target_diagram",
+            side_effect=[
+                CheckResult("Architecture Diagrams", "p1", CheckStatus.PASS, 0.02),
+                CheckResult("Architecture Diagrams", "p2", CheckStatus.PASS, 0.03),
+            ],
+        ),
+    ):
+        report = handler.handle(cmd)
+        exit_code = report.exit_code
+        assert exit_code == 0
+        diagram_calls = [
+            c
+            for c in mock_bus.dispatch.call_args_list
+            if isinstance(c.args[0], CheckDiagramsCommand)
+        ]
+        num_diagram_calls = len(diagram_calls)
+        assert num_diagram_calls == 2
+        p1_cmd = diagram_calls[0].args[0]
+        assert p1_cmd.precomputed_result is not None
+        assert p1_cmd.precomputed_result.target_name == "p1"
