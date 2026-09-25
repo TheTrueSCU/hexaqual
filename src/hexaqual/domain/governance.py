@@ -12,6 +12,8 @@ from enum import StrEnum
 from pathlib import Path
 from typing import Any
 
+from pydantic import Field
+
 from hexaqual.domain.base import Command
 
 __all__ = [
@@ -22,6 +24,8 @@ __all__ = [
     "CheckStatus",
     "CheckTestParityCommand",
     "DiagramAuditTask",
+    "resolve_default_parallelism",
+    "resolve_parallelism",
     "RunDeptryCommand",
     "RunLinterCommand",
     "RunPytestCommand",
@@ -183,3 +187,62 @@ class RunSanityCheckCommand(Command):
     skip_diagrams: bool = False
     skip_steps: tuple[str, ...] = ()
     max_complexity: int = 25
+    parallelism: int = Field(default_factory=lambda: resolve_default_parallelism())
+
+
+def resolve_default_parallelism() -> int:
+    """Calculate default worker concurrency width (num_cores - 2, minimum 1).
+
+    Returns:
+        Default concurrency width integer.
+
+    Notes/Architectural Intent:
+        Mirrors pytest-xdist 'auto' allocation, reserving two CPU cores for OS,
+        editor, and terminal responsiveness while maximizing pipeline throughput.
+    """
+    import os
+
+    cores = os.cpu_count() or 1
+    return max(1, cores - 2)
+
+
+def resolve_parallelism(value: str | int | None = None) -> int:
+    """Resolve effective worker concurrency width matching pytest-xdist semantics.
+
+    Args:
+        value: Optional concurrency specification ('auto', an integer, or None).
+
+    Returns:
+        Effective concurrency integer (1 <= parallelism <= num_cores).
+
+    Raises:
+        ValueError: If value cannot be parsed or falls outside allowed bounds.
+
+    Notes/Architectural Intent:
+        Resolves dynamic 'auto' or explicit integer worker counts clamped between
+        1 and the system's available logical CPU cores.
+    """
+    import os
+
+    total_cores = os.cpu_count() or 1
+    if value is None:
+        return max(1, total_cores - 2)
+
+    if isinstance(value, str):
+        cleaned = value.strip().casefold()
+        if cleaned in ("auto", ""):
+            return max(1, total_cores - 2)
+        try:
+            val = int(cleaned)
+        except ValueError as err:
+            raise ValueError(
+                f"Invalid worker count '{value}'. Expected 'auto' or an integer between 1 and {total_cores}."
+            ) from err
+    else:
+        val = int(value)
+
+    if val < 1 or val > total_cores:
+        raise ValueError(
+            f"Worker count {val} out of bounds. Expected a value between 1 and {total_cores}."
+        )
+    return val

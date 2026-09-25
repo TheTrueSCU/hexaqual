@@ -8,6 +8,7 @@ Notes/Architectural Intent:
 
 from __future__ import annotations
 
+import asyncio
 import shutil
 import time
 from typing import Any
@@ -370,6 +371,7 @@ class RunSanityCheckHandler:
                 name="diagrams",
                 over="tasks",
                 pool=ExecutionPool.PROCESS,
+                concurrency_limit=command.parallelism,
             )(_audit_diagram_worker)
 
             state = wf.run()
@@ -392,10 +394,11 @@ class RunSanityCheckHandler:
     ) -> None:
         """Register Stage 1 static checks on the workflow."""
         combined_paths = target.src_paths + target.test_paths
+        is_concurrent = command.parallelism > 1 and not command.fix
         stage_mode = (
-            StageExecutionMode.SEQUENTIAL if command.fix else StageExecutionMode.CONCURRENT_ALL
+            StageExecutionMode.CONCURRENT_ALL if is_concurrent else StageExecutionMode.SEQUENTIAL
         )
-        step_pool = ExecutionPool.ASYNC if command.fix else ExecutionPool.THREAD
+        step_pool = ExecutionPool.THREAD if is_concurrent else ExecutionPool.ASYNC
         wf.stage("static_checks", execution_mode=stage_mode)
 
         @wf.step(
@@ -499,13 +502,19 @@ class RunSanityCheckHandler:
     ) -> None:
         """Register Stage 2 deep analysis checks on the workflow."""
         combined_paths = target.src_paths + target.test_paths
-        wf.stage("analysis", execution_mode=StageExecutionMode.CONCURRENT_ALL)
+        stage_mode = (
+            StageExecutionMode.CONCURRENT_ALL
+            if command.parallelism > 1
+            else StageExecutionMode.SEQUENTIAL
+        )
+        step_pool = ExecutionPool.THREAD if command.parallelism > 1 else ExecutionPool.ASYNC
+        wf.stage("analysis", execution_mode=stage_mode)
 
         @wf.step(
             name="typecheck",
             stage="analysis",
             depends_on=["lint"],
-            pool=ExecutionPool.THREAD,
+            pool=step_pool,
             trigger_rule=TriggerRule.ALL_SUCCESS_OR_SKIPPED,
         )
         def _typecheck(ctx: StepContext) -> CheckResult:
@@ -528,7 +537,7 @@ class RunSanityCheckHandler:
             name="complexity",
             stage="analysis",
             depends_on=["lint"],
-            pool=ExecutionPool.THREAD,
+            pool=step_pool,
             trigger_rule=TriggerRule.ALL_SUCCESS_OR_SKIPPED,
         )
         def _complexity(ctx: StepContext) -> CheckResult:
@@ -554,7 +563,7 @@ class RunSanityCheckHandler:
                 name="deptry",
                 stage="analysis",
                 depends_on=["lint"],
-                pool=ExecutionPool.THREAD,
+                pool=step_pool,
                 trigger_rule=TriggerRule.ALL_SUCCESS_OR_SKIPPED,
             )
             def _deptry(ctx: StepContext) -> CheckResult:
@@ -648,14 +657,7 @@ class RunSanityCheckHandler:
         command: RunSanityCheckCommand,
         diagram_results: dict[str, CheckResult] | None = None,
     ) -> list[CheckResult]:
-        """Execute standard check battery for a single target via a hexaflow Workflow DAG.
-
-        Notes/Architectural Intent:
-            Dogfoods hexaflow to organize checks into a directed acyclic graph.
-            Static leaf checks (lint, all_statements, test_parity) run first,
-            followed by static analysis (typecheck, complexity, deptry) and dynamic test
-            execution (pytest), collecting CheckResults through step checkpoints.
-        """
+        """Execute standard check battery for a single target via a hexaflow Workflow DAG."""
         skip_set = self._build_skip_set(command)
         with Workflow(
             f"sanity-{target.name}",
@@ -668,6 +670,83 @@ class RunSanityCheckHandler:
             self._register_verification_checks(wf, target, command, skip_set)
             state = wf.run()
             return self._collect_workflow_results(state, target)
+
+    async def _execute_target_checks_async(
+        self,
+        target: SanityTarget,
+        command: RunSanityCheckCommand,
+        diagram_results: dict[str, CheckResult] | None = None,
+    ) -> list[CheckResult]:
+        """Asynchronously execute standard check battery for a single target."""
+        skip_set = self._build_skip_set(command)
+        with Workflow(
+            f"sanity-{target.name}",
+            state_store=InMemoryStateStore(),
+        ) as wf:
+            self._register_static_checks(
+                wf, target, command, skip_set, diagram_results=diagram_results
+            )
+            self._register_analysis_checks(wf, target, command, skip_set)
+            self._register_verification_checks(wf, target, command, skip_set)
+            state = await wf.run_async()
+            return self._collect_workflow_results(state, target)
+
+    async def _execute_all_targets_parallel(
+        self,
+        command: RunSanityCheckCommand,
+        diagram_results: dict[str, CheckResult],
+    ) -> list[CheckResult]:
+        """Execute all target check pipelines concurrently bounded by parallelism."""
+        sem = asyncio.Semaphore(command.parallelism)
+
+        async def _run_target_bounded(target: SanityTarget) -> list[CheckResult]:
+            async with sem:
+                return await self._execute_target_checks_async(
+                    target, command, diagram_results=diagram_results
+                )
+
+        tasks = [_run_target_bounded(target) for target in command.targets]
+        results_nested = await asyncio.gather(*tasks)
+        combined: list[CheckResult] = []
+        for res_list in results_nested:
+            combined.extend(res_list)
+        return combined
+
+    def _run_targets_concurrent(
+        self,
+        command: RunSanityCheckCommand,
+        diagram_results: dict[str, CheckResult],
+    ) -> list[CheckResult]:
+        """Safely execute all target pipelines concurrently across asyncio event loops."""
+        try:
+            loop = asyncio.get_running_loop()
+        except RuntimeError:
+            loop = None
+
+        if loop and loop.is_running():
+            import concurrent.futures
+
+            with concurrent.futures.ThreadPoolExecutor(max_workers=1) as pool:
+                return pool.submit(
+                    lambda: asyncio.run(
+                        self._execute_all_targets_parallel(command, diagram_results)
+                    )
+                ).result()
+
+        return asyncio.run(self._execute_all_targets_parallel(command, diagram_results))
+
+    def _run_targets_sequential(
+        self,
+        command: RunSanityCheckCommand,
+        diagram_results: dict[str, CheckResult],
+    ) -> list[CheckResult]:
+        """Execute targets sequentially one by one."""
+        all_results: list[CheckResult] = []
+        for target in command.targets:
+            all_results.extend(
+                self._execute_target_checks(target, command, diagram_results=diagram_results)
+            )
+        return all_results
 
     def handle(self, command: RunSanityCheckCommand) -> SanityCheckReport:
         """Execute composite sanity check battery.
@@ -682,14 +761,13 @@ class RunSanityCheckHandler:
         skip_set = self._build_skip_set(command)
 
         diagram_results: dict[str, CheckResult] = {}
-        if "diagrams" not in skip_set and not command.skip_diagrams:
+        if command.parallelism > 1 and "diagrams" not in skip_set and not command.skip_diagrams:
             diagram_results = self._audit_all_diagrams_parallel(command)
 
-        all_results: list[CheckResult] = []
-        for target in command.targets:
-            all_results.extend(
-                self._execute_target_checks(target, command, diagram_results=diagram_results)
-            )
+        if command.parallelism <= 1 or len(command.targets) <= 1:
+            all_results = self._run_targets_sequential(command, diagram_results)
+        else:
+            all_results = self._run_targets_concurrent(command, diagram_results)
 
         total_duration = time.perf_counter() - start
         has_failure = any(r.status == CheckStatus.FAIL for r in all_results)

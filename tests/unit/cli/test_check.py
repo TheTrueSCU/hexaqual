@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from pathlib import Path
 from unittest.mock import patch
 
 import typer
@@ -101,4 +102,109 @@ def test_complexity_command_failure() -> None:
         return_value=mock_res,
     ):
         res = runner.invoke(test_app, ["complexity"])
-        assert res.exit_code == 1
+        exit_code = res.exit_code
+        assert exit_code == 1
+
+
+def test_check_parallelism_options() -> None:
+    """Test -n, --numprocesses, --parallelism, and --sequential flags."""
+    test_app = typer.Typer()
+    register_check_commands(test_app)
+
+    with patch("hexaqual.cli.check._execute_sanity_pipeline") as mock_run:
+        res = runner.invoke(test_app, ["check", "-n", "2"])
+        code = res.exit_code
+        assert code == 0
+        called = mock_run.called
+        assert called is True
+        numproc = mock_run.call_args[1]["numprocesses"]
+        assert numproc == "2"
+
+    with patch("hexaqual.cli.check._execute_sanity_pipeline") as mock_run:
+        res = runner.invoke(test_app, ["check", "--numprocesses", "4"])
+        code = res.exit_code
+        assert code == 0
+        numproc = mock_run.call_args[1]["numprocesses"]
+        assert numproc == "4"
+
+    with patch("hexaqual.cli.check._execute_sanity_pipeline") as mock_run:
+        res = runner.invoke(test_app, ["check", "--parallelism", "3"])
+        code = res.exit_code
+        assert code == 0
+        numproc = mock_run.call_args[1]["numprocesses"]
+        assert numproc == "3"
+
+    with patch("hexaqual.cli.check._execute_sanity_pipeline") as mock_run:
+        res = runner.invoke(test_app, ["check", "--sequential"])
+        code = res.exit_code
+        assert code == 0
+        seq = mock_run.call_args[1]["sequential"]
+        assert seq is True
+
+
+def test_execute_sanity_pipeline_parallelism() -> None:
+    """Test _execute_sanity_pipeline resolves parallelism correctly."""
+    from hexaqual.cli.check import _execute_sanity_pipeline
+    from hexaqual.domain.governance import RunSanityCheckCommand
+
+    with (
+        patch("hexaqual.adapters.workspace.get_repo_root", return_value=Path("/tmp")),
+        patch("hexaqual.adapters.code_analysis.sanity.resolve_targets", return_value=[]),
+        patch("hexaqual.infra.bootstrap.create_governance_bus") as mock_bus_creator,
+        patch("hexaqual.adapters.presenters.governance.create_governance_presenter") as mock_pres,
+    ):
+        mock_bus = mock_bus_creator.return_value
+        mock_pres.return_value.present_sanity_dashboard.return_value = 0
+
+        # Sequential forces parallelism=1
+        _execute_sanity_pipeline(
+            packages=None,
+            examples=None,
+            all_targets=False,
+            fix=False,
+            skip=None,
+            max_complexity=25,
+            format_type="table",
+            skip_steps=None,
+            files=None,
+            sequential=True,
+        )
+        cmd: RunSanityCheckCommand = mock_bus.dispatch.call_args[0][0]
+        cmd_p = cmd.parallelism
+        assert cmd_p == 1
+
+        # numprocesses="2" sets parallelism=2
+        _execute_sanity_pipeline(
+            packages=None,
+            examples=None,
+            all_targets=False,
+            fix=False,
+            skip=None,
+            max_complexity=25,
+            format_type="table",
+            skip_steps=None,
+            files=None,
+            numprocesses="2",
+        )
+        cmd = mock_bus.dispatch.call_args[0][0]
+        cmd_p2 = cmd.parallelism
+        assert cmd_p2 == 2
+
+        # invalid numprocesses exits with code 2
+        import pytest
+
+        with pytest.raises(typer.Exit) as exc_info:
+            _execute_sanity_pipeline(
+                packages=None,
+                examples=None,
+                all_targets=False,
+                fix=False,
+                skip=None,
+                max_complexity=25,
+                format_type="table",
+                skip_steps=None,
+                files=None,
+                numprocesses="invalid_number",
+            )
+        err_code = exc_info.value.exit_code
+        assert err_code == 2

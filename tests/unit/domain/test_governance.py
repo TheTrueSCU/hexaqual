@@ -6,6 +6,9 @@ Notes/Architectural Intent:
 """
 
 from pathlib import Path
+from unittest.mock import patch
+
+import pytest
 
 from hexaqual.domain.governance import (
     AuditComplexityCommand,
@@ -20,6 +23,8 @@ from hexaqual.domain.governance import (
     RunTypecheckCommand,
     SanityCheckReport,
     SanityTarget,
+    resolve_default_parallelism,
+    resolve_parallelism,
 )
 
 
@@ -101,5 +106,57 @@ def test_governance_commands():
         skip_diagrams=True,
         max_complexity=25,
     )
-    assert len(cmd_sanity.targets) == 1
-    assert cmd_sanity.skip_diagrams is True
+    targets_len = len(cmd_sanity.targets)
+    assert targets_len == 1
+    skip_diag = cmd_sanity.skip_diagrams
+    assert skip_diag is True
+    cmd_parallelism = cmd_sanity.parallelism
+    assert cmd_parallelism >= 1
+
+
+def test_resolve_default_parallelism():
+    """Verify default parallelism logic calculates cores minus two, clamping to 1."""
+    with patch("os.cpu_count", return_value=8):
+        val_8 = resolve_default_parallelism()
+        assert val_8 == 6
+
+    with patch("os.cpu_count", return_value=4):
+        val_4 = resolve_default_parallelism()
+        assert val_4 == 2
+
+    with patch("os.cpu_count", return_value=2):
+        val_2 = resolve_default_parallelism()
+        assert val_2 == 1
+
+    with patch("os.cpu_count", return_value=1):
+        val_1 = resolve_default_parallelism()
+        assert val_1 == 1
+
+    with patch("os.cpu_count", return_value=None):
+        val_none = resolve_default_parallelism()
+        assert val_none == 1
+
+
+def test_resolve_parallelism():
+    """Verify resolution of auto and explicit worker configurations."""
+    with patch("os.cpu_count", return_value=8):
+        auto_res = resolve_parallelism("auto")
+        assert auto_res == 6
+
+        none_res = resolve_parallelism(None)
+        assert none_res == 6
+
+        explicit_res = resolve_parallelism("4")
+        assert explicit_res == 4
+
+        int_res = resolve_parallelism(2)
+        assert int_res == 2
+
+        with pytest.raises(ValueError, match="out of bounds"):
+            resolve_parallelism(0)
+
+        with pytest.raises(ValueError, match="out of bounds"):
+            resolve_parallelism(10)
+
+        with pytest.raises(ValueError, match="Invalid worker count"):
+            resolve_parallelism("invalid")

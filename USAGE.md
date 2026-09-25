@@ -185,6 +185,8 @@ Usage: hexaqual check [OPTIONS] [files]...
      all_targets: Whether to audit all packages unconditionally.
      fix: Whether to auto-apply formatting and lint fixes.
      skip: Optional list of explicit step names to skip.
+     numprocesses: Concurrency width ('auto' for cores - 2, or 1..num_cores).
+     sequential: Whether to execute checks sequentially (equivalent to -n 1).
      max_complexity: Cognitive complexity ceiling.
      format_type: Output presentation format.
      skip_steps: Step names dynamically skipped via CLI flags.
@@ -207,6 +209,11 @@ Usage: hexaqual check [OPTIONS] [files]...
 │                                                autofixes.                    │
 │ --skip                                  <str>  Specific pipeline step(s) to  │
 │                                                skip (repeatable).            │
+│ --numprocesses,--parallelism   -n       <str>  Concurrency width ('auto' for │
+│                                                cores - 2, or 1..num_cores).  │
+│                                                [default: auto]               │
+│ --sequential                                   Execute checks sequentially   │
+│                                                (equivalent to -n 1).         │
 │ --max-complexity               -mx      <int>  Cognitive complexity ceiling. │
 │                                                [default: 25]                 │
 │ --format                       -f       <str>  Output format (table, json,   │
@@ -1227,6 +1234,8 @@ Usage: hexaqual sanity [OPTIONS] [files]...
      all_targets: Whether to audit all packages unconditionally.
      fix: Whether to auto-apply formatting and lint fixes.
      skip: Optional list of explicit step names to skip.
+     numprocesses: Concurrency width ('auto' for cores - 2, or 1..num_cores).
+     sequential: Whether to execute checks sequentially (equivalent to -n 1).
      max_complexity: Cognitive complexity ceiling.
      format_type: Output presentation format.
      skip_steps: Step names dynamically skipped via CLI flags.
@@ -1249,6 +1258,11 @@ Usage: hexaqual sanity [OPTIONS] [files]...
 │                                                autofixes.                    │
 │ --skip                                  <str>  Specific pipeline step(s) to  │
 │                                                skip (repeatable).            │
+│ --numprocesses,--parallelism   -n       <str>  Concurrency width ('auto' for │
+│                                                cores - 2, or 1..num_cores).  │
+│                                                [default: auto]               │
+│ --sequential                                   Execute checks sequentially   │
+│                                                (equivalent to -n 1).         │
 │ --max-complexity               -mx      <int>  Cognitive complexity ceiling. │
 │                                                [default: 25]                 │
 │ --format                       -f       <str>  Output format (table, json,   │

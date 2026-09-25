@@ -76,6 +76,8 @@ from hexaqual.domain.governance import (
     RunTypecheckCommand,
     SanityCheckReport,
     SanityTarget,
+    resolve_default_parallelism,
+    resolve_parallelism,
 )
 from hexaqual.domain.pypi import (
     BuildPackagesCommand,
@@ -190,6 +192,8 @@ __all__ = [
     "RepoStatus",
     "ReproducibleArtifactResult",
     "ReproducibleBuildReport",
+    "resolve_default_parallelism",
+    "resolve_parallelism",
     "ReviewComment",
     "ReviewThread",
     "RunDeptryAuditCommand",

@@ -266,3 +266,43 @@ def test_run_sanity_check_handler_parallel_diagrams(tmp_path: Path):
         p1_cmd = diagram_calls[0].args[0]
         assert p1_cmd.precomputed_result is not None
         assert p1_cmd.precomputed_result.target_name == "p1"
+
+
+def test_run_sanity_check_handler_sequential(tmp_path: Path):
+    """Verify parallelism=1 executes targets sequentially without precomputing diagrams."""
+    t1 = SanityTarget("p1", "package", tmp_path / "p1", (tmp_path / "p1/src",), ())
+    t2 = SanityTarget("p2", "package", tmp_path / "p2", (tmp_path / "p2/src",), ())
+
+    mock_bus = MagicMock(spec=CommandDispatcher)
+    pass_res = CheckResult("SubCheck", "target", CheckStatus.PASS, 0.01)
+    mock_bus.dispatch.return_value = pass_res
+
+    handler = RunSanityCheckHandler(mock_bus)
+    cmd = RunSanityCheckCommand(
+        targets=(t1, t2),
+        repo_root=tmp_path,
+        skip_tests=True,
+        skip_deptry=True,
+        skip_typecheck=True,
+        skip_complexity=True,
+        skip_parity=True,
+        skip_all_statements=True,
+        skip_steps=("lint",),
+        parallelism=1,
+    )
+
+    with (
+        patch.object(
+            handler, "_audit_all_diagrams_parallel", wraps=handler._audit_all_diagrams_parallel
+        ) as mock_audit_parallel,
+        patch.object(
+            handler, "_run_targets_sequential", wraps=handler._run_targets_sequential
+        ) as mock_seq,
+    ):
+        report = handler.handle(cmd)
+        exit_code = report.exit_code
+        assert exit_code == 0
+        called_parallel = mock_audit_parallel.called
+        assert called_parallel is False
+        called_seq = mock_seq.called
+        assert called_seq is True
