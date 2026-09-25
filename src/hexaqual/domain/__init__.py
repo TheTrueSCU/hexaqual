@@ -62,6 +62,7 @@ from hexaqual.domain.github import (
     SecurityCommentsReport,
 )
 from hexaqual.domain.governance import (
+    UNSET,
     AuditComplexityCommand,
     CheckAllStatementsCommand,
     CheckDiagramsCommand,
@@ -206,6 +207,7 @@ __all__ = [
     "SecurityAlert",
     "SecurityCommentsReport",
     "UnifiedDependencyAuditReport",
+    "UNSET",
     "UpdateInlineSnapshotsCommand",
     "UsageDocsReport",
     "VerifyReproducibleBuildCommand",

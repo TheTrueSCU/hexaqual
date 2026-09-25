@@ -97,6 +97,21 @@ def test_leaf_governance_handlers():
     )
     assert skip_diag_res.status == CheckStatus.SKIP
 
+    # Precomputed result returns immediately without calling run_diagrams
+    pre_res = CheckResult("Precomputed", "cqrs", CheckStatus.PASS, 0.01)
+    diag_pre_res = h_diag.handle(
+        CheckDiagramsCommand(target=target, repo_root=Path("/tmp"), precomputed_result=pre_res)
+    )
+    assert diag_pre_res == pre_res
+    mock_runner.run_diagrams.assert_called_once()
+
+    # Even if precomputed_result is explicitly None, it returns None without calling run_diagrams
+    diag_none_res = h_diag.handle(
+        CheckDiagramsCommand(target=target, repo_root=Path("/tmp"), precomputed_result=None)
+    )
+    assert diag_none_res is None
+    mock_runner.run_diagrams.assert_called_once()
+
     h_deptry = RunDeptryHandler(mock_runner)
     assert h_deptry.handle(RunDeptryCommand(target=target, skip=False)) == expected_res
     mock_runner.run_deptry.assert_called_once()

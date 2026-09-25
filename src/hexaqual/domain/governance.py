@@ -10,6 +10,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from enum import StrEnum
 from pathlib import Path
+from typing import Any
 
 from hexaqual.domain.base import Command
 
@@ -28,7 +29,21 @@ __all__ = [
     "RunTypecheckCommand",
     "SanityCheckReport",
     "SanityTarget",
+    "UNSET",
 ]
+
+
+class _UnsetType:
+    """Sentinel type representing an unset argument or value."""
+
+    def __repr__(self) -> str:
+        return "<UNSET>"
+
+    def __bool__(self) -> bool:
+        return False
+
+
+UNSET: Any = _UnsetType()
 
 
 class CheckStatus(StrEnum):
@@ -150,7 +165,7 @@ class CheckDiagramsCommand(Command):
     repo_root: Path
     fix: bool = False
     skip: bool = False
-    precomputed_result: CheckResult | None = None
+    precomputed_result: Any = UNSET
 
 
 class RunSanityCheckCommand(Command):

@@ -24,6 +24,7 @@ from hexaflow import (
 
 from hexaqual.adapters.code_analysis.pydeps import audit_single_target_diagram
 from hexaqual.domain.governance import (
+    UNSET,
     AuditComplexityCommand,
     CheckAllStatementsCommand,
     CheckDiagramsCommand,
@@ -215,7 +216,7 @@ class CheckDiagramsHandler:
                 0.0,
                 "Skipped via --skip-diagrams",
             )
-        if command.precomputed_result is not None:
+        if command.precomputed_result is not UNSET:
             return command.precomputed_result
         return self._runner.run_diagrams(command.target, command.repo_root, fix=command.fix)
 
@@ -475,7 +476,10 @@ class RunSanityCheckHandler:
             )
             def _diagrams(ctx: StepContext) -> CheckResult:
                 is_skipped = "diagrams" in skip_set or command.skip_diagrams
-                precomputed = diagram_results.get(target.name) if diagram_results else None
+                if diagram_results is not None and target.name in diagram_results:
+                    precomputed = diagram_results[target.name]
+                else:
+                    precomputed = UNSET
                 return self._bus.dispatch(
                     CheckDiagramsCommand(
                         target=target,
