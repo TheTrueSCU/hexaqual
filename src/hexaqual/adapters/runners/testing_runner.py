@@ -115,49 +115,6 @@ class SubprocessTestingRunnerAdapter(TestingRunnerPort):
         res = subprocess.run(cmd, cwd=package_dir)
         return res.returncode
 
-    def run_mutmut(self, package_dir: Path, reset_cache: bool = False) -> int:
-        """Run mutmut on a specific package directory.
-
-        Args:
-            package_dir: Package directory path.
-            reset_cache: Whether to remove package .mutmut-cache prior to execution.
-
-        Returns:
-            Exit code of mutmut process.
-        """
-        return self._run_mutmut(package_dir, reset_cache=reset_cache)
-
-    def run_gremlins(
-        self,
-        package_dir: Path,
-        reset_cache: bool = False,
-        workers: int | str | None = None,
-        numprocesses: int | str | None = None,
-        batch_size: int | None = None,
-        report_file: Path | None = None,
-    ) -> int:
-        """Run pytest-gremlins mutation runner on a specific package directory.
-
-        Args:
-            package_dir: Package directory path.
-            reset_cache: Whether to clear incremental analysis cache.
-            workers: Number of mutation workers (or 'auto') during mutation phase.
-            numprocesses: Pytest-xdist worker count for baseline test execution.
-            batch_size: Number of gremlins per worker batch.
-            report_file: Path to write the JSON report.
-
-        Returns:
-            Exit code of pytest process.
-        """
-        return self._run_gremlins(
-            package_dir=package_dir,
-            reset_cache=reset_cache,
-            workers=workers,
-            numprocesses=numprocesses,
-            batch_size=batch_size,
-            report_file=report_file,
-        )
-
     def read_mutation_records(
         self,
         path: Path,
@@ -267,34 +224,6 @@ class SubprocessTestingRunnerAdapter(TestingRunnerPort):
             )
 
         return records
-
-    def read_mutmut_cache(
-        self, cache_file: Path, package_filter: str | None = None
-    ) -> list[dict[str, Any]]:
-        """Read surviving and timeout mutants from SQLite cache.
-
-        Args:
-            cache_file: Path to .mutmut-cache file.
-            package_filter: Optional package name filter.
-
-        Returns:
-            List of mutant records as raw dictionaries.
-        """
-        return self._read_mutmut_cache(cache_file, package_filter=package_filter)
-
-    def read_gremlins_report(
-        self, report_file: Path, package_filter: str | None = None
-    ) -> list[dict[str, Any]]:
-        """Read surviving and timeout mutants from pytest-gremlins JSON report.
-
-        Args:
-            report_file: Path to gremlins JSON report file.
-            package_filter: Optional package name filter.
-
-        Returns:
-            List of mutant records as raw dictionaries.
-        """
-        return self._read_gremlins_report(report_file, package_filter=package_filter)
 
     def get_changed_lines(
         self, repo_root: Path, base_ref: str | None = None
