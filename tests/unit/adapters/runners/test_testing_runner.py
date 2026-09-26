@@ -18,14 +18,16 @@ from hexaqual.domain.testing import MutationEngine
 
 
 def test_run_mutmut(tmp_path: Path):
-    """Verify run_mutmut invokes subprocess with correct working directory."""
+    """Verify run_mutation_testing with mutmut engine invokes subprocess with correct working directory."""
     adapter = SubprocessTestingRunnerAdapter()
     cache_file = tmp_path / ".mutmut-cache"
     cache_file.write_text("old cache")
 
     with patch("subprocess.run") as mock_run:
         mock_run.return_value = MagicMock(returncode=0)
-        code = adapter.run_mutmut(tmp_path, reset_cache=True)
+        code = adapter.run_mutation_testing(
+            tmp_path, engine=MutationEngine.MUTMUT, reset_cache=True
+        )
         assert code == 0
         assert not cache_file.exists()
         mock_run.assert_called_once_with(["mutmut", "run"], cwd=tmp_path)
@@ -34,12 +36,14 @@ def test_run_mutmut(tmp_path: Path):
 def test_read_mutmut_cache_missing_file(tmp_path: Path):
     """Verify missing mutmut cache returns empty list."""
     adapter = SubprocessTestingRunnerAdapter()
-    records = adapter.read_mutmut_cache(tmp_path / "nonexistent.db")
+    records = adapter.read_mutation_records(
+        tmp_path / "nonexistent.db", engine=MutationEngine.MUTMUT
+    )
     assert records == []
 
 
 def test_read_mutmut_cache_with_sqlite(tmp_path: Path):
-    """Verify querying SQLite mutmut cache."""
+    """Verify querying SQLite mutmut cache via read_mutation_records."""
     db_file = tmp_path / ".mutmut-cache"
     con = sqlite3.connect(db_file)
     con.execute("CREATE TABLE SourceFile (id INTEGER PRIMARY KEY, filename TEXT)")
@@ -52,7 +56,9 @@ def test_read_mutmut_cache_with_sqlite(tmp_path: Path):
     con.close()
 
     adapter = SubprocessTestingRunnerAdapter()
-    records = adapter.read_mutmut_cache(db_file, package_filter="core")
+    records = adapter.read_mutation_records(
+        db_file, engine=MutationEngine.MUTMUT, package_filter="core"
+    )
     assert len(records) == 1
     assert records[0]["id"] == "10"
     assert records[0]["status"] == "bad_survived"
@@ -176,13 +182,14 @@ def test_impacted_tests_and_covering_line_with_coverage_data(tmp_path: Path):
 
 
 def test_run_gremlins(tmp_path: Path):
-    """Verify run_gremlins invokes pytest with expected mutation and worker options."""
+    """Verify run_mutation_testing with gremlins engine invokes pytest with expected options."""
     adapter = SubprocessTestingRunnerAdapter()
 
     with patch("subprocess.run") as mock_run:
         mock_run.return_value = MagicMock(returncode=0)
-        code = adapter.run_gremlins(
+        code = adapter.run_mutation_testing(
             tmp_path,
+            engine=MutationEngine.GREMLINS,
             reset_cache=True,
             workers="auto",
             numprocesses=4,
@@ -211,12 +218,14 @@ def test_run_gremlins(tmp_path: Path):
 
 
 def test_read_gremlins_report(tmp_path: Path):
-    """Verify read_gremlins_report parses JSON and retrieves source line content."""
+    """Verify read_mutation_records parses JSON report and retrieves source line content."""
     adapter = SubprocessTestingRunnerAdapter()
     report_file = tmp_path / "gremlins.json"
 
     # Missing file returns empty list
-    missing_records = adapter.read_gremlins_report(tmp_path / "nonexistent.json")
+    missing_records = adapter.read_mutation_records(
+        tmp_path / "nonexistent.json", engine=MutationEngine.GREMLINS
+    )
     res_missing = len(missing_records)
     assert res_missing == 0
 
@@ -248,7 +257,7 @@ def test_read_gremlins_report(tmp_path: Path):
     }}"""
     report_file.write_text(report_content, encoding="utf-8")
 
-    records = adapter.read_gremlins_report(report_file)
+    records = adapter.read_mutation_records(report_file, engine=MutationEngine.GREMLINS)
     res_len = len(records)
     assert res_len == 1
     rec = records[0]
