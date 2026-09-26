@@ -14,8 +14,6 @@ import typer
 from hexaqual.adapters.presenters.testing import create_testing_presenter
 from hexaqual.adapters.workspace import (
     ensure_tool_installed,
-    get_package_directories,
-    get_package_directory,
     get_repo_root,
 )
 from hexaqual.domain.testing import (
@@ -45,6 +43,9 @@ def mutate_run(
     ),
     all_packages: bool = typer.Option(
         False, "-a", "--all", help="Run across all workspace packages sequentially."
+    ),
+    affected: bool = typer.Option(
+        False, "-A", "--affected", help="Run only on packages affected by git diff."
     ),
     reset: bool = typer.Option(False, "-r", "--reset", help="Clear cache and re-run."),
     engine: str = typer.Option(
@@ -76,6 +77,7 @@ def mutate_run(
     Args:
         package: Target package name.
         all_packages: Whether to run across all workspace packages.
+        affected: Whether to run only packages affected by git diff.
         reset: Clear cache and re-run.
         engine: Runner engine ('gremlins' or 'mutmut').
         workers: Parallel workers during mutation phase.
@@ -102,27 +104,18 @@ def mutate_run(
     root = get_repo_root()
     bus = create_governance_bus(repo_root=root)
 
-    if package:
-        pkg_dir = get_package_directory(package, root)
-        targets = [pkg_dir]
-    else:
-        targets = get_package_directories(root)
-
-    exit_code = 0
-    for pkg_dir in targets:
-        rc = bus.dispatch(
-            RunMutationTestsCommand(
-                package=pkg_dir.name,
-                reset_cache=reset,
-                engine=eng,
-                workers=workers,
-                numprocesses=numprocesses,
-                batch_size=batch_size,
-            )
+    exit_code = bus.dispatch(
+        RunMutationTestsCommand(
+            package=package,
+            all_packages=all_packages or (not package and not affected),
+            affected=affected,
+            reset_cache=reset,
+            engine=eng,
+            workers=workers,
+            numprocesses=numprocesses,
+            batch_size=batch_size,
         )
-        if rc != 0:
-            exit_code = rc
-            break
+    )
 
     if exit_code != 0:
         raise typer.Exit(code=exit_code)

@@ -820,6 +820,7 @@ Usage: hexaqual mutate run [OPTIONS]
  Args:
      package: Target package name.
      all_packages: Whether to run across all workspace packages.
+     affected: Whether to run only packages affected by git diff.
      reset: Clear cache and re-run.
      engine: Runner engine ('gremlins' or 'mutmut').
      workers: Parallel workers during mutation phase.
@@ -838,6 +839,7 @@ Usage: hexaqual mutate run [OPTIONS]
 │ --package       -p      <str>  Target package name (e.g. core).              │
 │ --all           -a             Run across all workspace packages             │
 │                                sequentially.                                 │
+│ --affected      -A             Run only on packages affected by git diff.    │
 │ --reset         -r             Clear cache and re-run.                       │
 │ --engine        -e      <str>  Mutation engine to use ('gremlins' or         │
 │                                'mutmut').                                    │

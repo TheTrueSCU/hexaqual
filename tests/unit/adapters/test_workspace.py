@@ -13,6 +13,7 @@ from hexaqual.adapters.workspace import (
     get_canonical_scripts,
     get_downstream_dependents,
     get_example_directory,
+    get_git_changed_files,
     get_package_dependencies,
     get_package_directories,
     get_package_directory,
@@ -492,3 +493,50 @@ def test_package_module_dir_and_fallback(tmp_path: Path) -> None:
     pkgs.mkdir()
     fallback = get_package_directory("non_existent_pkg", tmp_path)
     assert fallback == pkgs / "non_existent_pkg"
+
+
+def test_get_git_changed_files_success(tmp_path: Path) -> None:
+    """Verify get_git_changed_files returns modified files from git diff."""
+    from unittest.mock import MagicMock
+
+    mock_res = MagicMock()
+    mock_res.stdout = "packages/core/src/model.py\npackages/cqrs/src/bus.py\n"
+    with patch("subprocess.run", return_value=mock_res) as mock_run:
+        files = get_git_changed_files(base_ref="origin/main", repo_root=tmp_path)
+        expected = ["packages/core/src/model.py", "packages/cqrs/src/bus.py"]
+        assert files == expected
+        mock_run.assert_called_once_with(
+            ["git", "diff", "--name-only", "origin/main...HEAD"],
+            capture_output=True,
+            text=True,
+            check=True,
+            cwd=str(tmp_path),
+        )
+
+
+def test_get_git_changed_files_fallback_to_head(tmp_path: Path) -> None:
+    """Verify get_git_changed_files falls back to diff against HEAD when base_ref fails."""
+    import subprocess
+    from unittest.mock import MagicMock
+
+    mock_fallback = MagicMock()
+    mock_fallback.stdout = "packages/core/src/model.py\n"
+
+    def side_effect(cmd, **kwargs):
+        if "origin/main...HEAD" in cmd:
+            raise subprocess.CalledProcessError(1, cmd)
+        return mock_fallback
+
+    with patch("subprocess.run", side_effect=side_effect):
+        files = get_git_changed_files(base_ref="origin/main", repo_root=tmp_path)
+        expected = ["packages/core/src/model.py"]
+        assert files == expected
+
+
+def test_get_git_changed_files_error_fallback(tmp_path: Path) -> None:
+    """Verify get_git_changed_files returns empty list if all diff commands fail."""
+    import subprocess
+
+    with patch("subprocess.run", side_effect=subprocess.CalledProcessError(1, ["git"])):
+        files = get_git_changed_files(base_ref="origin/main", repo_root=tmp_path)
+        assert files == []
