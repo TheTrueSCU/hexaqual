@@ -15,6 +15,7 @@ from hexaqual.domain.testing import (
     BoundaryAuditReport,
     ImpactedTestsReport,
     MutationAuditReport,
+    MutationEngine,
     RedundancyAuditReport,
 )
 
@@ -28,29 +29,55 @@ class TestingRunnerPort(ABC):
     """Abstract port for subprocess tool execution and coverage/mutmut database access."""
 
     @abstractmethod
-    def run_mutmut(self, package_dir: Path, reset_cache: bool = False) -> int:
-        """Run mutmut on a specific package directory.
+    def run_mutation_testing(
+        self,
+        package_dir: Path,
+        engine: MutationEngine = MutationEngine.GREMLINS,
+        reset_cache: bool = False,
+        workers: int | str | None = None,
+        numprocesses: int | str | None = None,
+        batch_size: int | None = None,
+        report_file: Path | None = None,
+    ) -> int:
+        """Run mutation testing on a specific package directory.
 
         Args:
             package_dir: Directory path of package to mutate.
-            reset_cache: Whether to wipe the package's .mutmut-cache before execution.
+            engine: Mutation engine to use (e.g. GREMLINS or MUTMUT).
+            reset_cache: Whether to clear incremental analysis cache.
+            workers: Number of mutation workers (or 'auto') during mutation phase.
+            numprocesses: Pytest-xdist worker count for baseline test execution.
+            batch_size: Number of gremlins per worker batch.
+            report_file: Path to write the JSON report.
 
         Returns:
-            Exit code of mutmut process.
+            Exit code of mutation testing process.
+
+        Notes/Architectural Intent:
+            Engine-agnostic port interface for executing mutation testing. Decouples
+            execution orchestration from specific tool CLI flags or subprocess invocations.
         """
 
     @abstractmethod
-    def read_mutmut_cache(
-        self, cache_file: Path, package_filter: str | None = None
+    def read_mutation_records(
+        self,
+        path: Path,
+        engine: MutationEngine = MutationEngine.GREMLINS,
+        package_filter: str | None = None,
     ) -> list[dict[str, Any]]:
-        """Read surviving and timeout mutants from SQLite cache.
+        """Read surviving and timeout mutants from cache database or report.
 
         Args:
-            cache_file: Path to .mutmut-cache file.
+            path: Path to cache file or JSON report file.
+            engine: Mutation engine corresponding to the cache or report format.
             package_filter: Optional package name filter.
 
         Returns:
             List of mutant records as raw dictionaries.
+
+        Notes/Architectural Intent:
+            Converts engine-specific mutant records into uniform raw mutant dictionaries
+            compatible with downstream triage classification.
         """
 
     @abstractmethod

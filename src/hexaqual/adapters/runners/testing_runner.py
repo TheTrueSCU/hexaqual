@@ -7,6 +7,7 @@ Notes/Architectural Intent:
 
 from __future__ import annotations
 
+import json
 import sqlite3
 import subprocess
 from pathlib import Path
@@ -15,6 +16,7 @@ from typing import Any
 from coverage import CoverageData
 
 from hexaqual.adapters.code_analysis.coverage import parse_git_diff_hunks
+from hexaqual.domain.testing import MutationEngine
 from hexaqual.ports.testing import TestingRunnerPort
 
 __all__ = [
@@ -25,16 +27,47 @@ __all__ = [
 class SubprocessTestingRunnerAdapter(TestingRunnerPort):
     """Subprocess and database execution adapter for test diagnostics."""
 
-    def run_mutmut(self, package_dir: Path, reset_cache: bool = False) -> int:
-        """Run mutmut on a specific package directory.
+    def run_mutation_testing(
+        self,
+        package_dir: Path,
+        engine: MutationEngine = MutationEngine.GREMLINS,
+        reset_cache: bool = False,
+        workers: int | str | None = None,
+        numprocesses: int | str | None = None,
+        batch_size: int | None = None,
+        report_file: Path | None = None,
+    ) -> int:
+        """Run mutation testing on a specific package directory using the specified engine.
 
         Args:
             package_dir: Package directory path.
-            reset_cache: Whether to remove package .mutmut-cache prior to execution.
+            engine: Mutation engine to use.
+            reset_cache: Whether to clear incremental analysis cache.
+            workers: Number of mutation workers (or 'auto') during mutation phase.
+            numprocesses: Pytest-xdist worker count for baseline test execution.
+            batch_size: Number of gremlins per worker batch.
+            report_file: Path to write the JSON report.
 
         Returns:
-            Exit code of mutmut process.
+            Exit code of mutation process.
+
+        Notes/Architectural Intent:
+            Dispatches to engine-specific runners while presenting a uniform mutation
+            execution port contract.
         """
+        if engine == MutationEngine.GREMLINS or str(engine).lower() == "gremlins":
+            return self._run_gremlins(
+                package_dir=package_dir,
+                reset_cache=reset_cache,
+                workers=workers,
+                numprocesses=numprocesses,
+                batch_size=batch_size,
+                report_file=report_file,
+            )
+        return self._run_mutmut(package_dir=package_dir, reset_cache=reset_cache)
+
+    def _run_mutmut(self, package_dir: Path, reset_cache: bool = False) -> int:
+        """Execute mutmut runner process."""
         cache_file = package_dir / ".mutmut-cache"
         if reset_cache and cache_file.exists():
             cache_file.unlink()
@@ -43,18 +76,73 @@ class SubprocessTestingRunnerAdapter(TestingRunnerPort):
         res = subprocess.run(cmd, cwd=package_dir)
         return res.returncode
 
-    def read_mutmut_cache(
-        self, cache_file: Path, package_filter: str | None = None
+    def _run_gremlins(
+        self,
+        package_dir: Path,
+        reset_cache: bool = False,
+        workers: int | str | None = None,
+        numprocesses: int | str | None = None,
+        batch_size: int | None = None,
+        report_file: Path | None = None,
+    ) -> int:
+        """Execute pytest-gremlins mutation runner."""
+        cmd = [
+            "pytest",
+            "--rootdir=.",
+            "-o",
+            "addopts=",
+            "--cov=src",
+            "--cov-fail-under=0",
+            "--gremlins",
+        ]
+        if reset_cache:
+            cmd.append("--gremlin-clear-cache")
+        if workers is not None:
+            cmd.append(f"--gremlin-workers={workers}")
+        else:
+            cmd.append("--gremlin-parallel")
+        if batch_size is not None:
+            cmd.append(f"--gremlin-batch-size={batch_size}")
+            cmd.append("--gremlin-batch")
+        if numprocesses is not None:
+            cmd.extend(["-n", str(numprocesses)])
+        if report_file is not None:
+            cmd.append(f"--gremlins-html-dir={report_file.parent}")
+            cmd.append("--gremlin-report=json,console")
+        else:
+            cmd.append("--gremlin-report=json,console")
+
+        res = subprocess.run(cmd, cwd=package_dir)
+        return res.returncode
+
+    def read_mutation_records(
+        self,
+        path: Path,
+        engine: MutationEngine = MutationEngine.GREMLINS,
+        package_filter: str | None = None,
     ) -> list[dict[str, Any]]:
-        """Read surviving and timeout mutants from SQLite cache.
+        """Read surviving and timeout mutants from cache database or report.
 
         Args:
-            cache_file: Path to .mutmut-cache file.
+            path: Path to cache file (.mutmut-cache) or report file (JSON).
+            engine: Mutation engine corresponding to the cache or report format.
             package_filter: Optional package name filter.
 
         Returns:
             List of mutant records as raw dictionaries.
+
+        Notes/Architectural Intent:
+            Dispatches to internal parser helpers (_read_gremlins_report or _read_mutmut_cache)
+            to extract normalized mutant dictionaries for triage.
         """
+        if engine == MutationEngine.GREMLINS or str(engine).lower() == "gremlins":
+            return self._read_gremlins_report(path, package_filter=package_filter)
+        return self._read_mutmut_cache(path, package_filter=package_filter)
+
+    def _read_mutmut_cache(
+        self, cache_file: Path, package_filter: str | None = None
+    ) -> list[dict[str, Any]]:
+        """Read surviving and timeout mutants from SQLite cache."""
         if not cache_file.is_file():
             return []
 
@@ -84,6 +172,58 @@ class SubprocessTestingRunnerAdapter(TestingRunnerPort):
             return results
         finally:
             con.close()
+
+    def _read_gremlins_report(
+        self, report_file: Path, package_filter: str | None = None
+    ) -> list[dict[str, Any]]:
+        """Read surviving and timeout mutants from pytest-gremlins JSON report."""
+        if not report_file.is_file():
+            return []
+
+        try:
+            data = json.loads(report_file.read_text(encoding="utf-8"))
+        except (json.JSONDecodeError, OSError):
+            return []
+
+        results = data.get("results", [])
+        records: list[dict[str, Any]] = []
+
+        for item in results:
+            status = str(item.get("status", "")).lower()
+            if status not in ("survived", "timeout", "error"):
+                continue
+
+            file_path = str(item.get("file_path", ""))
+            if package_filter and package_filter not in file_path:
+                continue
+
+            line_no = int(item.get("line_number", 1))
+            line_content = ""
+            try:
+                src_path = Path(file_path)
+                if src_path.is_file():
+                    lines = src_path.read_text(encoding="utf-8").splitlines()
+                    if 1 <= line_no <= len(lines):
+                        line_content = lines[line_no - 1]
+            except OSError:
+                pass
+
+            if not line_content:
+                line_content = str(item.get("description", ""))
+
+            records.append(
+                {
+                    "id": str(item.get("gremlin_id", "unknown")),
+                    "filename": file_path,
+                    "line_number": line_no,
+                    "line": line_content,
+                    "status": status,
+                    "operator": str(item.get("operator", "")),
+                    "description": str(item.get("description", "")),
+                }
+            )
+
+        return records
 
     def get_changed_lines(
         self, repo_root: Path, base_ref: str | None = None

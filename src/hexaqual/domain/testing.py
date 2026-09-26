@@ -23,12 +23,20 @@ __all__ = [
     "MutantCategory",
     "MutantRecord",
     "MutationAuditReport",
+    "MutationEngine",
     "MutationPackageSummary",
     "RedundancyAuditReport",
     "RedundantTestItem",
     "RunImpactedTestsCommand",
     "RunMutationTestsCommand",
 ]
+
+
+class MutationEngine(enum.StrEnum):
+    """Supported mutation testing runner engines."""
+
+    GREMLINS = "gremlins"
+    MUTMUT = "mutmut"
 
 
 class MutantCategory(enum.StrEnum):
@@ -124,21 +132,28 @@ class ImpactedTestsReport:
 
 
 class RunMutationTestsCommand(Command):
-    """Command requesting execution of mutmut mutation testing."""
+    """Command requesting execution of mutation testing."""
 
     package: str | None = None
     all_packages: bool = False
     reset_cache: bool = False
+    engine: MutationEngine = MutationEngine.MUTMUT
+    workers: int | str | None = None
+    numprocesses: int | str | None = None
+    batch_size: int | None = None
+    report_file: Path | None = None
 
 
 class InspectMutationCacheCommand(Command):
-    """Command requesting inspection and triage of .mutmut-cache SQLite database."""
+    """Command requesting inspection and triage of mutation database or report."""
 
     cache_file: Path = Path(".mutmut-cache")
     package: str | None = None
     actionable_only: bool = False
     correlate_coverage: bool = False
     coverage_file: Path | None = None
+    engine: MutationEngine = MutationEngine.MUTMUT
+    report_file: Path | None = None
 
 
 class AuditTestBoundariesCommand(Command):
