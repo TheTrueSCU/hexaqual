@@ -58,18 +58,18 @@ def mutate_run(
         None,
         "-w",
         "--workers",
-        help="Number of parallel mutation workers (or 'auto') during mutation phase.",
+        help="Number of parallel mutation workers (defaults to 'auto' across available cores).",
     ),
     numprocesses: str | None = typer.Option(
         None,
         "-n",
         "--numprocesses",
-        help="Pytest-xdist worker count for baseline test execution.",
+        help="Pytest-xdist worker count for baseline test execution (defaults to 'auto' when xdist is installed).",
     ),
     batch_size: int | None = typer.Option(
         None,
         "--batch-size",
-        help="Number of gremlins per worker batch.",
+        help="Number of gremlins per worker batch (defaults to 10).",
     ),
 ) -> None:
     """Run mutation testing scoped to package or workspace.

@@ -844,11 +844,13 @@ Usage: hexaqual mutate run [OPTIONS]
 │ --engine        -e      <str>  Mutation engine to use ('gremlins' or         │
 │                                'mutmut').                                    │
 │                                [default: gremlins]                           │
-│ --workers       -w      <str>  Number of parallel mutation workers (or       │
-│                                'auto') during mutation phase.                │
+│ --workers       -w      <str>  Number of parallel mutation workers (defaults │
+│                                to 'auto' across available cores).            │
 │ --numprocesses  -n      <str>  Pytest-xdist worker count for baseline test   │
-│                                execution.                                    │
-│ --batch-size            <int>  Number of gremlins per worker batch.          │
+│                                execution (defaults to 'auto' when xdist is   │
+│                                installed).                                   │
+│ --batch-size            <int>  Number of gremlins per worker batch (defaults │
+│                                to 10).                                       │
 │ --help                         Show this message and exit.                   │
 ╰──────────────────────────────────────────────────────────────────────────────╯
 ```

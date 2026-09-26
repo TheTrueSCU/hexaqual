@@ -133,7 +133,7 @@ jobs:
         run: uv sync --all-extras --dev
 
       - name: Run Gremlins Mutation Testing (Domain Core)
-        run: uv run pytest tests/unit/domain --cov=src/hexaqual/domain --gremlins --gremlin-targets=src/hexaqual/domain -n 2 --gremlin-workers=auto --gremlin-batch-size=10 --gremlin-batch
+        run: uv run pytest tests/unit/domain --cov=src/hexaqual/domain --gremlins --gremlin-targets=src/hexaqual/domain -n auto --gremlin-workers=auto --gremlin-batch-size=10 --gremlin-batch
 
   # =========================================================================
   # Stage 4: Unified CI Success Status Check (Branch Protection Gate)
