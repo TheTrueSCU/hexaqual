@@ -7,6 +7,8 @@ Notes/Architectural Intent:
 
 from __future__ import annotations
 
+from pathlib import Path
+
 import typer
 
 from hexaqual.adapters.presenters.testing import create_testing_presenter
@@ -18,6 +20,7 @@ from hexaqual.adapters.workspace import (
 )
 from hexaqual.domain.testing import (
     InspectMutationCacheCommand,
+    MutationEngine,
     RunMutationTestsCommand,
 )
 from hexaqual.infra.bootstrap import create_governance_bus
@@ -44,21 +47,58 @@ def mutate_run(
         False, "-a", "--all", help="Run across all workspace packages sequentially."
     ),
     reset: bool = typer.Option(False, "-r", "--reset", help="Clear cache and re-run."),
+    engine: str = typer.Option(
+        "gremlins",
+        "-e",
+        "--engine",
+        help="Mutation engine to use ('gremlins' or 'mutmut').",
+    ),
+    workers: str | None = typer.Option(
+        None,
+        "-w",
+        "--workers",
+        help="Number of parallel mutation workers (or 'auto') during mutation phase.",
+    ),
+    numprocesses: str | None = typer.Option(
+        None,
+        "-n",
+        "--numprocesses",
+        help="Pytest-xdist worker count for baseline test execution.",
+    ),
+    batch_size: int | None = typer.Option(
+        None,
+        "--batch-size",
+        help="Number of gremlins per worker batch.",
+    ),
 ) -> None:
     """Run mutation testing scoped to package or workspace.
 
     Args:
         package: Target package name.
         all_packages: Whether to run across all workspace packages.
-        reset: Clear mutmut cache and re-run.
+        reset: Clear cache and re-run.
+        engine: Runner engine ('gremlins' or 'mutmut').
+        workers: Parallel workers during mutation phase.
+        numprocesses: Pytest-xdist baseline process count.
+        batch_size: Mutants per worker batch.
 
     Raises:
         typer.Exit: If mutation testing fails.
 
     Notes/Architectural Intent:
-        Executes mutmut mutation runner across targeted components via CQRS bus.
+        Executes mutation runner across targeted components via CQRS bus.
+        Decouples baseline suite parallelism (-n) from mutation worker crunching (-w).
     """
-    ensure_tool_installed("mutmut", cli_command="mutmut", extra_name="mutmut")
+    eng = (
+        MutationEngine(engine.lower())
+        if engine.lower() in ("gremlins", "mutmut")
+        else MutationEngine.GREMLINS
+    )
+    if eng == MutationEngine.GREMLINS:
+        ensure_tool_installed("pytest_gremlins", extra_name="gremlins")
+    else:
+        ensure_tool_installed("mutmut", cli_command="mutmut", extra_name="mutmut")
+
     root = get_repo_root()
     bus = create_governance_bus(repo_root=root)
 
@@ -70,7 +110,16 @@ def mutate_run(
 
     exit_code = 0
     for pkg_dir in targets:
-        rc = bus.dispatch(RunMutationTestsCommand(package=pkg_dir.name, reset_cache=reset))
+        rc = bus.dispatch(
+            RunMutationTestsCommand(
+                package=pkg_dir.name,
+                reset_cache=reset,
+                engine=eng,
+                workers=workers,
+                numprocesses=numprocesses,
+                batch_size=batch_size,
+            )
+        )
         if rc != 0:
             exit_code = rc
             break
@@ -89,8 +138,17 @@ def mutate_inspect(
     correlated: bool = typer.Option(False, "-c", "--correlated", help="Correlate with .coverage."),
     summary: bool = typer.Option(False, "-s", "--summary", help="Triage summary."),
     format_type: str = typer.Option("rich", "-f", "--format", help="Output format."),
+    engine: str = typer.Option(
+        "gremlins",
+        "-e",
+        "--engine",
+        help="Mutation engine to inspect ('gremlins' or 'mutmut').",
+    ),
+    report_file: str | None = typer.Option(
+        None, "--report-file", help="Explicit path to gremlins JSON report file."
+    ),
 ) -> None:
-    """Triage and inspect mutation testing results cache.
+    """Triage and inspect mutation testing results cache or report.
 
     Args:
         package: Filter by package.
@@ -99,6 +157,8 @@ def mutate_inspect(
         correlated: Correlate with .coverage test context.
         summary: Display triage summary.
         format_type: Output format.
+        engine: Mutation engine inspected ('gremlins' or 'mutmut').
+        report_file: Explicit report file path.
 
     Raises:
         typer.Exit: If inspect fails.
@@ -106,7 +166,14 @@ def mutate_inspect(
     Notes/Architectural Intent:
         Provides high-level triage and actionable surviving mutant analysis via CQRS bus.
     """
-    ensure_tool_installed("mutmut", cli_command="mutmut", extra_name="mutmut")
+    eng = (
+        MutationEngine(engine.lower())
+        if engine.lower() in ("gremlins", "mutmut")
+        else MutationEngine.GREMLINS
+    )
+    if eng == MutationEngine.MUTMUT:
+        ensure_tool_installed("mutmut", cli_command="mutmut", extra_name="mutmut")
+
     root = get_repo_root()
     cache_file = root / ".mutmut-cache"
 
@@ -118,6 +185,8 @@ def mutate_inspect(
             actionable_only=actionable,
             correlate_coverage=correlated,
             coverage_file=root / ".coverage",
+            engine=eng,
+            report_file=Path(report_file) if report_file else None,
         )
     )
     presenter = create_testing_presenter(format_type)

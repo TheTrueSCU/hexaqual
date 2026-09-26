@@ -172,3 +172,88 @@ def test_impacted_tests_and_covering_line_with_coverage_data(tmp_path: Path):
 
         covering = adapter.get_tests_covering_line(src_file, 10, cov_file)
         assert covering == ["test_service.py::test_exec"]
+
+
+def test_run_gremlins(tmp_path: Path):
+    """Verify run_gremlins invokes pytest with expected mutation and worker options."""
+    adapter = SubprocessTestingRunnerAdapter()
+
+    with patch("subprocess.run") as mock_run:
+        mock_run.return_value = MagicMock(returncode=0)
+        code = adapter.run_gremlins(
+            tmp_path,
+            reset_cache=True,
+            workers="auto",
+            numprocesses=4,
+            batch_size=10,
+            report_file=tmp_path / "coverage" / "gremlins" / "gremlins.json",
+        )
+        assert code == 0
+        expected_cmd = [
+            "pytest",
+            "--rootdir=.",
+            "-o",
+            "addopts=",
+            "--cov=src",
+            "--cov-fail-under=0",
+            "--gremlins",
+            "--gremlin-clear-cache",
+            "--gremlin-workers=auto",
+            "--gremlin-batch-size=10",
+            "--gremlin-batch",
+            "-n",
+            "4",
+            f"--gremlins-html-dir={tmp_path / 'coverage' / 'gremlins'}",
+            "--gremlin-report=json,console",
+        ]
+        mock_run.assert_called_once_with(expected_cmd, cwd=tmp_path)
+
+
+def test_read_gremlins_report(tmp_path: Path):
+    """Verify read_gremlins_report parses JSON and retrieves source line content."""
+    adapter = SubprocessTestingRunnerAdapter()
+    report_file = tmp_path / "gremlins.json"
+
+    # Missing file returns empty list
+    missing_records = adapter.read_gremlins_report(tmp_path / "nonexistent.json")
+    res_missing = len(missing_records)
+    assert res_missing == 0
+
+    # Write source file and report
+    src_file = tmp_path / "src" / "sample.py"
+    src_file.parent.mkdir(parents=True)
+    src_file.write_text("x = 42\ny = True\n")
+
+    report_content = f"""{{
+      "summary": {{"total": 2, "zapped": 1, "survived": 1}},
+      "results": [
+        {{
+          "gremlin_id": "g001",
+          "file_path": "{src_file}",
+          "line_number": 2,
+          "status": "survived",
+          "operator": "boolean",
+          "description": "True to False"
+        }},
+        {{
+          "gremlin_id": "g002",
+          "file_path": "{src_file}",
+          "line_number": 1,
+          "status": "zapped",
+          "operator": "arithmetic",
+          "description": "42 to 43"
+        }}
+      ]
+    }}"""
+    report_file.write_text(report_content, encoding="utf-8")
+
+    records = adapter.read_gremlins_report(report_file)
+    res_len = len(records)
+    assert res_len == 1
+    rec = records[0]
+    res_id = rec["id"]
+    assert res_id == "g001"
+    res_status = rec["status"]
+    assert res_status == "survived"
+    res_line = rec["line"]
+    assert res_line == "y = True"

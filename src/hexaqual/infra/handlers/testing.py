@@ -8,6 +8,7 @@ Notes/Architectural Intent:
 from __future__ import annotations
 
 import re
+from pathlib import Path
 
 from hexaqual.adapters.code_analysis.mutmut import classify_mutant_line
 from hexaqual.adapters.workspace import (
@@ -24,6 +25,7 @@ from hexaqual.domain.testing import (
     MutantCategory,
     MutantRecord,
     MutationAuditReport,
+    MutationEngine,
     MutationPackageSummary,
     RedundancyAuditReport,
     RunImpactedTestsCommand,
@@ -41,7 +43,7 @@ __all__ = [
 
 
 class RunMutationTestsHandler:
-    """Handler executing mutmut mutation testing across targeted or all packages."""
+    """Handler executing mutation testing across targeted or all packages."""
 
     def __init__(self, runner: TestingRunnerPort) -> None:
         """Initialize handler with TestingRunnerPort adapter.
@@ -60,14 +62,30 @@ class RunMutationTestsHandler:
         Returns:
             Exit code of mutation testing process.
         """
+
+        def _run_single(pkg_dir) -> int:
+            if (
+                command.engine == MutationEngine.GREMLINS
+                or str(command.engine).lower() == "gremlins"
+            ):
+                return self._runner.run_gremlins(
+                    pkg_dir,
+                    reset_cache=command.reset_cache,
+                    workers=command.workers,
+                    numprocesses=command.numprocesses,
+                    batch_size=command.batch_size,
+                    report_file=command.report_file,
+                )
+            return self._runner.run_mutmut(pkg_dir, reset_cache=command.reset_cache)
+
         if command.package:
             pkg_dir = get_package_directory(command.package)
-            return self._runner.run_mutmut(pkg_dir, reset_cache=command.reset_cache)
+            return _run_single(pkg_dir)
 
         if command.all_packages:
             exit_code = 0
             for pkg_dir in get_package_directories():
-                code = self._runner.run_mutmut(pkg_dir, reset_cache=command.reset_cache)
+                code = _run_single(pkg_dir)
                 if code != 0:
                     exit_code = code
             return exit_code
@@ -76,7 +94,7 @@ class RunMutationTestsHandler:
 
 
 class InspectMutationCacheHandler:
-    """Handler inspecting and classifying surviving mutants in .mutmut-cache SQLite database."""
+    """Handler inspecting and classifying surviving mutants in mutation cache or report."""
 
     def __init__(self, runner: TestingRunnerPort) -> None:
         """Initialize handler with TestingRunnerPort adapter.
@@ -87,7 +105,7 @@ class InspectMutationCacheHandler:
         self._runner = runner
 
     def handle(self, command: InspectMutationCacheCommand) -> MutationAuditReport:
-        """Inspect and categorize surviving mutants from cache database.
+        """Inspect and categorize surviving mutants from cache database or report.
 
         Args:
             command: InspectMutationCacheCommand instance.
@@ -95,7 +113,24 @@ class InspectMutationCacheHandler:
         Returns:
             MutationAuditReport domain model.
         """
-        records = self._runner.read_mutmut_cache(command.cache_file, package_filter=command.package)
+        if (
+            command.engine == MutationEngine.GREMLINS
+            or str(command.engine).lower() == "gremlins"
+            or command.report_file is not None
+        ):
+            report_file = command.report_file
+            if report_file is None:
+                if command.package:
+                    pkg_dir = get_package_directory(command.package)
+                    report_file = pkg_dir / "coverage" / "gremlins" / "gremlins.json"
+                else:
+                    report_file = Path("coverage/gremlins/gremlins.json")
+            records = self._runner.read_gremlins_report(report_file, package_filter=command.package)
+        else:
+            records = self._runner.read_mutmut_cache(
+                command.cache_file, package_filter=command.package
+            )
+
         if not records:
             return MutationAuditReport(summaries=(), actionable_mutants=())
 
@@ -106,6 +141,7 @@ class InspectMutationCacheHandler:
             fname = rec["filename"]
             line_str = rec["line"]
             m_id = rec["id"]
+            line_no = rec.get("line_number", 1)
 
             match = re.search(r"packages/([^/]+)/", fname)
             pkg = match.group(1) if match else "hexastack"
@@ -126,14 +162,14 @@ class InspectMutationCacheHandler:
                 covering_tests: tuple[str, ...] = ()
                 if command.correlate_coverage and command.coverage_file:
                     covering_tests = tuple(
-                        self._runner.get_tests_covering_line(fname, 1, command.coverage_file)
+                        self._runner.get_tests_covering_line(fname, line_no, command.coverage_file)
                     )
 
                 actionable_mutants.append(
                     MutantRecord(
                         id=m_id,
                         filename=fname,
-                        line_number=1,
+                        line_number=line_no,
                         line_content=line_str.strip(),
                         category=cat,
                         rationale=rationale,

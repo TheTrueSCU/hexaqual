@@ -767,7 +767,7 @@ Usage: hexaqual mutate [OPTIONS] COMMAND [ARGS]...
 ╰──────────────────────────────────────────────────────────────────────────────╯
 ╭─ Commands ───────────────────────────────────────────────────────────────────╮
 │ run      Run mutation testing scoped to package or workspace.                │
-│ inspect  Triage and inspect mutation testing results cache.                  │
+│ inspect  Triage and inspect mutation testing results cache or report.        │
 ╰──────────────────────────────────────────────────────────────────────────────╯
 ```
 
@@ -776,7 +776,7 @@ Usage: hexaqual mutate [OPTIONS] COMMAND [ARGS]...
 ```text
 Usage: hexaqual mutate inspect [OPTIONS]
 
- Triage and inspect mutation testing results cache.
+ Triage and inspect mutation testing results cache or report.
 
  Args:
      package: Filter by package.
@@ -785,6 +785,8 @@ Usage: hexaqual mutate inspect [OPTIONS]
      correlated: Correlate with .coverage test context.
      summary: Display triage summary.
      format_type: Output format.
+     engine: Mutation engine inspected ('gremlins' or 'mutmut').
+     report_file: Explicit report file path.
 
  Raises:
      typer.Exit: If inspect fails.
@@ -794,13 +796,17 @@ Usage: hexaqual mutate inspect [OPTIONS]
  CQRS bus.
 
 ╭─ Options ────────────────────────────────────────────────────────────────────╮
-│ --package     -p        <str>  Filter by package.                            │
-│ --all         -a               Inspect all mutants.                          │
-│ --actionable  -act             Show actionable critical mutants.             │
-│ --correlated  -c               Correlate with .coverage.                     │
-│ --summary     -s               Triage summary.                               │
-│ --format      -f        <str>  Output format. [default: rich]                │
-│ --help                         Show this message and exit.                   │
+│ --package      -p        <str>  Filter by package.                           │
+│ --all          -a               Inspect all mutants.                         │
+│ --actionable   -act             Show actionable critical mutants.            │
+│ --correlated   -c               Correlate with .coverage.                    │
+│ --summary      -s               Triage summary.                              │
+│ --format       -f        <str>  Output format. [default: rich]               │
+│ --engine       -e        <str>  Mutation engine to inspect ('gremlins' or    │
+│                                 'mutmut').                                   │
+│                                 [default: gremlins]                          │
+│ --report-file            <str>  Explicit path to gremlins JSON report file.  │
+│ --help                          Show this message and exit.                  │
 ╰──────────────────────────────────────────────────────────────────────────────╯
 ```
 
@@ -814,19 +820,34 @@ Usage: hexaqual mutate run [OPTIONS]
  Args:
      package: Target package name.
      all_packages: Whether to run across all workspace packages.
-     reset: Clear mutmut cache and re-run.
+     reset: Clear cache and re-run.
+     engine: Runner engine ('gremlins' or 'mutmut').
+     workers: Parallel workers during mutation phase.
+     numprocesses: Pytest-xdist baseline process count.
+     batch_size: Mutants per worker batch.
 
  Raises:
      typer.Exit: If mutation testing fails.
 
  Notes/Architectural Intent:
-     Executes mutmut mutation runner across targeted components via CQRS bus.
+     Executes mutation runner across targeted components via CQRS bus.
+     Decouples baseline suite parallelism (-n) from mutation worker crunching
+ (-w).
 
 ╭─ Options ────────────────────────────────────────────────────────────────────╮
-│ --package  -p      <str>  Target package name (e.g. core).                   │
-│ --all      -a             Run across all workspace packages sequentially.    │
-│ --reset    -r             Clear cache and re-run.                            │
-│ --help                    Show this message and exit.                        │
+│ --package       -p      <str>  Target package name (e.g. core).              │
+│ --all           -a             Run across all workspace packages             │
+│                                sequentially.                                 │
+│ --reset         -r             Clear cache and re-run.                       │
+│ --engine        -e      <str>  Mutation engine to use ('gremlins' or         │
+│                                'mutmut').                                    │
+│                                [default: gremlins]                           │
+│ --workers       -w      <str>  Number of parallel mutation workers (or       │
+│                                'auto') during mutation phase.                │
+│ --numprocesses  -n      <str>  Pytest-xdist worker count for baseline test   │
+│                                execution.                                    │
+│ --batch-size            <int>  Number of gremlins per worker batch.          │
+│ --help                         Show this message and exit.                   │
 ╰──────────────────────────────────────────────────────────────────────────────╯
 ```
 

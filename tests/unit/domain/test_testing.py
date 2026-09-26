@@ -19,6 +19,7 @@ from hexaqual.domain.testing import (
     MutantCategory,
     MutantRecord,
     MutationAuditReport,
+    MutationEngine,
     MutationPackageSummary,
     RedundancyAuditReport,
     RedundantTestItem,
@@ -82,11 +83,32 @@ def test_redundancy_and_impact_models():
 
 def test_commands_instantiation(tmp_path: Path):
     """Verify all domain commands instantiate properly."""
-    c1 = RunMutationTestsCommand(package="core", reset_cache=True)
-    assert c1.package == "core"
+    c1 = RunMutationTestsCommand(
+        package="core",
+        reset_cache=True,
+        engine=MutationEngine.GREMLINS,
+        workers="auto",
+        numprocesses=2,
+        batch_size=10,
+    )
+    res_pkg = c1.package
+    assert res_pkg == "core"
+    res_engine = c1.engine
+    assert res_engine == MutationEngine.GREMLINS
+    res_workers = c1.workers
+    assert res_workers == "auto"
 
-    c2 = InspectMutationCacheCommand(cache_file=tmp_path / ".mutmut-cache")
-    assert c2.actionable_only is False
+    c2 = InspectMutationCacheCommand(
+        cache_file=tmp_path / ".mutmut-cache",
+        engine=MutationEngine.GREMLINS,
+        report_file=tmp_path / "gremlins.json",
+    )
+    res_actionable = c2.actionable_only
+    assert res_actionable is False
+    res_c2_engine = c2.engine
+    assert res_c2_engine == MutationEngine.GREMLINS
+    res_c2_report = c2.report_file
+    assert res_c2_report == tmp_path / "gremlins.json"
 
     c3 = AuditTestBoundariesCommand(coverage_file=tmp_path / ".coverage")
     assert c3.coverage_file == tmp_path / ".coverage"
