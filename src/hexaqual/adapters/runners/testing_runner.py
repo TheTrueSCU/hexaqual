@@ -206,6 +206,7 @@ class SubprocessTestingRunnerAdapter(TestingRunnerPort):
                     if 1 <= line_no <= len(lines):
                         line_content = lines[line_no - 1]
             except OSError:
+                # File may be missing or unreadable; fall back to gremlin description
                 pass
 
             if not line_content:
