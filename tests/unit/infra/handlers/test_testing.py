@@ -114,6 +114,68 @@ def test_run_mutation_tests_handler_gremlins(tmp_path: Path):
         )
 
 
+def test_run_mutation_tests_handler_affected_with_packages(tmp_path: Path):
+    """Verify RunMutationTestsHandler runs mutation tests on affected packages."""
+    runner = MagicMock(spec=TestingRunnerPort)
+    runner.run_mutation_testing.return_value = 0
+    handler = RunMutationTestsHandler(runner)
+
+    with (
+        patch(
+            "hexaqual.infra.handlers.testing.get_git_changed_files",
+            return_value=["packages/core/src/x.py"],
+        ),
+        patch("hexaqual.infra.handlers.testing.resolve_affected_packages", return_value={"core"}),
+        patch("hexaqual.infra.handlers.testing.get_package_directory", return_value=tmp_path),
+    ):
+        code = handler.handle(
+            RunMutationTestsCommand(affected=True, engine=MutationEngine.GREMLINS)
+        )
+        assert code == 0
+        runner.run_mutation_testing.assert_called_once_with(
+            package_dir=tmp_path,
+            engine=MutationEngine.GREMLINS,
+            reset_cache=False,
+            workers=None,
+            numprocesses=None,
+            batch_size=None,
+            report_file=None,
+        )
+
+
+def test_run_mutation_tests_handler_affected_empty():
+    """Verify RunMutationTestsHandler exits cleanly with 0 if no packages are affected."""
+    runner = MagicMock(spec=TestingRunnerPort)
+    handler = RunMutationTestsHandler(runner)
+
+    with (
+        patch("hexaqual.infra.handlers.testing.get_git_changed_files", return_value=[]),
+        patch("hexaqual.infra.handlers.testing.resolve_affected_packages", return_value=set()),
+    ):
+        code = handler.handle(RunMutationTestsCommand(affected=True))
+        assert code == 0
+        runner.run_mutation_testing.assert_not_called()
+
+
+def test_run_mutation_tests_handler_affected_impacts_all(tmp_path: Path):
+    """Verify RunMutationTestsHandler targets all packages when affected returns None."""
+    runner = MagicMock(spec=TestingRunnerPort)
+    runner.run_mutation_testing.return_value = 0
+    handler = RunMutationTestsHandler(runner)
+    pkg1 = tmp_path / "pkg1"
+    pkg2 = tmp_path / "pkg2"
+
+    with (
+        patch("hexaqual.infra.handlers.testing.get_git_changed_files", return_value=["uv.lock"]),
+        patch("hexaqual.infra.handlers.testing.resolve_affected_packages", return_value=None),
+        patch("hexaqual.infra.handlers.testing.get_package_directories", return_value=[pkg1, pkg2]),
+    ):
+        code = handler.handle(RunMutationTestsCommand(affected=True))
+        assert code == 0
+        call_count = runner.run_mutation_testing.call_count
+        assert call_count == 2
+
+
 def test_inspect_mutation_cache_handler_gremlins(tmp_path: Path):
     """Verify InspectMutationCacheHandler delegates to read_mutation_records for gremlins engine."""
     runner = MagicMock(spec=TestingRunnerPort)

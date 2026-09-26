@@ -43,6 +43,11 @@ nosetests.xml
 .import_linter_cache/
 .mutmut-cache
 *.mutmut-cache
+.gremlins*
+*.gremlins*
+coverage/
+gremlins.json
+gremlins.html
 .ropeproject/
 logs/
 *.log

@@ -12,8 +12,10 @@ from pathlib import Path
 
 from hexaqual.adapters.code_analysis.mutmut import classify_mutant_line
 from hexaqual.adapters.workspace import (
+    get_git_changed_files,
     get_package_directories,
     get_package_directory,
+    resolve_affected_packages,
 )
 from hexaqual.domain.testing import (
     AuditTestBoundariesCommand,
@@ -77,6 +79,23 @@ class RunMutationTestsHandler:
         if command.package:
             pkg_dir = get_package_directory(command.package)
             return _run_single(pkg_dir)
+
+        if command.affected:
+            changed = get_git_changed_files()
+            affected_pkgs = resolve_affected_packages(changed)
+            if affected_pkgs is None:
+                targets = get_package_directories()
+            elif not affected_pkgs:
+                return 0
+            else:
+                targets = [get_package_directory(p) for p in sorted(affected_pkgs)]
+
+            exit_code = 0
+            for pkg_dir in targets:
+                code = _run_single(pkg_dir)
+                if code != 0:
+                    exit_code = code
+            return exit_code
 
         if command.all_packages:
             exit_code = 0

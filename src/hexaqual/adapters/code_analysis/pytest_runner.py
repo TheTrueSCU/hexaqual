@@ -10,6 +10,7 @@ from pathlib import Path
 
 from hexaqual.adapters.workspace import (
     get_example_directory,
+    get_git_changed_files,
     get_package_directories,
     get_package_directory,
     get_repo_root,
@@ -19,31 +20,7 @@ from hexaqual.adapters.workspace import (
 
 def _get_git_changed_files(base_ref: str = "origin/main") -> list[str]:
     """Retrieve list of modified files compared against git base_ref."""
-    try:
-        res = subprocess.run(
-            ["git", "diff", "--name-only", f"{base_ref}...HEAD"],
-            capture_output=True,
-            text=True,
-            check=True,
-        )
-        files = [line.strip() for line in res.stdout.splitlines() if line.strip()]
-        if files:
-            return files
-    except Exception:
-        # Fall back to uncommitted local changes if diff against base_ref fails (e.g. shallow clone)
-        pass
-
-    try:
-        res = subprocess.run(
-            ["git", "diff", "--name-only", "HEAD"],
-            capture_output=True,
-            text=True,
-            check=True,
-        )
-        return [line.strip() for line in res.stdout.splitlines() if line.strip()]
-    except Exception:
-        # If git diff fails entirely (e.g. not in a git working tree), return empty list
-        return []
+    return get_git_changed_files(base_ref=base_ref)
 
 
 def _setup_example_target(example_name: str, sub_dir: str, root: Path) -> str:

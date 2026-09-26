@@ -57,6 +57,23 @@ def test_mutate_run_mutmut() -> None:
         mock_ensure.assert_called_once_with("mutmut", cli_command="mutmut", extra_name="mutmut")
 
 
+def test_mutate_run_affected() -> None:
+    """Test mutate run command with affected flag."""
+    mock_bus = MagicMock()
+    mock_bus.dispatch.return_value = 0
+    with (
+        patch("hexaqual.cli.mutate.ensure_tool_installed") as mock_ensure,
+        patch("hexaqual.cli.mutate.create_governance_bus", return_value=mock_bus),
+    ):
+        res = runner.invoke(mutate_app, ["run", "-A", "-e", "gremlins"])
+        assert res.exit_code == 0
+        assert mock_bus.dispatch.called
+        cmd = mock_bus.dispatch.call_args[0][0]
+        assert cmd.affected is True
+        assert cmd.engine == "gremlins"
+        mock_ensure.assert_called_once_with("pytest_gremlins", extra_name="gremlins")
+
+
 def test_mutate_inspect() -> None:
     """Test mutate inspect command dispatches InspectMutationCacheCommand."""
     mock_bus = MagicMock()

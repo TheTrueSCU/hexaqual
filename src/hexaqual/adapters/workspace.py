@@ -10,6 +10,7 @@ Notes/Architectural Intent:
 from __future__ import annotations
 
 import argparse
+import subprocess
 import tomllib
 from collections.abc import Sequence
 from pathlib import Path
@@ -599,6 +600,54 @@ def resolve_affected_packages(
     return affected
 
 
+def get_git_changed_files(
+    base_ref: str = "origin/main",
+    repo_root: Path | None = None,
+) -> list[str]:
+    """Retrieve list of modified files compared against git base_ref.
+
+    Args:
+        base_ref: Git reference to diff against (defaults to 'origin/main').
+        repo_root: Optional root directory of repository.
+
+    Returns:
+        List of changed file paths relative to repository root.
+
+    Notes/Architectural Intent:
+        Attempts a triple-dot diff against the specified base_ref. If diffing
+        against base_ref fails (e.g. shallow clone in CI or non-existent remote ref),
+        falls back to uncommitted local changes (`git diff --name-only HEAD`).
+    """
+    root = repo_root or get_repo_root()
+    try:
+        res = subprocess.run(
+            ["git", "diff", "--name-only", f"{base_ref}...HEAD"],
+            capture_output=True,
+            text=True,
+            check=True,
+            cwd=str(root),
+        )
+        files = [line.strip() for line in res.stdout.splitlines() if line.strip()]
+        if files:
+            return files
+    except Exception:
+        # Fall back to uncommitted local changes if diff against base_ref fails (e.g. shallow clone)
+        pass
+
+    try:
+        res = subprocess.run(
+            ["git", "diff", "--name-only", "HEAD"],
+            capture_output=True,
+            text=True,
+            check=True,
+            cwd=str(root),
+        )
+        return [line.strip() for line in res.stdout.splitlines() if line.strip()]
+    except Exception:
+        # If git diff fails entirely (e.g. not in a git working tree), return empty list
+        return []
+
+
 def check_tool_availability(
     import_name: str,
     cli_command: str | None = None,
@@ -678,6 +727,7 @@ __all__ = [
     "get_downstream_dependents",
     "get_example_directories",
     "get_example_directory",
+    "get_git_changed_files",
     "get_package_dependencies",
     "get_package_directories",
     "get_package_directory",

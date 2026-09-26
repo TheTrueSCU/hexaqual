@@ -136,6 +136,7 @@ class RunMutationTestsCommand(Command):
 
     package: str | None = None
     all_packages: bool = False
+    affected: bool = False
     reset_cache: bool = False
     engine: MutationEngine = MutationEngine.MUTMUT
     workers: int | str | None = None
