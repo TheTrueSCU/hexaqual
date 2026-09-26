@@ -24,12 +24,37 @@ def test_mutate_run() -> None:
     mock_bus = MagicMock()
     mock_bus.dispatch.return_value = 0
     with (
-        patch("hexaqual.cli.mutate.ensure_tool_installed"),
+        patch("hexaqual.cli.mutate.ensure_tool_installed") as mock_ensure,
         patch("hexaqual.cli.mutate.create_governance_bus", return_value=mock_bus),
     ):
-        res = runner.invoke(mutate_app, ["run", "-p", "core"])
+        res = runner.invoke(
+            mutate_app, ["run", "-p", "core", "-e", "gremlins", "-w", "4", "-n", "2"]
+        )
         assert res.exit_code == 0
         assert mock_bus.dispatch.called
+        cmd = mock_bus.dispatch.call_args[0][0]
+        assert cmd.package == "core"
+        assert cmd.engine == "gremlins"
+        assert cmd.workers == "4"
+        assert cmd.numprocesses == "2"
+        mock_ensure.assert_called_once_with("pytest_gremlins", extra_name="gremlins")
+
+
+def test_mutate_run_mutmut() -> None:
+    """Test mutate run command with mutmut engine."""
+    mock_bus = MagicMock()
+    mock_bus.dispatch.return_value = 0
+    with (
+        patch("hexaqual.cli.mutate.ensure_tool_installed") as mock_ensure,
+        patch("hexaqual.cli.mutate.create_governance_bus", return_value=mock_bus),
+    ):
+        res = runner.invoke(mutate_app, ["run", "-p", "core", "-e", "mutmut", "-r"])
+        assert res.exit_code == 0
+        assert mock_bus.dispatch.called
+        cmd = mock_bus.dispatch.call_args[0][0]
+        assert cmd.engine == "mutmut"
+        assert cmd.reset_cache is True
+        mock_ensure.assert_called_once_with("mutmut", cli_command="mutmut", extra_name="mutmut")
 
 
 def test_mutate_inspect() -> None:
@@ -43,6 +68,8 @@ def test_mutate_inspect() -> None:
         patch("hexaqual.cli.mutate.ensure_tool_installed"),
         patch("hexaqual.cli.mutate.create_governance_bus", return_value=mock_bus),
     ):
-        res = runner.invoke(mutate_app, ["inspect", "--summary"])
+        res = runner.invoke(mutate_app, ["inspect", "--summary", "-e", "gremlins"])
         assert res.exit_code == 0
         assert mock_bus.dispatch.called
+        cmd = mock_bus.dispatch.call_args[0][0]
+        assert cmd.engine == "gremlins"

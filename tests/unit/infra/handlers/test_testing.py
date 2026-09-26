@@ -14,6 +14,7 @@ from hexaqual.domain.testing import (
     AuditTestBoundariesCommand,
     AuditTestRedundancyCommand,
     InspectMutationCacheCommand,
+    MutationEngine,
     RunImpactedTestsCommand,
     RunMutationTestsCommand,
 )
@@ -60,9 +61,76 @@ def test_inspect_mutation_cache_handler(tmp_path: Path):
         actionable_only=True,
     )
     report = handler.handle(cmd)
-    assert len(report.summaries) == 1
-    assert report.total_critical == 1
-    assert len(report.actionable_mutants) == 1
+    res_summaries = len(report.summaries)
+    assert res_summaries == 1
+    res_critical = report.total_critical
+    assert res_critical == 1
+    res_mutants = len(report.actionable_mutants)
+    assert res_mutants == 1
+
+
+def test_run_mutation_tests_handler_gremlins(tmp_path: Path):
+    """Verify RunMutationTestsHandler delegates to run_gremlins when engine is gremlins."""
+    runner = MagicMock(spec=TestingRunnerPort)
+    runner.run_gremlins.return_value = 0
+    handler = RunMutationTestsHandler(runner)
+
+    with patch(
+        "hexaqual.infra.handlers.testing.get_package_directory",
+        return_value=tmp_path,
+    ):
+        code = handler.handle(
+            RunMutationTestsCommand(
+                package="core",
+                reset_cache=True,
+                engine=MutationEngine.GREMLINS,
+                workers="auto",
+                numprocesses=2,
+                batch_size=10,
+            )
+        )
+        assert code == 0
+        runner.run_gremlins.assert_called_once_with(
+            tmp_path,
+            reset_cache=True,
+            workers="auto",
+            numprocesses=2,
+            batch_size=10,
+            report_file=None,
+        )
+
+
+def test_inspect_mutation_cache_handler_gremlins(tmp_path: Path):
+    """Verify InspectMutationCacheHandler delegates to read_gremlins_report for gremlins engine."""
+    runner = MagicMock(spec=TestingRunnerPort)
+    runner.read_gremlins_report.return_value = [
+        {
+            "id": "g001",
+            "filename": "packages/core/src/service.py",
+            "line_number": 42,
+            "line": "if status == 1:",
+            "status": "survived",
+            "operator": "boolean",
+            "description": "True to False",
+        }
+    ]
+    handler = InspectMutationCacheHandler(runner)
+
+    cmd = InspectMutationCacheCommand(
+        engine=MutationEngine.GREMLINS,
+        report_file=tmp_path / "gremlins.json",
+        actionable_only=True,
+    )
+    report = handler.handle(cmd)
+    res_summaries = len(report.summaries)
+    assert res_summaries == 1
+    res_critical = report.total_critical
+    assert res_critical == 1
+    res_mutants = len(report.actionable_mutants)
+    assert res_mutants == 1
+    runner.read_gremlins_report.assert_called_once_with(
+        tmp_path / "gremlins.json", package_filter=None
+    )
 
 
 def test_audit_test_boundaries_handler(tmp_path: Path):

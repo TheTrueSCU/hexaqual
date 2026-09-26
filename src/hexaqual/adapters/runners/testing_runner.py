@@ -7,6 +7,7 @@ Notes/Architectural Intent:
 
 from __future__ import annotations
 
+import json
 import sqlite3
 import subprocess
 from pathlib import Path
@@ -40,6 +41,61 @@ class SubprocessTestingRunnerAdapter(TestingRunnerPort):
             cache_file.unlink()
 
         cmd = ["mutmut", "run"]
+        res = subprocess.run(cmd, cwd=package_dir)
+        return res.returncode
+
+    def run_gremlins(
+        self,
+        package_dir: Path,
+        reset_cache: bool = False,
+        workers: int | str | None = None,
+        numprocesses: int | str | None = None,
+        batch_size: int | None = None,
+        report_file: Path | None = None,
+    ) -> int:
+        """Run pytest-gremlins mutation runner on a specific package directory.
+
+        Args:
+            package_dir: Package directory path.
+            reset_cache: Whether to clear incremental analysis cache.
+            workers: Number of mutation workers (or 'auto') during mutation phase.
+            numprocesses: Pytest-xdist worker count for baseline test execution.
+            batch_size: Number of gremlins per worker batch.
+            report_file: Path to write the JSON report.
+
+        Returns:
+            Exit code of pytest process.
+
+        Notes/Architectural Intent:
+            Runs pytest inside package_dir with --rootdir=. so that pytest-gremlins
+            strips src/ to correctly register AST import hooks without path drift.
+        """
+        cmd = [
+            "pytest",
+            "--rootdir=.",
+            "-o",
+            "addopts=",
+            "--cov=src",
+            "--cov-fail-under=0",
+            "--gremlins",
+        ]
+        if reset_cache:
+            cmd.append("--gremlin-clear-cache")
+        if workers is not None:
+            cmd.append(f"--gremlin-workers={workers}")
+        else:
+            cmd.append("--gremlin-parallel")
+        if batch_size is not None:
+            cmd.append(f"--gremlin-batch-size={batch_size}")
+            cmd.append("--gremlin-batch")
+        if numprocesses is not None:
+            cmd.extend(["-n", str(numprocesses)])
+        if report_file is not None:
+            cmd.append(f"--gremlins-html-dir={report_file.parent}")
+            cmd.append("--gremlin-report=json,console")
+        else:
+            cmd.append("--gremlin-report=json,console")
+
         res = subprocess.run(cmd, cwd=package_dir)
         return res.returncode
 
@@ -84,6 +140,70 @@ class SubprocessTestingRunnerAdapter(TestingRunnerPort):
             return results
         finally:
             con.close()
+
+    def read_gremlins_report(
+        self, report_file: Path, package_filter: str | None = None
+    ) -> list[dict[str, Any]]:
+        """Read surviving and timeout mutants from pytest-gremlins JSON report.
+
+        Args:
+            report_file: Path to gremlins JSON report file.
+            package_filter: Optional package name filter.
+
+        Returns:
+            List of mutant records as raw dictionaries.
+
+        Notes/Architectural Intent:
+            Converts JSON gremlin report entries into uniform raw mutant dictionaries
+            compatible with downstream triage classification.
+        """
+        if not report_file.is_file():
+            return []
+
+        try:
+            data = json.loads(report_file.read_text(encoding="utf-8"))
+        except (json.JSONDecodeError, OSError):
+            return []
+
+        results = data.get("results", [])
+        records: list[dict[str, Any]] = []
+
+        for item in results:
+            status = str(item.get("status", "")).lower()
+            if status not in ("survived", "timeout", "error"):
+                continue
+
+            file_path = str(item.get("file_path", ""))
+            if package_filter and package_filter not in file_path:
+                continue
+
+            line_no = int(item.get("line_number", 1))
+            line_content = ""
+            try:
+                src_path = Path(file_path)
+                if src_path.is_file():
+                    lines = src_path.read_text(encoding="utf-8").splitlines()
+                    if 1 <= line_no <= len(lines):
+                        line_content = lines[line_no - 1]
+            except OSError:
+                pass
+
+            if not line_content:
+                line_content = str(item.get("description", ""))
+
+            records.append(
+                {
+                    "id": str(item.get("gremlin_id", "unknown")),
+                    "filename": file_path,
+                    "line_number": line_no,
+                    "line": line_content,
+                    "status": status,
+                    "operator": str(item.get("operator", "")),
+                    "description": str(item.get("description", "")),
+                }
+            )
+
+        return records
 
     def get_changed_lines(
         self, repo_root: Path, base_ref: str | None = None

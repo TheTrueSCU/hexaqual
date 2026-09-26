@@ -40,6 +40,34 @@ class TestingRunnerPort(ABC):
         """
 
     @abstractmethod
+    def run_gremlins(
+        self,
+        package_dir: Path,
+        reset_cache: bool = False,
+        workers: int | str | None = None,
+        numprocesses: int | str | None = None,
+        batch_size: int | None = None,
+        report_file: Path | None = None,
+    ) -> int:
+        """Run pytest-gremlins mutation runner on a specific package directory.
+
+        Args:
+            package_dir: Directory path of package to mutate.
+            reset_cache: Whether to clear incremental analysis cache.
+            workers: Number of mutation workers (or 'auto') during mutation phase.
+            numprocesses: Pytest-xdist worker count for baseline test execution.
+            batch_size: Number of gremlins per worker batch.
+            report_file: Path to write the JSON report.
+
+        Returns:
+            Exit code of pytest process.
+
+        Notes/Architectural Intent:
+            Decouples baseline suite parallelization (-n via pytest-xdist) from
+            mutation worker pool crunching (--gremlin-workers).
+        """
+
+    @abstractmethod
     def read_mutmut_cache(
         self, cache_file: Path, package_filter: str | None = None
     ) -> list[dict[str, Any]]:
@@ -51,6 +79,24 @@ class TestingRunnerPort(ABC):
 
         Returns:
             List of mutant records as raw dictionaries.
+        """
+
+    @abstractmethod
+    def read_gremlins_report(
+        self, report_file: Path, package_filter: str | None = None
+    ) -> list[dict[str, Any]]:
+        """Read surviving and timeout mutants from pytest-gremlins JSON report.
+
+        Args:
+            report_file: Path to gremlins JSON report file.
+            package_filter: Optional package name filter.
+
+        Returns:
+            List of mutant records as raw dictionaries.
+
+        Notes/Architectural Intent:
+            Converts JSON gremlin report entries into uniform raw mutant dictionaries
+            compatible with downstream triage classification.
         """
 
     @abstractmethod
