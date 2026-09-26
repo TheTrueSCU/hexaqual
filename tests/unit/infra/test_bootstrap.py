@@ -108,8 +108,8 @@ def test_create_governance_bus_wires_and_dispatches():
     )
 
     mock_testing_runner = MagicMock(spec=TestingRunnerPort)
-    mock_testing_runner.run_mutmut.return_value = 0
-    mock_testing_runner.read_mutmut_cache.return_value = []
+    mock_testing_runner.run_mutation_testing.return_value = 0
+    mock_testing_runner.read_mutation_records.return_value = []
     mock_testing_runner.get_changed_lines.return_value = {}
     mock_testing_runner.find_impacted_tests.return_value = set()
     mock_testing_runner.get_tests_covering_line.return_value = []
