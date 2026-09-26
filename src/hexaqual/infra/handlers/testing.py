@@ -63,20 +63,16 @@ class RunMutationTestsHandler:
             Exit code of mutation testing process.
         """
 
-        def _run_single(pkg_dir) -> int:
-            if (
-                command.engine == MutationEngine.GREMLINS
-                or str(command.engine).lower() == "gremlins"
-            ):
-                return self._runner.run_gremlins(
-                    pkg_dir,
-                    reset_cache=command.reset_cache,
-                    workers=command.workers,
-                    numprocesses=command.numprocesses,
-                    batch_size=command.batch_size,
-                    report_file=command.report_file,
-                )
-            return self._runner.run_mutmut(pkg_dir, reset_cache=command.reset_cache)
+        def _run_single(pkg_dir: Path) -> int:
+            return self._runner.run_mutation_testing(
+                package_dir=pkg_dir,
+                engine=command.engine,
+                reset_cache=command.reset_cache,
+                workers=command.workers,
+                numprocesses=command.numprocesses,
+                batch_size=command.batch_size,
+                report_file=command.report_file,
+            )
 
         if command.package:
             pkg_dir = get_package_directory(command.package)
@@ -113,23 +109,22 @@ class InspectMutationCacheHandler:
         Returns:
             MutationAuditReport domain model.
         """
-        if (
-            command.engine == MutationEngine.GREMLINS
-            or str(command.engine).lower() == "gremlins"
-            or command.report_file is not None
-        ):
-            report_file = command.report_file
-            if report_file is None:
-                if command.package:
-                    pkg_dir = get_package_directory(command.package)
-                    report_file = pkg_dir / "coverage" / "gremlins" / "gremlins.json"
-                else:
-                    report_file = Path("coverage/gremlins/gremlins.json")
-            records = self._runner.read_gremlins_report(report_file, package_filter=command.package)
+        if command.report_file is not None:
+            target_path = command.report_file
+        elif command.engine == MutationEngine.GREMLINS or str(command.engine).lower() == "gremlins":
+            if command.package:
+                pkg_dir = get_package_directory(command.package)
+                target_path = pkg_dir / "coverage" / "gremlins" / "gremlins.json"
+            else:
+                target_path = Path("coverage/gremlins/gremlins.json")
         else:
-            records = self._runner.read_mutmut_cache(
-                command.cache_file, package_filter=command.package
-            )
+            target_path = command.cache_file
+
+        records = self._runner.read_mutation_records(
+            path=target_path,
+            engine=command.engine,
+            package_filter=command.package,
+        )
 
         if not records:
             return MutationAuditReport(summaries=(), actionable_mutants=())

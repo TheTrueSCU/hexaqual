@@ -14,6 +14,7 @@ from unittest.mock import MagicMock, patch
 from hexaqual.adapters.runners.testing_runner import (
     SubprocessTestingRunnerAdapter,
 )
+from hexaqual.domain.testing import MutationEngine
 
 
 def test_run_mutmut(tmp_path: Path):
@@ -257,3 +258,60 @@ def test_read_gremlins_report(tmp_path: Path):
     assert res_status == "survived"
     res_line = rec["line"]
     assert res_line == "y = True"
+
+
+def test_run_mutation_testing_dispatch(tmp_path: Path):
+    """Verify run_mutation_testing dispatches according to engine enum."""
+    adapter = SubprocessTestingRunnerAdapter()
+
+    with patch.object(adapter, "_run_mutmut", return_value=0) as mock_mutmut:
+        code_mutmut = adapter.run_mutation_testing(
+            tmp_path, engine=MutationEngine.MUTMUT, reset_cache=True
+        )
+        assert code_mutmut == 0
+        mock_mutmut.assert_called_once_with(package_dir=tmp_path, reset_cache=True)
+
+    with patch.object(adapter, "_run_gremlins", return_value=0) as mock_gremlins:
+        code_gremlins = adapter.run_mutation_testing(
+            tmp_path,
+            engine=MutationEngine.GREMLINS,
+            reset_cache=False,
+            workers=2,
+            numprocesses=4,
+            batch_size=20,
+            report_file=tmp_path / "report.json",
+        )
+        assert code_gremlins == 0
+        mock_gremlins.assert_called_once_with(
+            package_dir=tmp_path,
+            reset_cache=False,
+            workers=2,
+            numprocesses=4,
+            batch_size=20,
+            report_file=tmp_path / "report.json",
+        )
+
+
+def test_read_mutation_records_dispatch(tmp_path: Path):
+    """Verify read_mutation_records dispatches according to engine enum."""
+    adapter = SubprocessTestingRunnerAdapter()
+
+    with patch.object(adapter, "_read_mutmut_cache", return_value=[{"id": "1"}]) as mock_cache:
+        records_mutmut = adapter.read_mutation_records(
+            tmp_path / ".mutmut-cache",
+            engine=MutationEngine.MUTMUT,
+            package_filter="core",
+        )
+        res_mutmut_len = len(records_mutmut)
+        assert res_mutmut_len == 1
+        mock_cache.assert_called_once_with(tmp_path / ".mutmut-cache", package_filter="core")
+
+    with patch.object(adapter, "_read_gremlins_report", return_value=[{"id": "g1"}]) as mock_rep:
+        records_gremlins = adapter.read_mutation_records(
+            tmp_path / "gremlins.json",
+            engine=MutationEngine.GREMLINS,
+            package_filter="core",
+        )
+        res_gremlins_len = len(records_gremlins)
+        assert res_gremlins_len == 1
+        mock_rep.assert_called_once_with(tmp_path / "gremlins.json", package_filter="core")
