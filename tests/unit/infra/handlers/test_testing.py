@@ -211,6 +211,98 @@ def test_inspect_mutation_cache_handler_gremlins(tmp_path: Path):
     )
 
 
+def test_run_mutation_tests_handler_all_packages(tmp_path: Path):
+    """Verify RunMutationTestsHandler executes mutation testing across all package directories."""
+    runner = MagicMock(spec=TestingRunnerPort)
+    runner.run_mutation_testing.return_value = 0
+    handler = RunMutationTestsHandler(runner)
+    pkg1 = tmp_path / "pkg1"
+    pkg2 = tmp_path / "pkg2"
+
+    with patch(
+        "hexaqual.infra.handlers.testing.get_package_directories",
+        return_value=[pkg1, pkg2],
+    ):
+        code = handler.handle(
+            RunMutationTestsCommand(all_packages=True, engine=MutationEngine.GREMLINS)
+        )
+        assert code == 0
+        call_count = runner.run_mutation_testing.call_count
+        assert call_count == 2
+
+
+def test_inspect_mutation_cache_handler_gremlins_package_path(tmp_path: Path):
+    """Verify InspectMutationCacheHandler resolves gremlins report path from package directory."""
+    runner = MagicMock(spec=TestingRunnerPort)
+    runner.read_mutation_records.return_value = []
+    handler = InspectMutationCacheHandler(runner)
+
+    with patch(
+        "hexaqual.infra.handlers.testing.get_package_directory",
+        return_value=tmp_path,
+    ):
+        cmd = InspectMutationCacheCommand(
+            engine=MutationEngine.GREMLINS,
+            package="core",
+        )
+        report = handler.handle(cmd)
+        res_len = len(report.summaries)
+        assert res_len == 0
+        expected_path = tmp_path / "coverage" / "gremlins" / "gremlins.json"
+        runner.read_mutation_records.assert_called_once_with(
+            path=expected_path,
+            engine=MutationEngine.GREMLINS,
+            package_filter="core",
+        )
+
+
+def test_run_mutation_tests_handler_non_zero_exit(tmp_path: Path):
+    """Verify non-zero exit code propagation in all_packages and affected modes."""
+    runner = MagicMock(spec=TestingRunnerPort)
+    runner.run_mutation_testing.return_value = 1
+    handler = RunMutationTestsHandler(runner)
+
+    with patch("hexaqual.infra.handlers.testing.get_package_directories", return_value=[tmp_path]):
+        code = handler.handle(RunMutationTestsCommand(all_packages=True))
+        assert code == 1
+
+    with (
+        patch(
+            "hexaqual.infra.handlers.testing.get_git_changed_files",
+            return_value=["packages/core/src/x.py"],
+        ),
+        patch("hexaqual.infra.handlers.testing.resolve_affected_packages", return_value={"core"}),
+        patch("hexaqual.infra.handlers.testing.get_package_directory", return_value=tmp_path),
+    ):
+        code_aff = handler.handle(RunMutationTestsCommand(affected=True))
+        assert code_aff == 1
+
+
+def test_run_mutation_tests_handler_noop():
+    """Verify RunMutationTestsHandler returns 0 when no package or scope flag is set."""
+    runner = MagicMock(spec=TestingRunnerPort)
+    handler = RunMutationTestsHandler(runner)
+    code = handler.handle(RunMutationTestsCommand())
+    assert code == 0
+
+
+def test_inspect_mutation_cache_handler_gremlins_root_path():
+    """Verify InspectMutationCacheHandler defaults to root coverage gremlins path without package."""
+    runner = MagicMock(spec=TestingRunnerPort)
+    runner.read_mutation_records.return_value = []
+    handler = InspectMutationCacheHandler(runner)
+
+    cmd = InspectMutationCacheCommand(engine=MutationEngine.GREMLINS)
+    report = handler.handle(cmd)
+    res_len = len(report.summaries)
+    assert res_len == 0
+    runner.read_mutation_records.assert_called_once_with(
+        path=Path("coverage/gremlins/gremlins.json"),
+        engine=MutationEngine.GREMLINS,
+        package_filter=None,
+    )
+
+
 def test_audit_test_boundaries_handler(tmp_path: Path):
     """Verify AuditTestBoundariesHandler constructs report."""
     runner = MagicMock(spec=TestingRunnerPort)

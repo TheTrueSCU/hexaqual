@@ -324,3 +324,77 @@ def test_read_mutation_records_dispatch(tmp_path: Path):
         res_gremlins_len = len(records_gremlins)
         assert res_gremlins_len == 1
         mock_rep.assert_called_once_with(tmp_path / "gremlins.json", package_filter="core")
+
+
+def test_run_gremlins_options(tmp_path: Path):
+    """Verify _run_gremlins builds command with batch size, parallel flag, and report file."""
+    adapter = SubprocessTestingRunnerAdapter()
+    report_file = tmp_path / "out" / "gremlins.json"
+
+    with patch("subprocess.run") as mock_run:
+        mock_run.return_value = MagicMock(returncode=0)
+        code = adapter.run_mutation_testing(
+            tmp_path,
+            engine=MutationEngine.GREMLINS,
+            reset_cache=True,
+            workers=None,
+            batch_size=10,
+            numprocesses=2,
+            report_file=report_file,
+        )
+        assert code == 0
+        mock_run.assert_called_once()
+        cmd = mock_run.call_args[0][0]
+        assert "--gremlin-clear-cache" in cmd
+        assert "--gremlin-parallel" in cmd
+        assert "--gremlin-batch" in cmd
+        assert "--gremlin-batch-size=10" in cmd
+        assert "-n" in cmd
+        assert f"--gremlins-html-dir={report_file.parent}" in cmd
+
+
+def test_read_gremlins_report_corrupted(tmp_path: Path):
+    """Verify _read_gremlins_report gracefully handles corrupted or unreadable JSON."""
+    adapter = SubprocessTestingRunnerAdapter()
+    bad_file = tmp_path / "bad.json"
+    bad_file.write_text("{not valid json", encoding="utf-8")
+
+    records = adapter.read_mutation_records(bad_file, engine=MutationEngine.GREMLINS)
+    assert records == []
+
+
+def test_read_gremlins_report_filter_and_missing_source(tmp_path: Path):
+    """Verify package_filter skips files and missing source file uses description."""
+    adapter = SubprocessTestingRunnerAdapter()
+    report_file = tmp_path / "gremlins.json"
+    report_file.write_text(
+        """{
+          "results": [
+            {
+              "gremlin_id": "g001",
+              "file_path": "packages/core/src/missing.py",
+              "line_number": 5,
+              "status": "survived",
+              "description": "True to False"
+            },
+            {
+              "gremlin_id": "g002",
+              "file_path": "packages/other/src/other.py",
+              "line_number": 1,
+              "status": "survived",
+              "description": "ignored"
+            }
+          ]
+        }""",
+        encoding="utf-8",
+    )
+
+    records = adapter.read_mutation_records(
+        report_file,
+        engine=MutationEngine.GREMLINS,
+        package_filter="core",
+    )
+    res_len = len(records)
+    assert res_len == 1
+    assert records[0]["id"] == "g001"
+    assert records[0]["line"] == "True to False"
