@@ -90,3 +90,46 @@ def test_mutate_inspect() -> None:
         assert mock_bus.dispatch.called
         cmd = mock_bus.dispatch.call_args[0][0]
         assert cmd.engine == "gremlins"
+
+
+def test_mutate_run_failure() -> None:
+    """Test mutate run raises Exit when bus dispatch returns non-zero code."""
+    mock_bus = MagicMock()
+    mock_bus.dispatch.return_value = 1
+    with (
+        patch("hexaqual.cli.mutate.ensure_tool_installed"),
+        patch("hexaqual.cli.mutate.create_governance_bus", return_value=mock_bus),
+    ):
+        res = runner.invoke(mutate_app, ["run", "-p", "core"])
+        assert res.exit_code == 1
+
+
+def test_mutate_inspect_mutmut() -> None:
+    """Test mutate inspect with mutmut engine ensures tool and creates command."""
+    mock_bus = MagicMock()
+    mock_bus.dispatch.return_value = MutationAuditReport(summaries=(), actionable_mutants=())
+    with (
+        patch("hexaqual.cli.mutate.ensure_tool_installed") as mock_ensure,
+        patch("hexaqual.cli.mutate.create_governance_bus", return_value=mock_bus),
+    ):
+        res = runner.invoke(mutate_app, ["inspect", "-e", "mutmut", "-act"])
+        assert res.exit_code == 0
+        mock_ensure.assert_called_once_with("mutmut", cli_command="mutmut", extra_name="mutmut")
+        cmd = mock_bus.dispatch.call_args[0][0]
+        assert cmd.engine == "mutmut"
+        assert cmd.actionable_only is True
+
+
+def test_mutate_inspect_failure() -> None:
+    """Test mutate inspect raises Exit when presenter returns non-zero code."""
+    mock_bus = MagicMock()
+    mock_bus.dispatch.return_value = MutationAuditReport(summaries=(), actionable_mutants=())
+    mock_presenter = MagicMock()
+    mock_presenter.present_mutation_summary.return_value = 1
+    with (
+        patch("hexaqual.cli.mutate.ensure_tool_installed"),
+        patch("hexaqual.cli.mutate.create_governance_bus", return_value=mock_bus),
+        patch("hexaqual.cli.mutate.create_testing_presenter", return_value=mock_presenter),
+    ):
+        res = runner.invoke(mutate_app, ["inspect", "-s"])
+        assert res.exit_code == 1
