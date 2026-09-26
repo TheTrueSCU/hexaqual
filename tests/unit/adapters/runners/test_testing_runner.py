@@ -346,11 +346,36 @@ def test_run_gremlins_options(tmp_path: Path):
         mock_run.assert_called_once()
         cmd = mock_run.call_args[0][0]
         assert "--gremlin-clear-cache" in cmd
-        assert "--gremlin-parallel" in cmd
+        assert "--gremlin-workers=auto" in cmd
         assert "--gremlin-batch" in cmd
         assert "--gremlin-batch-size=10" in cmd
         assert "-n" in cmd
+        assert "2" in cmd
         assert f"--gremlins-html-dir={report_file.parent}" in cmd
+
+
+def test_run_gremlins_defaults_auto_cores(tmp_path: Path):
+    """Verify _run_gremlins defaults numprocesses to auto when xdist is installed."""
+    adapter = SubprocessTestingRunnerAdapter()
+
+    with (
+        patch("subprocess.run") as mock_run,
+        patch(
+            "hexaqual.adapters.runners.testing_runner.check_tool_availability",
+            return_value=(True, ""),
+        ),
+    ):
+        mock_run.return_value = MagicMock(returncode=0)
+        code = adapter.run_mutation_testing(
+            tmp_path,
+            engine=MutationEngine.GREMLINS,
+        )
+        assert code == 0
+        cmd = mock_run.call_args[0][0]
+        assert "--gremlin-workers=auto" in cmd
+        assert "--gremlin-batch-size=10" in cmd
+        assert "-n" in cmd
+        assert "auto" in cmd
 
 
 def test_read_gremlins_report_corrupted(tmp_path: Path):

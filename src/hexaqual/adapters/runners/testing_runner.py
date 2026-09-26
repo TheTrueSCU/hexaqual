@@ -16,6 +16,7 @@ from typing import Any
 from coverage import CoverageData
 
 from hexaqual.adapters.code_analysis.coverage import parse_git_diff_hunks
+from hexaqual.adapters.workspace import check_tool_availability
 from hexaqual.domain.testing import MutationEngine
 from hexaqual.ports.testing import TestingRunnerPort
 
@@ -100,12 +101,17 @@ class SubprocessTestingRunnerAdapter(TestingRunnerPort):
         if workers is not None:
             cmd.append(f"--gremlin-workers={workers}")
         else:
-            cmd.append("--gremlin-parallel")
-        if batch_size is not None:
-            cmd.append(f"--gremlin-batch-size={batch_size}")
-            cmd.append("--gremlin-batch")
+            cmd.append("--gremlin-workers=auto")
+
+        effective_batch_size = batch_size if batch_size is not None else 10
+        cmd.append(f"--gremlin-batch-size={effective_batch_size}")
+        cmd.append("--gremlin-batch")
+
         if numprocesses is not None:
             cmd.extend(["-n", str(numprocesses)])
+        elif check_tool_availability("xdist")[0]:
+            cmd.extend(["-n", "auto"])
+
         if report_file is not None:
             cmd.append(f"--gremlins-html-dir={report_file.parent}")
             cmd.append("--gremlin-report=json,console")
