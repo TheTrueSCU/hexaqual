@@ -116,8 +116,7 @@ class GitHooksAdapter(GitHooksPort):
                     else (repo_root / target_path).resolve()
                 )
         except OSError:
-            pass
-        return None
+            return None
 
     def resolve_hooks_dir(self, repo_root: Path) -> Path | None:
         """Resolve the .git/hooks directory for the target repository.
@@ -319,8 +318,8 @@ class GitHooksAdapter(GitHooksPort):
             )
             if res.returncode == 0:
                 details.append("Cleaned pre-commit hook wrappers.")
-        except Exception:
-            pass
+        except Exception as exc:
+            details.append(f"Pre-commit uninstall invocation failed: {exc}")
 
         # 2. Clean any native scripts containing the hexaqual header
         for stage in HookStage:
