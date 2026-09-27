@@ -84,7 +84,8 @@ Hexaqual subsumes all developer quality tools into a single unified entrypoint (
 | `hexaqual statements` | `check`, `fix` | Audit and auto-format `__all__` exports with strict casefold sorting. |
 | `hexaqual parity` | `test`, `extras` | Audit 1:1 symmetry between source modules and unit tests, and optional extras forwarding. |
 | `hexaqual test` | `run`, `boundary`, `redundancy`, `impact`, `fuzz`, `snapshot`, `archon` | Run pytest suites, boundary assertion audits, redundancy analysis, git impact tests, fuzzing, and inline snapshots. |
-| `hexaqual mutate` | `run`, `inspect` | Execute mutation testing via mutmut and inspect critical surviving mutants. |
+| `hexaqual mutate` | `run`, `inspect` | Dual-engine mutation testing (pytest-gremlins & mutmut) with auto-parallelism and triage inspection. |
+| `hexaqual hooks` | `install`, `check`, `uninstall`, `commit-msg` | Multi-stage Git hooks lifecycle management (pre-commit, commit-msg, pre-push, post-merge, post-checkout). |
 | `hexaqual release` | `build`, `check`, `publish`, `reproducible` | Build sdist/wheel distributions, verify metadata, and publish to PyPI with smart duplicate skipping. |
 | `hexaqual gh` | `pr`, `checks`, `repo`, `security`, `code-scanning`, `codeql` | Inspect PR health dashboards, CI checks, repo governance, Dependabot, and CodeQL alerts. |
 | `hexaqual deps` | `audit`, `deptry`, `graph` | Audit dependencies, run deptry checks, and generate dependency graphs via pydeps. |
@@ -118,19 +119,71 @@ For the complete unrolled CLI reference and full option listings for every subco
 
 ---
 
-## 🪝 Pre-Commit Integration
+## 🪝 Git Lifecycle Hooks & Commit Governance
 
-Add Hexaqual to your `.pre-commit-config.yaml` to enforce all static quality gates in under a second:
+Standard `pre-commit install` only installs the `pre-commit` stage by default. Hexaqual provides a unified hooks manager that configures all **5 critical lifecycle stages** in a single step:
+
+```bash
+# Install all 5 hook stages (pre-commit, commit-msg, pre-push, post-merge, post-checkout)
+uv run hexaqual hooks install
+
+# Inspect active hook status across all stages
+uv run hexaqual hooks check
+```
+
+| Hook Stage | Trigger | Purpose |
+|---|---|---|
+| **`pre-commit`** | `git commit` | Fast static quality checks (Ruff, Ty, complexipy, `__all__`, test symmetry). |
+| **`commit-msg`** | `git commit` | Validates Conventional Commits and OpenSSF DCO sign-offs (`Signed-off-by:`). |
+| **`pre-push`** | `git push` | Fast regression sanity gate preventing broken builds from reaching remote CI. |
+| **`post-merge`** | `git pull` / merge | Auto-syncs dependencies (`uv sync`) and re-synchronizes universal agent rules. |
+| **`post-checkout`** | `git switch` | Auto-syncs dependencies and agent guardrails on branch changes. |
+
+### Pre-Commit Configuration (`.pre-commit-config.yaml`)
+
+Hexaqual distributes reusable hooks via GitHub:
 
 ```yaml
 repos:
-  - repo: local
+  - repo: https://github.com/TheTrueSCU/hexaqual
+    rev: v0.8.0
     hooks:
-      - id: hexaqual-sanity
-        name: hexaqual sanity check
-        entry: uv run hexaqual sanity --skip-tests
-        language: system
-        pass_filenames: false
+      - id: hexaqual-sanity        # Fast static sanity gate (Ruff, Ty, complexipy, etc.)
+      - id: hexaqual-architecture  # Verify test_hexagonal_boundaries.py suites
+      - id: hexaqual-agents        # Verify .agents/ assets match installed hexaqual
+      - id: hexaqual-agents-sync   # Auto-sync .agents/ on post-merge and post-checkout
+      - id: hexaqual-commit-msg    # Enforce Conventional Commits & DCO on commit-msg
+      - id: hexaqual-pre-push      # Run fast sanity check on pre-push
+```
+
+---
+
+## 🧬 Dual-Engine Mutation Testing
+
+Hexaqual implements a high-velocity **dual-engine mutation testing harness**:
+
+1. **`pytest-gremlins` (Default)**: In-process AST mutation engine targeting executable boundary conditions (`<` vs `<=`, `and` vs `or`, arithmetic, returns). Delivers **100% actionable signal** with decoupled multicore scaling:
+   - `-n auto`: Parallel baseline pytest execution via `pytest-xdist`.
+   - `-w auto`: Parallel in-process mutation workers (`--gremlin-workers`).
+   - `--batch-size 10`: Batched mutant execution (`--gremlin-batch`).
+   - `-A` / `--affected`: Scopes mutation testing strictly to packages impacted by `git diff`.
+2. **`mutmut`**: Subprocess-isolated deep mutation auditor for literal constants, token shifts, and pre-release audits.
+
+```bash
+# High-velocity developer loop: multicore auto-scaled boundary mutations
+uv run hexaqual mutate run -p <pkg> -e gremlins -w auto --batch-size 10 -n auto
+
+# Scoped to affected packages only (ideal for PR CI verification)
+uv run hexaqual mutate run -A -e gremlins -w auto
+
+# Deep literal constant audit
+uv run hexaqual mutate run -p <pkg> -e mutmut
+
+# High-level triage summary of surviving mutants (Critical, Equivalent, Ignorable)
+uv run hexaqual mutate inspect -s
+
+# Actionable critical mutants only
+uv run hexaqual mutate inspect -p <pkg> -act
 ```
 
 ---
