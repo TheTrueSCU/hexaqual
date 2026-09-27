@@ -10,16 +10,16 @@ from __future__ import annotations
 from abc import ABC, abstractmethod
 from typing import TYPE_CHECKING
 
+from hexaqual.domain.hooks import (
+    CommitMsgReport,
+    HookInstallMode,
+    HooksInstallReport,
+    HookStatusInfo,
+    HooksUninstallReport,
+)
+
 if TYPE_CHECKING:
     from pathlib import Path
-
-    from hexaqual.domain.hooks import (
-        CommitMsgReport,
-        HookInstallMode,
-        HooksInstallReport,
-        HookStatusInfo,
-        HooksUninstallReport,
-    )
 
 __all__ = [
     "GitHooksPort",
@@ -34,7 +34,7 @@ class GitHooksPort(ABC):
     def install_hooks(
         self,
         repo_root: Path,
-        mode: HookInstallMode = ...,
+        mode: HookInstallMode = HookInstallMode.AUTO,
     ) -> HooksInstallReport:
         """Install Git lifecycle hooks into the target repository.
 
@@ -52,7 +52,6 @@ class GitHooksPort(ABC):
             Configures either pre-commit multi-stage hooks or zero-dependency native
             bash scripts directly in .git/hooks/.
         """
-        ...
 
     @abstractmethod
     def uninstall_hooks(
@@ -73,7 +72,6 @@ class GitHooksPort(ABC):
         Notes/Architectural Intent:
             Removes managed hooks cleanly without disturbing unmanaged custom hooks.
         """
-        ...
 
     @abstractmethod
     def check_hooks(
@@ -94,7 +92,6 @@ class GitHooksPort(ABC):
         Notes/Architectural Intent:
             Distinguishes between pre-commit managed, native hexaqual, unmanaged, and absent hooks.
         """
-        ...
 
     @abstractmethod
     def validate_commit_msg(
@@ -119,7 +116,6 @@ class GitHooksPort(ABC):
         Notes/Architectural Intent:
             Enforces OpenSSF Scorecard Gold DCO invariants and consistent semantic commit history.
         """
-        ...
 
 
 class HooksPresenterPort(ABC):
@@ -141,7 +137,6 @@ class HooksPresenterPort(ABC):
         Notes/Architectural Intent:
             Formats success/failure cards and details in terminal tables.
         """
-        ...
 
     @abstractmethod
     def present_uninstall(self, report: HooksUninstallReport) -> int:
@@ -159,7 +154,6 @@ class HooksPresenterPort(ABC):
         Notes/Architectural Intent:
             Formats removal confirmations in terminal tables.
         """
-        ...
 
     @abstractmethod
     def present_check(self, statuses: tuple[HookStatusInfo, ...]) -> int:
@@ -177,7 +171,6 @@ class HooksPresenterPort(ABC):
         Notes/Architectural Intent:
             Presents Rich status tables showing active managers and script paths.
         """
-        ...
 
     @abstractmethod
     def present_commit_msg(self, report: CommitMsgReport) -> int:
@@ -195,4 +188,3 @@ class HooksPresenterPort(ABC):
         Notes/Architectural Intent:
             Provides actionable hints (e.g. `git commit -s --amend`) on validation failure.
         """
-        ...
