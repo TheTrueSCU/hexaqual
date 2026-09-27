@@ -79,6 +79,15 @@ from hexaqual.domain.governance import (
     resolve_default_parallelism,
     resolve_parallelism,
 )
+from hexaqual.domain.hooks import (
+    CommitMsgReport,
+    HookInstallMode,
+    HookManager,
+    HooksInstallReport,
+    HookStage,
+    HookStatusInfo,
+    HooksUninstallReport,
+)
 from hexaqual.domain.pypi import (
     BuildPackagesCommand,
     CheckPyPiReleasesCommand,
@@ -144,6 +153,7 @@ __all__ = [
     "CodeQlScanReport",
     "CodeScanningReport",
     "Command",
+    "CommitMsgReport",
     "DependencyAuditItem",
     "DeptryAuditReport",
     "DeptryPackageResult",
@@ -160,6 +170,12 @@ __all__ = [
     "GenerateImportLinterConfigCommand",
     "GeneratePydepsCommand",
     "GenerateUsageDocsCommand",
+    "HookInstallMode",
+    "HookManager",
+    "HooksInstallReport",
+    "HookStage",
+    "HookStatusInfo",
+    "HooksUninstallReport",
     "ImpactedTestsReport",
     "ImportLinterPackageResult",
     "ImportLinterReport",

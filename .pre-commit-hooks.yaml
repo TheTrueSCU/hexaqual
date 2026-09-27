@@ -73,3 +73,29 @@
   language: system
   files: ^(\.agents/|pyproject\.toml|uv\.lock)$
   pass_filenames: false
+
+- id: hexaqual-agents-sync
+  name: hexaqual agent assets auto-sync
+  description: Automatically re-synchronize shared .agents rules, workflows, and skills after pull/merge/checkout
+  entry: uv run hexaqual agents sync
+  language: system
+  stages: [post-merge, post-checkout]
+  always_run: true
+  pass_filenames: false
+
+- id: hexaqual-commit-msg
+  name: hexaqual commit message integrity
+  description: Validate Conventional Commits format and OpenSSF DCO sign-off trailer
+  entry: uv run hexaqual hooks commit-msg
+  language: system
+  stages: [commit-msg]
+  pass_filenames: true
+
+- id: hexaqual-pre-push
+  name: hexaqual pre-push sanity gate
+  description: Fast repository sanity validation before pushing commits to remote
+  entry: uv run hexaqual sanity -a --skip-tests
+  language: system
+  stages: [pre-push]
+  always_run: true
+  pass_filenames: false

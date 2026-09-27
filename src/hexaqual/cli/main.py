@@ -38,6 +38,13 @@ from hexaqual.cli.gh import (
     gh_repo,
     gh_security,
 )
+from hexaqual.cli.hooks import (
+    hooks_app,
+    hooks_check,
+    hooks_commit_msg,
+    hooks_install,
+    hooks_uninstall,
+)
 from hexaqual.cli.mutate import mutate_app, mutate_inspect, mutate_run
 from hexaqual.cli.parity import parity_app, parity_extras, parity_test
 from hexaqual.cli.refactor import (
@@ -91,6 +98,11 @@ __all__ = [
     "gh_pr",
     "gh_repo",
     "gh_security",
+    "hooks_app",
+    "hooks_check",
+    "hooks_commit_msg",
+    "hooks_install",
+    "hooks_uninstall",
     "mutate_app",
     "mutate_inspect",
     "mutate_run",
@@ -145,6 +157,7 @@ app.add_typer(release_app)
 app.add_typer(gh_app)
 app.add_typer(docs_app)
 app.add_typer(refactor_app)
+app.add_typer(hooks_app)
 
 
 @app.command()
