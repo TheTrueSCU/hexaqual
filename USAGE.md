@@ -56,6 +56,8 @@ Usage: hexaqual [OPTIONS] COMMAND [ARGS]...
 │ gh          GitHub repository, PR, and security examination.                 │
 │ docs        Documentation generation and verification.                       │
 │ refactor    AST symbol alphabetization and Python code refactoring.          │
+│ hooks       Manage, install, and verify Git lifecycle hooks and commit       │
+│             message standards.                                               │
 ╰──────────────────────────────────────────────────────────────────────────────╯
 ```
 
@@ -752,6 +754,154 @@ Usage: hexaqual gh security [OPTIONS]
 ╭─ Options ────────────────────────────────────────────────────────────────────╮
 │ --format  -f      <str>  Output format. [default: auto]                      │
 │ --help                   Show this message and exit.                         │
+╰──────────────────────────────────────────────────────────────────────────────╯
+```
+
+### `hexaqual hooks`
+
+```text
+Usage: hexaqual hooks [OPTIONS] COMMAND [ARGS]...
+
+ Manage, install, and verify Git lifecycle hooks and commit message standards.
+
+╭─ Options ────────────────────────────────────────────────────────────────────╮
+│ --help          Show this message and exit.                                  │
+╰──────────────────────────────────────────────────────────────────────────────╯
+╭─ Commands ───────────────────────────────────────────────────────────────────╮
+│ install     Install Git lifecycle hooks (pre-commit, commit-msg, pre-push,   │
+│             post-merge, post-checkout).                                      │
+│ uninstall   Uninstall managed Git hooks from the repository.                 │
+│ check       Check the installation and management status of all Git hook     │
+│             stages.                                                          │
+│ commit-msg  Validate a commit message against Conventional Commits and       │
+│             OpenSSF DCO standards.                                           │
+╰──────────────────────────────────────────────────────────────────────────────╯
+```
+
+#### `hexaqual hooks OpenSSF`
+
+```text
+Usage: hexaqual hooks [OPTIONS] COMMAND [ARGS]...
+Try 'hexaqual hooks --help' for help.
+╭─ Error ──────────────────────────────────────────────────────────────────────╮
+│ No such command 'OpenSSF'.                                                   │
+╰──────────────────────────────────────────────────────────────────────────────╯
+```
+
+#### `hexaqual hooks check`
+
+```text
+Usage: hexaqual hooks check [OPTIONS]
+
+ Check the installation and management status of all Git hook stages.
+
+ Args:
+     target: Optional path to repository root (defaults to CWD).
+
+ Raises:
+     typer.Exit: If any required hook is missing.
+
+ Notes/Architectural Intent:
+     Verifies all 5 stages and reports manager types in a terminal table.
+
+╭─ Options ────────────────────────────────────────────────────────────────────╮
+│ --target  -t      <path>  Target repository root directory.                  │
+│ --help                    Show this message and exit.                        │
+╰──────────────────────────────────────────────────────────────────────────────╯
+```
+
+#### `hexaqual hooks commit-msg`
+
+```text
+Usage: hexaqual hooks commit-msg [OPTIONS] [commit_msg_file]
+
+ Validate a commit message against Conventional Commits and OpenSSF DCO
+ standards.
+
+ Args:
+     commit_msg_file: Path to commit message file (provided by Git during
+ commit-msg).
+     no_dco: Whether to bypass DCO Signed-off-by trailer check.
+     no_conventional: Whether to bypass Conventional Commits syntax check.
+
+ Raises:
+     typer.Exit: If commit message fails verification.
+
+ Notes/Architectural Intent:
+     Enforces OpenSSF Scorecard Gold DCO compliance and structured semantic
+ commits.
+
+╭─ Arguments ──────────────────────────────────────────────────────────────────╮
+│   commit_msg_file      <path>  Path to commit message file (e.g.             │
+│                                .git/COMMIT_EDITMSG). Reads stdin if omitted. │
+╰──────────────────────────────────────────────────────────────────────────────╯
+╭─ Options ────────────────────────────────────────────────────────────────────╮
+│ --no-dco                   Disable Developer Certificate of Origin           │
+│                            (Signed-off-by) verification.                     │
+│ --no-conventional          Disable Conventional Commits format verification. │
+│ --help                     Show this message and exit.                       │
+╰──────────────────────────────────────────────────────────────────────────────╯
+```
+
+#### `hexaqual hooks install`
+
+```text
+Usage: hexaqual hooks install [OPTIONS]
+
+ Install Git lifecycle hooks (pre-commit, commit-msg, pre-push, post-merge,
+ post-checkout).
+
+ Args:
+     target: Optional path to repository root (defaults to CWD).
+     mode: Installation mode ('auto', 'pre-commit', or 'native').
+
+ Raises:
+     typer.Exit: If hook installation fails.
+
+ Notes/Architectural Intent:
+     Ensures all 5 critical lifecycle stages are active to prevent broken
+ builds,
+     unsigned commits, and out-of-sync agent rules.
+
+╭─ Options ────────────────────────────────────────────────────────────────────╮
+│ --target  -t      <path>  Target repository root directory.                  │
+│ --mode    -m      <str>   Installation strategy: 'auto' (pre-commit if       │
+│                           available, else native), 'pre-commit', or          │
+│                           'native'.                                          │
+│                           [default: auto]                                    │
+│ --help                    Show this message and exit.                        │
+╰──────────────────────────────────────────────────────────────────────────────╯
+```
+
+#### `hexaqual hooks uninstall`
+
+```text
+Usage: hexaqual hooks uninstall [OPTIONS]
+
+ Uninstall managed Git hooks from the repository.
+
+ Args:
+     target: Optional path to repository root (defaults to CWD).
+
+ Raises:
+     typer.Exit: If uninstallation encounters an error.
+
+ Notes/Architectural Intent:
+     Safely removes managed native scripts and pre-commit hook wrappers.
+
+╭─ Options ────────────────────────────────────────────────────────────────────╮
+│ --target  -t      <path>  Target repository root directory.                  │
+│ --help                    Show this message and exit.                        │
+╰──────────────────────────────────────────────────────────────────────────────╯
+```
+
+### `hexaqual message`
+
+```text
+Usage: hexaqual [OPTIONS] COMMAND [ARGS]...
+Try 'hexaqual --help' for help.
+╭─ Error ──────────────────────────────────────────────────────────────────────╮
+│ No such command 'message'.                                                   │
 ╰──────────────────────────────────────────────────────────────────────────────╯
 ```
 

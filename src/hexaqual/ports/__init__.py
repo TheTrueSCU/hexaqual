@@ -22,6 +22,10 @@ from hexaqual.ports.governance import (
     GovernancePresenterPort,
     ToolRunnerPort,
 )
+from hexaqual.ports.hooks import (
+    GitHooksPort,
+    HooksPresenterPort,
+)
 from hexaqual.ports.publishers import (
     ArticlePublisherPort,
     PackagePublisherPort,
@@ -49,9 +53,11 @@ __all__ = [
     "DependencyAuditorPort",
     "DependencyPresenterPort",
     "GeneratorPresenterPort",
+    "GitHooksPort",
     "GitHubApiPort",
     "GitHubPresenterPort",
     "GovernancePresenterPort",
+    "HooksPresenterPort",
     "PackagePublisherPort",
     "PyPiClientPort",
     "PyPiPresenterPort",
