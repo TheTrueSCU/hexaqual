@@ -118,6 +118,8 @@ class GitHooksAdapter(GitHooksPort):
         except OSError:
             return None
 
+        return None
+
     def resolve_hooks_dir(self, repo_root: Path) -> Path | None:
         """Resolve the .git/hooks directory for the target repository.
 
@@ -142,7 +144,8 @@ class GitHooksAdapter(GitHooksPort):
                 common_dir = (git_dir / common_rel).resolve()
                 return common_dir / "hooks"
             except OSError:
-                pass
+                return git_dir / "hooks"
+
         return git_dir / "hooks"
 
     def install_hooks(
