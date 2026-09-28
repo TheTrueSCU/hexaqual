@@ -10,6 +10,8 @@ from __future__ import annotations
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
+import pytest
+
 from hexaqual.domain.openssf import (
     CriterionProposal,
     CriterionStatus,
@@ -19,7 +21,10 @@ from hexaqual.domain.openssf import (
 from hexaqual.infra.openssf import (
     audit_project_posture,
     evaluate_local_heuristics,
+    format_checklist_markdown,
+    generate_checklist,
     resolve_local_repo_url,
+    scaffold_document,
 )
 
 
@@ -91,3 +96,63 @@ def test_audit_project_posture_correlation() -> None:
     # Only tests_documented_added should be pending because 'test' is already 'Met'
     assert len(audit.proposals) == 1
     assert audit.proposals[0].criterion_id == "tests_documented_added"
+
+
+def test_generate_checklist_and_markdown() -> None:
+    """Test generating structured checklist items and markdown formatting."""
+    project = OpenSsfProject(
+        project_id=14749,
+        name="hexaqual",
+        repo_url="https://github.com/TheTrueSCU/hexaqual",
+        badge_level="in_progress",
+        tiered_percentage=50,
+        criteria_statuses={"description_good": "Met", "interact": "?"},
+        criteria_justifications={"description_good": "Good description in README."},
+    )
+    items = generate_checklist(project, OpenSsfTier.PASSING, unmet_only=False)
+    assert len(items) == 67
+    met_item = next(it for it in items if it["criterion_id"] == "description_good")
+    assert met_item["status"] == "Met"
+    assert met_item["category"] == "MUST"
+
+    unmet_items = generate_checklist(project, OpenSsfTier.PASSING, unmet_only=True)
+    assert not any(it["status"] == "Met" for it in unmet_items)
+
+    md = format_checklist_markdown(items[:2], "hexaqual", 14749, OpenSsfTier.PASSING)
+    assert "# OpenSSF Best Practices Checklist: hexaqual" in md
+    assert "[x] **description_good**" in md
+    assert "[ ] **interact**" in md
+
+
+def test_scaffold_document(tmp_path: Path) -> None:
+    """Test scaffolding security, governance, contributing, and codeql documents."""
+    sec_path = scaffold_document(
+        "security", dest_dir=tmp_path, repo_url="https://github.com/org/repo"
+    )
+    assert sec_path.is_file()
+    assert sec_path.name == "SECURITY.md"
+    assert "https://github.com/org/repo/security/advisories/new" in sec_path.read_text("utf-8")
+
+    gov_path = scaffold_document("governance", dest_dir=tmp_path)
+    assert gov_path.is_file()
+    assert gov_path.name == "GOVERNANCE.md"
+
+    contrib_path = scaffold_document("contributing", dest_dir=tmp_path)
+    assert contrib_path.is_file()
+    assert contrib_path.name == "CONTRIBUTING.md"
+
+    codeql_path = scaffold_document("codeql", dest_dir=tmp_path)
+    assert codeql_path.is_file()
+    assert codeql_path.name == "codeql.yml"
+
+    # Verify duplicate error without force
+    with pytest.raises(FileExistsError):
+        scaffold_document("security", dest_dir=tmp_path, force=False)
+
+    # Verify overwrite with force
+    overwritten = scaffold_document("security", dest_dir=tmp_path, force=True)
+    assert overwritten.exists()
+
+    # Verify invalid document type
+    with pytest.raises(ValueError, match="Unknown document type"):
+        scaffold_document("unknown_type", dest_dir=tmp_path)

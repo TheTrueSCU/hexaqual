@@ -28,6 +28,7 @@ from hexaqual.ports.hooks import (
 )
 from hexaqual.ports.openssf import (
     OpenSsfBadgePort,
+    OpenSsfScorecardPort,
 )
 from hexaqual.ports.publishers import (
     ArticlePublisherPort,
@@ -62,6 +63,7 @@ __all__ = [
     "GovernancePresenterPort",
     "HooksPresenterPort",
     "OpenSsfBadgePort",
+    "OpenSsfScorecardPort",
     "PackagePublisherPort",
     "PyPiClientPort",
     "PyPiPresenterPort",

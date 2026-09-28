@@ -12,11 +12,15 @@ import dataclasses
 import pytest
 
 from hexaqual.domain.openssf import (
+    CRITERIA_CATALOG,
     CriterionProposal,
     CriterionStatus,
     OpenSsfAuditResult,
+    OpenSsfCriterionDefinition,
     OpenSsfProject,
     OpenSsfTier,
+    ScorecardCheck,
+    ScorecardResult,
 )
 
 
@@ -73,3 +77,43 @@ def test_openssf_project_and_audit_result() -> None:
     )
     assert audit.met_count == 2
     assert audit.percentage == 100
+
+
+def test_criteria_catalog_and_definition() -> None:
+    """Test OpenSSF criteria catalog structure and counts."""
+    passing_catalog = CRITERIA_CATALOG[OpenSsfTier.PASSING]
+    silver_catalog = CRITERIA_CATALOG[OpenSsfTier.SILVER]
+    gold_catalog = CRITERIA_CATALOG[OpenSsfTier.GOLD]
+
+    assert len(passing_catalog) == 67
+    assert len(silver_catalog) == 55
+    assert len(gold_catalog) == 23
+
+    sample_defn = passing_catalog[0]
+    assert isinstance(sample_defn, OpenSsfCriterionDefinition)
+    assert sample_defn.criterion_id == "description_good"
+    assert sample_defn.tier == OpenSsfTier.PASSING
+    assert sample_defn.category == "MUST"
+    assert sample_defn.met_url_required is False
+
+
+def test_scorecard_models() -> None:
+    """Test ScorecardCheck and ScorecardResult models."""
+    check = ScorecardCheck(
+        name="SAST",
+        score=10,
+        reason="CodeQL runs on all commits",
+        details=["CodeQL workflow found in .github/workflows/codeql.yml"],
+    )
+    assert check.name == "SAST"
+    assert check.score == 10
+
+    result = ScorecardResult(
+        repo="github.com/TheTrueSCU/hexastack",
+        score=9.5,
+        date="2026-09-27",
+        checks=[check],
+    )
+    assert result.repo == "github.com/TheTrueSCU/hexastack"
+    assert result.score == 9.5
+    assert len(result.checks) == 1

@@ -14,11 +14,34 @@ from hexaqual.domain.openssf import (
     CriterionProposal,
     OpenSsfProject,
     OpenSsfTier,
+    ScorecardResult,
 )
 
 __all__ = [
     "OpenSsfBadgePort",
+    "OpenSsfScorecardPort",
 ]
+
+
+class OpenSsfScorecardPort(ABC):
+    """Abstract port for communicating with api.securityscorecards.dev."""
+
+    @abstractmethod
+    def fetch_scorecard(self, repo: str) -> ScorecardResult:
+        """Retrieve security scorecard analysis for a target repository.
+
+        Args:
+            repo: Repository identifier (e.g. 'owner/repo' or 'github.com/owner/repo').
+
+        Returns:
+            ScorecardResult containing overall score and individual check evaluations.
+
+        Raises:
+            RuntimeError: If remote lookup fails or repository is not indexed by Scorecard.
+
+        Notes/Architectural Intent:
+            Decouples Scorecard REST API consumption from internal security auditing logic.
+        """
 
 
 class OpenSsfBadgePort(ABC):

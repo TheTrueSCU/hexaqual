@@ -11,8 +11,10 @@ import re
 import subprocess
 from collections.abc import Sequence
 from pathlib import Path
+from typing import Any
 
 from hexaqual.domain.openssf import (
+    CRITERIA_CATALOG,
     CriterionProposal,
     CriterionStatus,
     OpenSsfAuditResult,
@@ -23,7 +25,10 @@ from hexaqual.domain.openssf import (
 __all__ = [
     "audit_project_posture",
     "evaluate_local_heuristics",
+    "format_checklist_markdown",
+    "generate_checklist",
     "resolve_local_repo_url",
+    "scaffold_document",
 ]
 
 
@@ -245,3 +250,262 @@ def audit_project_posture(
         percentage=percentage,
         proposals=pending,
     )
+
+
+def generate_checklist(
+    project: OpenSsfProject,
+    tier: OpenSsfTier,
+    local_proposals: Sequence[CriterionProposal] | None = None,
+    unmet_only: bool = False,
+) -> list[dict[str, Any]]:
+    """Generate machine-readable checklist items combining remote badge state with local heuristics.
+
+    Args:
+        project: Project retrieved from bestpractices.dev.
+        tier: Certification tier (passing, silver, gold).
+        local_proposals: Optional local heuristic evaluation proposals.
+        unmet_only: When True, filters out criteria that are already Met or N/A.
+
+    Returns:
+        List of dictionary objects containing criterion details, statuses, and justifications.
+
+    Notes/Architectural Intent:
+        Serves as the structured canonical checklist payload for AI coding agents,
+        reporting tools, and terminal formatters.
+    """
+    definitions = CRITERIA_CATALOG.get(tier, ())
+    proposal_map = {p.criterion_id: p for p in (local_proposals or ())}
+
+    items: list[dict[str, Any]] = []
+    for defn in definitions:
+        curr_status = project.criteria_statuses.get(
+            defn.criterion_id, CriterionStatus.UNKNOWN.value
+        )
+        if unmet_only and curr_status in (CriterionStatus.MET.value, CriterionStatus.NA.value):
+            continue
+
+        justification = project.criteria_justifications.get(defn.criterion_id, "")
+        local_prop = proposal_map.get(defn.criterion_id)
+        local_verdict = (
+            str(
+                local_prop.status.value
+                if hasattr(local_prop.status, "value")
+                else local_prop.status
+            )
+            if local_prop
+            else None
+        )
+
+        items.append(
+            {
+                "criterion_id": defn.criterion_id,
+                "tier": tier.value,
+                "category": defn.category,
+                "met_url_required": defn.met_url_required,
+                "status": curr_status,
+                "justification": justification,
+                "local_verdict": local_verdict,
+                "proposed_justification": local_prop.justification if local_prop else None,
+            }
+        )
+
+    return items
+
+
+def format_checklist_markdown(
+    items: Sequence[dict[str, Any]],
+    project_name: str,
+    project_id: int,
+    tier: OpenSsfTier,
+) -> str:
+    """Render OpenSSF checklist items as GitHub-flavored Markdown with checkboxes.
+
+    Args:
+        items: Checklist dictionary items produced by generate_checklist.
+        project_name: OpenSSF project name.
+        project_id: OpenSSF project ID.
+        tier: Certification tier.
+
+    Returns:
+        Formatted Markdown string.
+
+    Notes/Architectural Intent:
+        Produces actionable task lists and audit records for developers and AI agents.
+    """
+    lines: list[str] = [
+        f"# OpenSSF Best Practices Checklist: {project_name} (ID: {project_id})",
+        "",
+        f"**Target Tier:** `{tier.value}` | **Total Items:** {len(items)}",
+        "",
+    ]
+
+    for item in items:
+        status = item.get("status", "?")
+        is_checked = status in ("Met", "N/A")
+        box = "[x]" if is_checked else "[ ]"
+        cid = item.get("criterion_id", "")
+        cat = item.get("category", "MUST")
+        url_flag = " (URL required)" if item.get("met_url_required") else ""
+
+        line = f"- {box} **{cid}** (`{cat}`{url_flag}): *{status}*"
+        lines.append(line)
+
+        justification = item.get("justification")
+        if justification:
+            lines.append(f"  - *Current Justification:* {justification}")
+        local_verdict = item.get("local_verdict")
+        if local_verdict and not is_checked:
+            lines.append(f"  - *Local Heuristic Verdict:* {local_verdict}")
+            proposed_just = item.get("proposed_justification")
+            if proposed_just:
+                lines.append(f"  - *Proposed Evidence:* {proposed_just}")
+
+    return "\n".join(lines) + "\n"
+
+
+_SECURITY_MD_TEMPLATE = """# Security Policy
+
+## Supported Versions
+
+| Version | Supported          |
+| ------- | ------------------ |
+| latest  | :white_check_mark: |
+
+## Reporting a Vulnerability
+
+We take the security of this project seriously. If you discover a security vulnerability, please report it responsibly.
+
+### Private Vulnerability Reporting (Preferred)
+Please report vulnerabilities privately using GitHub's **Security Advisories** tab:
+`{repo_url}/security/advisories/new`
+
+### Response SLA
+- **Initial acknowledgment**: within 48 hours.
+- **Status update / remediation plan**: within 7 calendar days.
+- **Public disclosure**: coordinated after a fix is tagged and published (typically 30-60 days).
+
+Please do **not** open public GitHub issues or discussions for sensitive security vulnerabilities.
+"""
+
+_GOVERNANCE_MD_TEMPLATE = """# Project Governance
+
+## Overview
+This project is developed as open-source software under the Apache-2.0 license. This document outlines project leadership, decision-making, and contribution workflows.
+
+## Maintainers
+The project is maintained by active community stewards responsible for reviewing pull requests, enforcing quality gates, and publishing releases.
+
+## Decision-Making Process
+- **Consensus Seeking**: Day-to-day decisions on bug fixes, performance improvements, and documentation are made through collaborative code review on GitHub PRs.
+- **Major Architectural Changes**: Significant features or breaking changes require an Architectural Decision Record (ADR) or GitHub Discussion before implementation.
+- **Quality Standards**: All merged code must satisfy 100% test parity, zero lint errors, and pre-commit verification.
+
+## Becoming a Maintainer
+Contributors who demonstrate sustained technical excellence, adherence to project guardrails, and constructive engagement in issues and PRs may be invited to become maintainers.
+"""
+
+_CONTRIBUTING_MD_TEMPLATE = """# Contributing Guidelines
+
+Thank you for your interest in contributing!
+
+## Developer Certificate of Origin (DCO)
+All contributions must include a DCO sign-off line in the commit message:
+```bash
+git commit -s -m "feat(scope): descriptive summary"
+```
+By signing off, you certify that you wrote the code or have the right to submit it under the project's open-source license.
+
+## Testing & Quality Requirements
+- Every source module requires a matching unit test suite under `tests/unit/` (100% test parity).
+- Code must pass all pre-commit hooks and static analysis:
+```bash
+uv run hexaqual sanity -a --skip-tests
+uv run pre-commit run --all-files
+```
+- Test suites must maintain >= 90% code coverage.
+"""
+
+_CODEQL_YML_TEMPLATE = """name: "CodeQL Analysis"
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+  schedule:
+    - cron: '0 6 * * 1'
+
+permissions:
+  actions: read
+  contents: read
+  security-events: write
+
+jobs:
+  analyze:
+    name: Analyze
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    - name: Initialize CodeQL
+      uses: github/codeql-action/init@v3
+      with:
+        languages: python
+
+    - name: Perform CodeQL Analysis
+      uses: github/codeql-action/analyze@v3
+      with:
+        category: "/language:python"
+"""
+
+
+def scaffold_document(
+    doc_type: str,
+    dest_dir: Path | None = None,
+    force: bool = False,
+    repo_url: str | None = None,
+) -> Path:
+    """Scaffold standard OpenSSF compliance documents.
+
+    Args:
+        doc_type: Document identifier ('security', 'governance', 'contributing', 'codeql').
+        dest_dir: Target repository directory (defaults to current working directory).
+        force: Overwrite existing file if True.
+        repo_url: Optional repository URL for customizing links.
+
+    Returns:
+        Path to created or updated document.
+
+    Raises:
+        FileExistsError: If target file already exists and force is False.
+        ValueError: If doc_type is unknown.
+
+    Notes/Architectural Intent:
+        Bootstraps essential governance files satisfying Best Practices criteria
+        such as vulnerability_report_private, dco, and governance.
+    """
+    root = dest_dir or Path.cwd()
+    norm_url = repo_url or resolve_local_repo_url(root) or "https://github.com/owner/repo"
+
+    mapping: dict[str, tuple[Path, str]] = {
+        "security": (root / "SECURITY.md", _SECURITY_MD_TEMPLATE.format(repo_url=norm_url)),
+        "governance": (root / "GOVERNANCE.md", _GOVERNANCE_MD_TEMPLATE),
+        "contributing": (root / "CONTRIBUTING.md", _CONTRIBUTING_MD_TEMPLATE),
+        "codeql": (root / ".github" / "workflows" / "codeql.yml", _CODEQL_YML_TEMPLATE),
+    }
+
+    key = doc_type.lower().strip()
+    if key not in mapping:
+        valid_options = ", ".join(sorted(mapping.keys()))
+        msg = f"Unknown document type '{doc_type}'. Valid options: {valid_options}"
+        raise ValueError(msg)
+
+    target_path, content = mapping[key]
+    if target_path.exists() and not force:
+        msg = f"File '{target_path}' already exists. Use --force to overwrite."
+        raise FileExistsError(msg)
+
+    target_path.parent.mkdir(parents=True, exist_ok=True)
+    target_path.write_text(content, encoding="utf-8")
+    return target_path

@@ -9,6 +9,7 @@ Notes/Architectural Intent:
 from __future__ import annotations
 
 import json
+import re
 import urllib.parse
 import urllib.request
 from collections.abc import Sequence
@@ -18,11 +19,14 @@ from hexaqual.domain.openssf import (
     CriterionProposal,
     OpenSsfProject,
     OpenSsfTier,
+    ScorecardCheck,
+    ScorecardResult,
 )
-from hexaqual.ports.openssf import OpenSsfBadgePort
+from hexaqual.ports.openssf import OpenSsfBadgePort, OpenSsfScorecardPort
 
 __all__ = [
     "OpenSsfBadgeAdapter",
+    "OpenSsfScorecardAdapter",
 ]
 
 
@@ -156,3 +160,74 @@ class OpenSsfBadgeAdapter(OpenSsfBadgePort):
             urls.append(url)
 
         return urls
+
+
+class OpenSsfScorecardAdapter(OpenSsfScorecardPort):
+    """Adapter for api.securityscorecards.dev using standard library urllib."""
+
+    def __init__(self, base_url: str = "https://api.securityscorecards.dev") -> None:
+        """Initialize the OpenSSF Scorecard API adapter.
+
+        Args:
+            base_url: Base URL for api.securityscorecards.dev.
+
+        Notes/Architectural Intent:
+            Allows injecting alternative mock or staging endpoints during integration tests.
+        """
+        self.base_url = base_url.rstrip("/")
+
+    def fetch_scorecard(self, repo: str) -> ScorecardResult:
+        """Retrieve security scorecard analysis for a target repository.
+
+        Args:
+            repo: Repository identifier (e.g. 'owner/repo' or 'github.com/owner/repo').
+
+        Returns:
+            ScorecardResult containing overall score and individual check evaluations.
+
+        Raises:
+            RuntimeError: If remote lookup fails or repository is not indexed by Scorecard.
+
+        Notes/Architectural Intent:
+            Normalizes repository strings (stripping schemes and host prefixes)
+            to GitHub target path 'github.com/{owner}/{repo}' expected by Scorecard API.
+        """
+        clean_repo = repo.strip()
+        clean_repo = re.sub(r"^https?://", "", clean_repo)
+        clean_repo = re.sub(r"^git@", "", clean_repo)
+        clean_repo = re.sub(r"\.git$", "", clean_repo)
+        if not clean_repo.startswith("github.com/"):
+            clean_repo = f"github.com/{clean_repo.lstrip('/')}"
+
+        url = f"{self.base_url}/projects/{clean_repo}"
+        req = urllib.request.Request(url, headers={"User-Agent": "Hexaqual-OpenSSF/0.5.1"})
+        try:
+            with urllib.request.urlopen(req, timeout=15) as resp:
+                data: dict[str, Any] = json.loads(resp.read().decode("utf-8"))
+        except Exception as exc:
+            msg = f"Failed to fetch Scorecard for {clean_repo} from {url}: {exc}"
+            raise RuntimeError(msg) from exc
+
+        raw_score = data.get("score")
+        score = float(raw_score) if raw_score is not None else 0.0
+        date = str(data.get("date", ""))
+
+        checks: list[ScorecardCheck] = []
+        for raw_check in data.get("checks", []):
+            chk_score = raw_check.get("score")
+            chk_int_score = int(chk_score) if chk_score is not None and chk_score >= 0 else 0
+            checks.append(
+                ScorecardCheck(
+                    name=str(raw_check.get("name", "")),
+                    score=chk_int_score,
+                    reason=str(raw_check.get("reason", "")),
+                    details=list(raw_check.get("details", []) or []),
+                )
+            )
+
+        return ScorecardResult(
+            repo=clean_repo,
+            score=score,
+            date=date,
+            checks=checks,
+        )
