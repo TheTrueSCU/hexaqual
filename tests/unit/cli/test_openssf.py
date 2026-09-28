@@ -40,6 +40,12 @@ def test_openssf_audit_command(mock_adapter_cls: MagicMock) -> None:
     assert "OpenSSF Project" in result.output
     assert "hexaqual" in result.output
 
+    res_json = runner.invoke(
+        app, ["openssf", "audit", "--tier", "passing", "--project-id", "14749", "-f", "json"]
+    )
+    assert res_json.exit_code == 0
+    assert '"score": 100' in res_json.output
+
 
 @patch("hexaqual.cli.openssf.OpenSsfBadgeAdapter")
 def test_openssf_propose_command(mock_adapter_cls: MagicMock) -> None:

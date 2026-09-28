@@ -14,10 +14,10 @@ from pathlib import Path
 from typing import Any
 
 from hexaqual.domain.openssf import (
-    CRITERIA_CATALOG,
     CriterionProposal,
     CriterionStatus,
     OpenSsfAuditResult,
+    OpenSsfCriteriaCatalog,
     OpenSsfProject,
     OpenSsfTier,
 )
@@ -273,7 +273,7 @@ def generate_checklist(
         Serves as the structured canonical checklist payload for AI coding agents,
         reporting tools, and terminal formatters.
     """
-    definitions = CRITERIA_CATALOG.get(tier, ())
+    definitions = OpenSsfCriteriaCatalog.for_tier(tier)
     proposal_map = {p.criterion_id: p for p in (local_proposals or ())}
 
     items: list[dict[str, Any]] = []

@@ -8,6 +8,7 @@ Notes/Architectural Intent:
 from __future__ import annotations
 
 import dataclasses
+from types import MappingProxyType
 
 import pytest
 
@@ -16,6 +17,7 @@ from hexaqual.domain.openssf import (
     CriterionProposal,
     CriterionStatus,
     OpenSsfAuditResult,
+    OpenSsfCriteriaCatalog,
     OpenSsfCriterionDefinition,
     OpenSsfProject,
     OpenSsfTier,
@@ -80,10 +82,10 @@ def test_openssf_project_and_audit_result() -> None:
 
 
 def test_criteria_catalog_and_definition() -> None:
-    """Test OpenSSF criteria catalog structure and counts."""
-    passing_catalog = CRITERIA_CATALOG[OpenSsfTier.PASSING]
-    silver_catalog = CRITERIA_CATALOG[OpenSsfTier.SILVER]
-    gold_catalog = CRITERIA_CATALOG[OpenSsfTier.GOLD]
+    """Test OpenSSF criteria catalog structure, methods, and immutability."""
+    passing_catalog = OpenSsfCriteriaCatalog.for_tier(OpenSsfTier.PASSING)
+    silver_catalog = OpenSsfCriteriaCatalog.for_tier(OpenSsfTier.SILVER)
+    gold_catalog = OpenSsfCriteriaCatalog.for_tier(OpenSsfTier.GOLD)
 
     assert len(passing_catalog) == 67
     assert len(silver_catalog) == 55
@@ -95,6 +97,17 @@ def test_criteria_catalog_and_definition() -> None:
     assert sample_defn.tier == OpenSsfTier.PASSING
     assert sample_defn.category == "MUST"
     assert sample_defn.met_url_required is False
+
+    # Test lookup via OpenSsfCriteriaCatalog.get
+    found_defn = OpenSsfCriteriaCatalog.get("dco")
+    assert found_defn is not None
+    assert found_defn.criterion_id == "dco"
+    assert found_defn.tier == OpenSsfTier.SILVER
+    assert found_defn.met_url_required is True
+
+    # Test immutability of the catalog view
+    assert isinstance(CRITERIA_CATALOG, MappingProxyType)
+    assert hasattr(CRITERIA_CATALOG, "__setitem__") is False
 
 
 def test_scorecard_models() -> None:

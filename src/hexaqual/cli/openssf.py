@@ -16,6 +16,7 @@ from rich.console import Console
 from rich.table import Table
 
 from hexaqual.adapters.openssf import OpenSsfBadgeAdapter, OpenSsfScorecardAdapter
+from hexaqual.cli.options import format_option, resolve_format
 from hexaqual.domain.openssf import OpenSsfTier, ScorecardResult
 from hexaqual.infra.openssf import (
     audit_project_posture,
@@ -76,6 +77,10 @@ def openssf_audit(
         int | None,
         typer.Option("--project-id", "-i", help="Explicit OpenSSF project numeric ID."),
     ] = None,
+    format_type: str = format_option(
+        default="table",
+        help_text="Output presentation format (table, json, rich, auto).",
+    ),
 ) -> None:
     """Audit OpenSSF Best Practices badge status and identify pending criteria."""
     adapter = OpenSsfBadgeAdapter()
@@ -86,6 +91,26 @@ def openssf_audit(
         project = adapter.fetch_project(pid)
         local_proposals = evaluate_local_heuristics(target_tier)
         result = audit_project_posture(project, target_tier, local_proposals)
+
+    resolved_fmt = resolve_format(format_type, default_tty="table", default_pipe="json")
+    if resolved_fmt == "json":
+        payload = {
+            "project_id": pid,
+            "name": result.project.name,
+            "badge_level": result.project.badge_level,
+            "score": result.project.tiered_percentage,
+            "tier": target_tier.value,
+            "proposals": [
+                {
+                    "criterion_id": p.criterion_id,
+                    "status": p.status.value if hasattr(p.status, "value") else p.status,
+                    "justification": p.justification,
+                }
+                for p in local_proposals
+            ],
+        }
+        console.print_json(data=payload)
+        return
 
     console.print(
         f"\n[bold]OpenSSF Project:[/bold] [cyan]{result.project.name}[/cyan] (ID: {pid}) | "
@@ -207,10 +232,10 @@ def openssf_checklist(
         int | None,
         typer.Option("--project-id", "-i", help="Explicit OpenSSF project numeric ID."),
     ] = None,
-    format_: Annotated[
-        str,
-        typer.Option("--format", "-f", help="Output format: rich, json, or markdown."),
-    ] = "rich",
+    format_type: str = format_option(
+        default="table",
+        help_text="Output presentation format (table, json, markdown, rich, auto).",
+    ),
     unmet_only: Annotated[
         bool,
         typer.Option("--unmet-only", "-u", help="Show only unmet or pending criteria."),
@@ -226,10 +251,10 @@ def openssf_checklist(
         local_proposals = evaluate_local_heuristics(target_tier)
         items = generate_checklist(project, target_tier, local_proposals, unmet_only=unmet_only)
 
-    fmt = format_.lower().strip()
-    if fmt == "json":
+    resolved_fmt = resolve_format(format_type, default_tty="table", default_pipe="json")
+    if resolved_fmt == "json":
         console.print_json(data=items)
-    elif fmt == "markdown":
+    elif resolved_fmt == "markdown":
         md = format_checklist_markdown(items, project.name, pid, target_tier)
         console.print(md)
     else:
@@ -276,10 +301,10 @@ def openssf_scorecard(
         bool,
         typer.Option("--details", "-d", help="Display granular check reasons and details."),
     ] = False,
-    format_: Annotated[
-        str,
-        typer.Option("--format", "-f", help="Output format: rich or json."),
-    ] = "rich",
+    format_type: str = format_option(
+        default="table",
+        help_text="Output presentation format (table, json, rich, auto).",
+    ),
 ) -> None:
     """Audit OpenSSF Security Scorecard metrics and supply chain posture."""
     target_repo = repo
@@ -300,8 +325,8 @@ def openssf_scorecard(
             console.print(f"[bold red]Error fetching Scorecard:[/bold red] {exc}")
             raise typer.Exit(code=1) from exc
 
-    fmt = format_.lower().strip()
-    if fmt == "json":
+    resolved_fmt = resolve_format(format_type, default_tty="table", default_pipe="json")
+    if resolved_fmt == "json":
         payload = {
             "repo": result.repo,
             "score": result.score,

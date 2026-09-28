@@ -10,12 +10,15 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from enum import StrEnum
+from types import MappingProxyType
+from typing import ClassVar
 
 __all__ = [
     "CRITERIA_CATALOG",
     "CriterionProposal",
     "CriterionStatus",
     "OpenSsfAuditResult",
+    "OpenSsfCriteriaCatalog",
     "OpenSsfCriterionDefinition",
     "OpenSsfProject",
     "OpenSsfTier",
@@ -260,32 +263,84 @@ _GOLD_CRITERIA: tuple[tuple[str, str, bool], ...] = (
     ("dynamic_analysis_enable_assertions", "SHOULD", False),
 )
 
-CRITERIA_CATALOG: dict[OpenSsfTier, tuple[OpenSsfCriterionDefinition, ...]] = {
-    OpenSsfTier.PASSING: tuple(
-        OpenSsfCriterionDefinition(
-            criterion_id=cid,
-            tier=OpenSsfTier.PASSING,
-            category=cat,
-            met_url_required=req_url,
-        )
-        for cid, cat, req_url in _PASSING_CRITERIA
-    ),
-    OpenSsfTier.SILVER: tuple(
-        OpenSsfCriterionDefinition(
-            criterion_id=cid,
-            tier=OpenSsfTier.SILVER,
-            category=cat,
-            met_url_required=req_url,
-        )
-        for cid, cat, req_url in _SILVER_CRITERIA
-    ),
-    OpenSsfTier.GOLD: tuple(
-        OpenSsfCriterionDefinition(
-            criterion_id=cid,
-            tier=OpenSsfTier.GOLD,
-            category=cat,
-            met_url_required=req_url,
-        )
-        for cid, cat, req_url in _GOLD_CRITERIA
-    ),
-}
+
+class OpenSsfCriteriaCatalog:
+    """Master catalog and registry for OpenSSF Best Practices criteria.
+
+    Notes/Architectural Intent:
+        Encapsulates the canonical OpenSSF criterion specifications for Passing,
+        Silver, and Gold tiers. Uses immutable tuples and read-only mappings to
+        prevent accidental runtime mutation or global state drift.
+    """
+
+    _BY_TIER: ClassVar[dict[OpenSsfTier, tuple[OpenSsfCriterionDefinition, ...]]] = {
+        OpenSsfTier.PASSING: tuple(
+            OpenSsfCriterionDefinition(
+                criterion_id=cid,
+                tier=OpenSsfTier.PASSING,
+                category=cat,
+                met_url_required=req_url,
+            )
+            for cid, cat, req_url in _PASSING_CRITERIA
+        ),
+        OpenSsfTier.SILVER: tuple(
+            OpenSsfCriterionDefinition(
+                criterion_id=cid,
+                tier=OpenSsfTier.SILVER,
+                category=cat,
+                met_url_required=req_url,
+            )
+            for cid, cat, req_url in _SILVER_CRITERIA
+        ),
+        OpenSsfTier.GOLD: tuple(
+            OpenSsfCriterionDefinition(
+                criterion_id=cid,
+                tier=OpenSsfTier.GOLD,
+                category=cat,
+                met_url_required=req_url,
+            )
+            for cid, cat, req_url in _GOLD_CRITERIA
+        ),
+    }
+
+    @classmethod
+    def for_tier(cls, tier: OpenSsfTier) -> tuple[OpenSsfCriterionDefinition, ...]:
+        """Retrieve criteria definitions belonging to a specific certification tier.
+
+        Args:
+            tier: OpenSSF certification tier (Passing, Silver, Gold).
+
+        Returns:
+            Immutable tuple of criterion definitions.
+        """
+        return cls._BY_TIER.get(tier, ())
+
+    @classmethod
+    def get(
+        cls, criterion_id: str, tier: OpenSsfTier | None = None
+    ) -> OpenSsfCriterionDefinition | None:
+        """Lookup a discrete criterion by identifier, optionally scoped to a tier.
+
+        Args:
+            criterion_id: Snake-case OpenSSF criterion key.
+            tier: Optional tier to restrict search scope.
+
+        Returns:
+            Matching OpenSsfCriterionDefinition, or None if not found.
+        """
+        tiers_to_search = (tier,) if tier is not None else tuple(OpenSsfTier)
+        for t in tiers_to_search:
+            for defn in cls.for_tier(t):
+                if defn.criterion_id == criterion_id:
+                    return defn
+        return None
+
+    @classmethod
+    def as_mapping(cls) -> MappingProxyType[OpenSsfTier, tuple[OpenSsfCriterionDefinition, ...]]:
+        """Return an immutable read-only view of the criteria catalog."""
+        return MappingProxyType(cls._BY_TIER)
+
+
+CRITERIA_CATALOG: MappingProxyType[OpenSsfTier, tuple[OpenSsfCriterionDefinition, ...]] = (
+    OpenSsfCriteriaCatalog.as_mapping()
+)
