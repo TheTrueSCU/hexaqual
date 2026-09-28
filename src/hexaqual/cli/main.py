@@ -46,6 +46,11 @@ from hexaqual.cli.hooks import (
     hooks_uninstall,
 )
 from hexaqual.cli.mutate import mutate_app, mutate_inspect, mutate_run
+from hexaqual.cli.openssf import (
+    openssf_app,
+    openssf_audit,
+    openssf_propose,
+)
 from hexaqual.cli.parity import parity_app, parity_extras, parity_test
 from hexaqual.cli.refactor import (
     refactor_alphabetize,
@@ -106,6 +111,9 @@ __all__ = [
     "mutate_app",
     "mutate_inspect",
     "mutate_run",
+    "openssf_app",
+    "openssf_audit",
+    "openssf_propose",
     "parity_app",
     "parity_extras",
     "parity_test",
@@ -153,6 +161,7 @@ app.add_typer(parity_app)
 app.add_typer(test_app)
 app.add_typer(deps_app)
 app.add_typer(mutate_app)
+app.add_typer(openssf_app)
 app.add_typer(release_app)
 app.add_typer(gh_app)
 app.add_typer(docs_app)

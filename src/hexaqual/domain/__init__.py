@@ -88,6 +88,13 @@ from hexaqual.domain.hooks import (
     HookStatusInfo,
     HooksUninstallReport,
 )
+from hexaqual.domain.openssf import (
+    CriterionProposal,
+    CriterionStatus,
+    OpenSsfAuditResult,
+    OpenSsfProject,
+    OpenSsfTier,
+)
 from hexaqual.domain.pypi import (
     BuildPackagesCommand,
     CheckPyPiReleasesCommand,
@@ -154,6 +161,8 @@ __all__ = [
     "CodeScanningReport",
     "Command",
     "CommitMsgReport",
+    "CriterionProposal",
+    "CriterionStatus",
     "DependencyAuditItem",
     "DeptryAuditReport",
     "DeptryPackageResult",
@@ -190,6 +199,9 @@ __all__ = [
     "MutantRecord",
     "MutationAuditReport",
     "MutationPackageSummary",
+    "OpenSsfAuditResult",
+    "OpenSsfProject",
+    "OpenSsfTier",
     "OutputFormat",
     "PackageBuildResult",
     "PackageMetadata",
