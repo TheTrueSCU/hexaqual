@@ -13,7 +13,9 @@ from typer.testing import CliRunner
 
 from hexaqual.cli.main import app
 from hexaqual.domain.openssf import (
+    OpenSsfCriteriaCatalog,
     OpenSsfProject,
+    OpenSsfTier,
 )
 
 runner = CliRunner()
@@ -152,3 +154,63 @@ def test_openssf_scaffold_command(mock_scaffold: MagicMock) -> None:
     result = runner.invoke(app, ["openssf", "scaffold", "security"])
     assert result.exit_code == 0
     assert "Successfully generated" in result.output
+
+
+@patch("hexaqual.cli.openssf.OpenSsfBadgeAdapter")
+def test_openssf_check_command_passing(mock_adapter_cls: MagicMock) -> None:
+    """Test 'hexaqual openssf check' passing execution."""
+    mock_adapter = MagicMock()
+    mock_adapter_cls.return_value = mock_adapter
+
+    must_criteria = {
+        crit.criterion_id: "Met"
+        for crit in OpenSsfCriteriaCatalog.for_tier(OpenSsfTier.PASSING)
+        if crit.category.upper() == "MUST"
+    }
+
+    mock_project = OpenSsfProject(
+        project_id=14749,
+        name="hexaqual",
+        repo_url="https://github.com/TheTrueSCU/hexaqual",
+        badge_level="passing",
+        tiered_percentage=100,
+        criteria_statuses=must_criteria,
+    )
+    mock_adapter.fetch_project.return_value = mock_project
+
+    res_table = runner.invoke(app, ["openssf", "check", "--tier", "passing", "-i", "14749"])
+    assert res_table.exit_code == 0
+    assert "check PASSED" in res_table.output
+
+    res_json = runner.invoke(
+        app, ["openssf", "check", "--tier", "passing", "-i", "14749", "-f", "json"]
+    )
+    assert res_json.exit_code == 0
+    assert '"passed": true' in res_json.output
+
+
+@patch("hexaqual.cli.openssf.OpenSsfBadgeAdapter")
+def test_openssf_check_command_failing(mock_adapter_cls: MagicMock) -> None:
+    """Test 'hexaqual openssf check' failure execution."""
+    mock_adapter = MagicMock()
+    mock_adapter_cls.return_value = mock_adapter
+
+    mock_project = OpenSsfProject(
+        project_id=14749,
+        name="hexaqual",
+        repo_url="https://github.com/TheTrueSCU/hexaqual",
+        badge_level="in_progress",
+        tiered_percentage=75,
+        criteria_statuses={"description_good": "Unmet"},
+    )
+    mock_adapter.fetch_project.return_value = mock_project
+
+    res_table = runner.invoke(app, ["openssf", "check", "--tier", "passing", "-i", "14749"])
+    assert res_table.exit_code == 1
+    assert "check FAILED" in res_table.output
+
+    res_json = runner.invoke(
+        app, ["openssf", "check", "--tier", "passing", "-i", "14749", "-f", "json"]
+    )
+    assert res_json.exit_code == 1
+    assert '"passed": false' in res_json.output

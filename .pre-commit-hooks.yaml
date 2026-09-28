@@ -99,3 +99,10 @@
   stages: [pre-push]
   always_run: true
   pass_filenames: false
+
+- id: hexaqual-openssf-check
+  name: hexaqual openssf badge check
+  description: Verify OpenSSF Best Practices badge compliance against required tier
+  entry: uv run hexaqual openssf check
+  language: system
+  pass_filenames: false

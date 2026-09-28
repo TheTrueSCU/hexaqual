@@ -17,6 +17,7 @@ from hexaqual.domain.openssf import (
     CriterionProposal,
     CriterionStatus,
     OpenSsfAuditResult,
+    OpenSsfCheckResult,
     OpenSsfCriteriaCatalog,
     OpenSsfProject,
     OpenSsfTier,
@@ -29,6 +30,7 @@ __all__ = [
     "generate_checklist",
     "resolve_local_repo_url",
     "scaffold_document",
+    "verify_openssf_compliance",
 ]
 
 
@@ -509,3 +511,79 @@ def scaffold_document(
     target_path.parent.mkdir(parents=True, exist_ok=True)
     target_path.write_text(content, encoding="utf-8")
     return target_path
+
+
+_BADGE_LEVEL_RANKS: dict[str, int] = {
+    "none": 0,
+    "in_progress": 0,
+    "passing": 1,
+    "silver": 2,
+    "gold": 3,
+}
+
+
+def verify_openssf_compliance(
+    project: OpenSsfProject,
+    target_tier: OpenSsfTier,
+    min_score: int = 100,
+    require_badge_level: str | None = None,
+) -> OpenSsfCheckResult:
+    """Verify that a project satisfies all OpenSSF badge tier requirements.
+
+    Args:
+        project: Retrieved OpenSsfProject metadata and criteria statuses.
+        target_tier: Target certification tier (passing, silver, gold).
+        min_score: Minimum tiered percentage required to pass (default: 100).
+        require_badge_level: Explicit badge level required (defaults to target_tier.value).
+
+    Returns:
+        OpenSsfCheckResult detailing compliance status, unmet MUST criteria, and errors.
+
+    Notes/Architectural Intent:
+        Evaluates badge level hierarchy, score threshold, and all MUST criteria
+        defined for the target tier in OpenSsfCriteriaCatalog. Returns a structured
+        result for CI gate evaluation and pre-commit hook enforcement.
+    """
+    errors: list[str] = []
+    unmet_must: list[dict[str, str]] = []
+
+    # 1. Badge level rank check
+    req_level = (require_badge_level or target_tier.value).lower().strip()
+    req_rank = _BADGE_LEVEL_RANKS.get(req_level, 1)
+    proj_rank = _BADGE_LEVEL_RANKS.get(project.badge_level.lower().strip(), 0)
+    if proj_rank < req_rank:
+        errors.append(f"Badge level '{project.badge_level}' is below required '{req_level}'")
+
+    # 2. Score percentage check
+    if project.tiered_percentage < min_score:
+        errors.append(
+            f"Score {project.tiered_percentage}% is below required minimum of {min_score}%"
+        )
+
+    # 3. MUST criteria check
+    catalog_criteria = OpenSsfCriteriaCatalog.for_tier(target_tier)
+    for crit in catalog_criteria:
+        if crit.category.upper() == "MUST":
+            status = project.criteria_statuses.get(crit.criterion_id, CriterionStatus.UNKNOWN.value)
+            if status not in (CriterionStatus.MET.value, CriterionStatus.NA.value):
+                unmet_must.append(
+                    {
+                        "id": crit.criterion_id,
+                        "category": crit.category,
+                        "status": status,
+                    }
+                )
+                errors.append(
+                    f"MUST criterion '{crit.criterion_id}' is '{status}' (expected Met or N/A)"
+                )
+
+    passed = len(errors) == 0
+    return OpenSsfCheckResult(
+        passed=passed,
+        tier=target_tier,
+        badge_level=project.badge_level,
+        score=project.tiered_percentage,
+        min_score=min_score,
+        unmet_must=unmet_must,
+        errors=errors,
+    )

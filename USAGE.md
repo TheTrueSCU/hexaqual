@@ -52,6 +52,7 @@ Usage: hexaqual [OPTIONS] COMMAND [ARGS]...
 │ deps        Audit dependencies, generate import diagrams, and check          │
 │             architectural boundaries.                                        │
 │ mutate      Mutation testing execution and surviving mutant inspection.      │
+│ openssf     OpenSSF Best Practices badge auditing and proposal generation.   │
 │ release     Distribution package building, validation, and PyPI publishing.  │
 │ gh          GitHub repository, PR, and security examination.                 │
 │ docs        Documentation generation and verification.                       │
@@ -1002,6 +1003,146 @@ Usage: hexaqual mutate run [OPTIONS]
 │ --batch-size            <int>  Number of gremlins per worker batch (defaults │
 │                                to 10).                                       │
 │ --help                         Show this message and exit.                   │
+╰──────────────────────────────────────────────────────────────────────────────╯
+```
+
+### `hexaqual openssf`
+
+```text
+Usage: hexaqual openssf [OPTIONS] COMMAND [ARGS]...
+
+ OpenSSF Best Practices badge auditing and proposal generation.
+
+╭─ Options ────────────────────────────────────────────────────────────────────╮
+│ --help          Show this message and exit.                                  │
+╰──────────────────────────────────────────────────────────────────────────────╯
+╭─ Commands ───────────────────────────────────────────────────────────────────╮
+│ audit      Audit OpenSSF Best Practices badge status and identify pending    │
+│            criteria.                                                         │
+│ propose    Generate 1-click automation proposal URLs for OpenSSF Best        │
+│            Practices.                                                        │
+│ checklist  Export or inspect the machine-readable OpenSSF Best Practices     │
+│            checklist.                                                        │
+│ scorecard  Audit OpenSSF Security Scorecard metrics and supply chain         │
+│            posture.                                                          │
+│ scaffold   Scaffold standard OpenSSF governance and security compliance      │
+│            documents.                                                        │
+│ check      Enforce OpenSSF badge status and criteria compliance as a         │
+│            CI/quality gate.                                                  │
+╰──────────────────────────────────────────────────────────────────────────────╯
+```
+
+#### `hexaqual openssf audit`
+
+```text
+Usage: hexaqual openssf audit [OPTIONS]
+
+ Audit OpenSSF Best Practices badge status and identify pending criteria.
+
+╭─ Options ────────────────────────────────────────────────────────────────────╮
+│ --tier        -t      <str>  Target badge tier: passing, silver, or gold.    │
+│                              [default: passing]                              │
+│ --project-id  -i      <int>  Explicit OpenSSF project numeric ID.            │
+│ --format      -f      <str>  Output presentation format (table, json, rich,  │
+│                              auto).                                          │
+│                              [default: table]                                │
+│ --help                       Show this message and exit.                     │
+╰──────────────────────────────────────────────────────────────────────────────╯
+```
+
+#### `hexaqual openssf check`
+
+```text
+Usage: hexaqual openssf check [OPTIONS]
+
+ Enforce OpenSSF badge status and criteria compliance as a CI/quality gate.
+
+╭─ Options ────────────────────────────────────────────────────────────────────╮
+│ --tier                 -t      <str>  Target badge tier: passing, silver, or │
+│                                       gold.                                  │
+│                                       [default: passing]                     │
+│ --project-id           -i      <int>  Explicit OpenSSF project numeric ID.   │
+│ --min-score            -s      <int>  Minimum required score percentage.     │
+│                                       [default: 100]                         │
+│ --require-badge-level  -b      <str>  Explicit required badge level          │
+│                                       (passing, silver, gold). Defaults to   │
+│                                       --tier.                                │
+│ --format               -f      <str>  Output presentation format (table,     │
+│                                       json, rich, auto).                     │
+│                                       [default: table]                       │
+│ --help                                Show this message and exit.            │
+╰──────────────────────────────────────────────────────────────────────────────╯
+```
+
+#### `hexaqual openssf checklist`
+
+```text
+Usage: hexaqual openssf checklist [OPTIONS]
+
+ Export or inspect the machine-readable OpenSSF Best Practices checklist.
+
+╭─ Options ────────────────────────────────────────────────────────────────────╮
+│ --tier        -t      <str>  Target badge tier: passing, silver, or gold.    │
+│                              [default: passing]                              │
+│ --project-id  -i      <int>  Explicit OpenSSF project numeric ID.            │
+│ --format      -f      <str>  Output presentation format (table, json,        │
+│                              markdown, rich, auto).                          │
+│                              [default: table]                                │
+│ --unmet-only  -u             Show only unmet or pending criteria.            │
+│ --help                       Show this message and exit.                     │
+╰──────────────────────────────────────────────────────────────────────────────╯
+```
+
+#### `hexaqual openssf propose`
+
+```text
+Usage: hexaqual openssf propose [OPTIONS]
+
+ Generate 1-click automation proposal URLs for OpenSSF Best Practices.
+
+╭─ Options ────────────────────────────────────────────────────────────────────╮
+│ --tier        -t      <str>  Target badge tier: passing, silver, or gold.    │
+│                              [default: passing]                              │
+│ --project-id  -i      <int>  Explicit OpenSSF project numeric ID.            │
+│ --open        -o             Automatically launch pre-filled proposal URLs   │
+│                              in default browser.                             │
+│ --max-chunk   -m      <int>  Maximum criteria per URL chunk. [default: 12]   │
+│ --help                       Show this message and exit.                     │
+╰──────────────────────────────────────────────────────────────────────────────╯
+```
+
+#### `hexaqual openssf scaffold`
+
+```text
+Usage: hexaqual openssf scaffold [OPTIONS] {document}
+
+ Scaffold standard OpenSSF governance and security compliance documents.
+
+╭─ Arguments ──────────────────────────────────────────────────────────────────╮
+│ *    document      <str>  Document to scaffold: security, governance,        │
+│                           contributing, or codeql.                           │
+│                           [required]                                         │
+╰──────────────────────────────────────────────────────────────────────────────╯
+╭─ Options ────────────────────────────────────────────────────────────────────╮
+│ --force  -f        Overwrite existing files.                                 │
+│ --help             Show this message and exit.                               │
+╰──────────────────────────────────────────────────────────────────────────────╯
+```
+
+#### `hexaqual openssf scorecard`
+
+```text
+Usage: hexaqual openssf scorecard [OPTIONS]
+
+ Audit OpenSSF Security Scorecard metrics and supply chain posture.
+
+╭─ Options ────────────────────────────────────────────────────────────────────╮
+│ --repo     -r      <str>  Target GitHub repository (e.g. owner/repo).        │
+│ --details  -d             Display granular check reasons and details.        │
+│ --format   -f      <str>  Output presentation format (table, json, rich,     │
+│                           auto).                                             │
+│                           [default: table]                                   │
+│ --help                    Show this message and exit.                        │
 ╰──────────────────────────────────────────────────────────────────────────────╯
 ```
 

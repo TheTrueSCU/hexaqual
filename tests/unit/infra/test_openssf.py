@@ -15,6 +15,7 @@ import pytest
 from hexaqual.domain.openssf import (
     CriterionProposal,
     CriterionStatus,
+    OpenSsfCriteriaCatalog,
     OpenSsfProject,
     OpenSsfTier,
 )
@@ -25,6 +26,7 @@ from hexaqual.infra.openssf import (
     generate_checklist,
     resolve_local_repo_url,
     scaffold_document,
+    verify_openssf_compliance,
 )
 
 
@@ -156,3 +158,45 @@ def test_scaffold_document(tmp_path: Path) -> None:
     # Verify invalid document type
     with pytest.raises(ValueError, match="Unknown document type"):
         scaffold_document("unknown_type", dest_dir=tmp_path)
+
+
+def test_verify_openssf_compliance_passing() -> None:
+    """Test verification when project satisfies all tier requirements."""
+    must_criteria = {
+        crit.criterion_id: "Met"
+        for crit in OpenSsfCriteriaCatalog.for_tier(OpenSsfTier.PASSING)
+        if crit.category.upper() == "MUST"
+    }
+
+    project = OpenSsfProject(
+        project_id=14749,
+        name="hexaqual",
+        repo_url="https://github.com/TheTrueSCU/hexaqual",
+        badge_level="passing",
+        tiered_percentage=100,
+        criteria_statuses=must_criteria,
+    )
+
+    res = verify_openssf_compliance(project, OpenSsfTier.PASSING)
+    assert res.passed is True
+    assert len(res.errors) == 0
+    assert len(res.unmet_must) == 0
+
+
+def test_verify_openssf_compliance_failures() -> None:
+    """Test verification when badge level, score, and criteria are deficient."""
+    project = OpenSsfProject(
+        project_id=14749,
+        name="hexaqual",
+        repo_url="https://github.com/TheTrueSCU/hexaqual",
+        badge_level="in_progress",
+        tiered_percentage=80,
+        criteria_statuses={"description_good": "Unmet"},
+    )
+
+    res = verify_openssf_compliance(project, OpenSsfTier.PASSING, min_score=100)
+    assert res.passed is False
+    assert len(res.errors) > 0
+    assert any("below required" in err for err in res.errors)
+    assert any("below required minimum" in err for err in res.errors)
+    assert len(res.unmet_must) > 0

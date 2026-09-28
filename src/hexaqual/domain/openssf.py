@@ -18,6 +18,7 @@ __all__ = [
     "CriterionProposal",
     "CriterionStatus",
     "OpenSsfAuditResult",
+    "OpenSsfCheckResult",
     "OpenSsfCriteriaCatalog",
     "OpenSsfCriterionDefinition",
     "OpenSsfProject",
@@ -87,6 +88,19 @@ class OpenSsfAuditResult:
     total_count: int
     percentage: int
     proposals: list[CriterionProposal] = field(default_factory=list)
+
+
+@dataclass(frozen=True)
+class OpenSsfCheckResult:
+    """Evaluation result verifying repository compliance with an OpenSSF badge tier."""
+
+    passed: bool
+    tier: OpenSsfTier
+    badge_level: str
+    score: int
+    min_score: int
+    unmet_must: list[dict[str, str]] = field(default_factory=list)
+    errors: list[str] = field(default_factory=list)
 
 
 @dataclass(frozen=True)

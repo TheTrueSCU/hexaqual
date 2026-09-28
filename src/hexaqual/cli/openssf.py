@@ -25,11 +25,13 @@ from hexaqual.infra.openssf import (
     generate_checklist,
     resolve_local_repo_url,
     scaffold_document,
+    verify_openssf_compliance,
 )
 
 __all__ = [
     "openssf_app",
     "openssf_audit",
+    "openssf_check",
     "openssf_checklist",
     "openssf_propose",
     "openssf_scaffold",
@@ -362,3 +364,95 @@ def openssf_scaffold(
     except ValueError as exc:
         console.print(f"[bold red]Error:[/bold red] {exc}")
         raise typer.Exit(code=1) from exc
+
+
+@openssf_app.command(name="check")
+def openssf_check(
+    tier: Annotated[
+        str,
+        typer.Option("--tier", "-t", help="Target badge tier: passing, silver, or gold."),
+    ] = "passing",
+    project_id: Annotated[
+        int | None,
+        typer.Option("--project-id", "-i", help="Explicit OpenSSF project numeric ID."),
+    ] = None,
+    min_score: Annotated[
+        int,
+        typer.Option("--min-score", "-s", help="Minimum required score percentage."),
+    ] = 100,
+    require_badge_level: Annotated[
+        str | None,
+        typer.Option(
+            "--require-badge-level",
+            "-b",
+            help="Explicit required badge level (passing, silver, gold). Defaults to --tier.",
+        ),
+    ] = None,
+    format_type: str = format_option(
+        default="table",
+        help_text="Output presentation format (table, json, rich, auto).",
+    ),
+) -> None:
+    """Enforce OpenSSF badge status and criteria compliance as a CI/quality gate."""
+    adapter = OpenSsfBadgeAdapter()
+    target_tier = OpenSsfTier(tier.lower())
+    pid = _resolve_project_id(adapter, project_id)
+
+    with console.status(f"[cyan]Checking OpenSSF project {pid} ({target_tier.value})...[/cyan]"):
+        project = adapter.fetch_project(pid)
+        check_res = verify_openssf_compliance(
+            project,
+            target_tier,
+            min_score=min_score,
+            require_badge_level=require_badge_level,
+        )
+
+    resolved_fmt = resolve_format(format_type, default_tty="table", default_pipe="json")
+    if resolved_fmt == "json":
+        payload = {
+            "passed": check_res.passed,
+            "project_id": pid,
+            "name": project.name,
+            "tier": check_res.tier.value,
+            "badge_level": check_res.badge_level,
+            "score": check_res.score,
+            "min_score": check_res.min_score,
+            "unmet_must_count": len(check_res.unmet_must),
+            "unmet_must": check_res.unmet_must,
+            "errors": check_res.errors,
+        }
+        console.print_json(data=payload)
+        if not check_res.passed:
+            raise typer.Exit(code=1)
+        return
+
+    if check_res.passed:
+        console.print(
+            f"\n[bold green]✓ OpenSSF {check_res.tier.value.title()} check PASSED[/bold green] for "
+            f"[cyan]{project.name}[/cyan] (Level: [bold]{check_res.badge_level}[/bold], Score: [bold]{check_res.score}%[/bold])\n"
+        )
+        return
+
+    console.print(
+        f"\n[bold red]✗ OpenSSF {check_res.tier.value.title()} check FAILED[/bold red] for "
+        f"[cyan]{project.name}[/cyan] (Level: [bold]{check_res.badge_level}[/bold], Score: [bold]{check_res.score}%[/bold] / min {check_res.min_score}%)\n"
+    )
+
+    if check_res.unmet_must:
+        table = Table(title="Unmet MUST Criteria", title_justify="left")
+        table.add_column("Criterion", style="cyan")
+        table.add_column("Category", style="yellow")
+        table.add_column("Current Status", style="red")
+        for um in check_res.unmet_must:
+            table.add_row(um["id"], um["category"], um["status"])
+        console.print(table)
+
+    if check_res.errors:
+        console.print("\n[bold red]Failures:[/bold red]")
+        for err in check_res.errors:
+            console.print(f"  [red]• {err}[/red]")
+
+    console.print(
+        f"\nRun [bold cyan]hexaqual openssf audit --tier {target_tier.value}[/bold cyan] to diagnose issues.\n"
+    )
+    raise typer.Exit(code=1)
