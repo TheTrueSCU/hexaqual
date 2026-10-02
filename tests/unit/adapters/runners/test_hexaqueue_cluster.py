@@ -134,6 +134,7 @@ def test_run_mutation_testing_mutmut(tmp_path: Path) -> None:
 
 def test_execute_pytest_and_outcome_mapping(tmp_path: Path) -> None:
     """Verify execute_pytest submits job and maps failed outcome."""
+
     def mock_handler(request: httpx.Request) -> httpx.Response:
         if request.url.path == "/v1/runs":
             return httpx.Response(status_code=201, json={"run_id": "r-pytest"})
@@ -164,6 +165,7 @@ def test_execute_pytest_and_outcome_mapping(tmp_path: Path) -> None:
 
 def test_submission_failure_handling(tmp_path: Path) -> None:
     """Verify handling when Hexaqueue cluster rejects submission with 500 error."""
+
     def mock_handler(request: httpx.Request) -> httpx.Response:
         return httpx.Response(status_code=500, text="Internal Cluster Scheduler Error")
 
@@ -230,22 +232,34 @@ def test_stream_fallback_to_polling(tmp_path: Path) -> None:
     assert poll_calls >= 2
 
 
-def test_delegated_methods() -> None:
-    """Verify all inspection and diff analysis methods delegate to base_runner."""
+def test_delegated_mutation_and_diff_analysis() -> None:
+    """Verify mutation records and git diff analysis delegate to base_runner."""
     mock_base = MagicMock(spec=TestingRunnerPort)
     adapter = HexaqueueClusterRunnerAdapter(base_runner=mock_base)
 
     adapter.read_mutation_records(Path("db.sqlite"))
     mock_base.read_mutation_records.assert_called_once()
 
-    adapter.get_changed_lines(Path("."))
+    adapter.get_changed_lines(Path())
     mock_base.get_changed_lines.assert_called_once()
+
+
+def test_delegated_impact_and_coverage_analysis() -> None:
+    """Verify impacted tests and line coverage lookup delegate to base_runner."""
+    mock_base = MagicMock(spec=TestingRunnerPort)
+    adapter = HexaqueueClusterRunnerAdapter(base_runner=mock_base)
 
     adapter.find_impacted_tests({})
     mock_base.find_impacted_tests.assert_called_once()
 
     adapter.get_tests_covering_line("foo.py", 10)
     mock_base.get_tests_covering_line.assert_called_once()
+
+
+def test_delegated_boundary_and_redundancy_audits() -> None:
+    """Verify architectural boundaries and test redundancy audits delegate to base_runner."""
+    mock_base = MagicMock(spec=TestingRunnerPort)
+    adapter = HexaqueueClusterRunnerAdapter(base_runner=mock_base)
 
     adapter.audit_layer_boundary_leaks()
     mock_base.audit_layer_boundary_leaks.assert_called_once()

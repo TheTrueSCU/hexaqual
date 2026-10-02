@@ -10,6 +10,7 @@ Notes/Architectural Intent:
 
 from __future__ import annotations
 
+import contextlib
 import json
 import logging
 import time
@@ -72,6 +73,7 @@ class HexaqueueClusterRunnerAdapter(TestingRunnerPort):
         self._timeout = timeout
         self._base_runner = base_runner or SubprocessTestingRunnerAdapter()
         self._console = console or Console()
+        self._err_console = Console(stderr=True)
         self._client = http_client
 
     def _get_headers(self) -> dict[str, str]:
@@ -273,31 +275,41 @@ class HexaqueueClusterRunnerAdapter(TestingRunnerPort):
     def _submit_and_stream(self, run_id: str, payload: dict[str, Any]) -> int:
         """Submit run specification to Hexaqueue and stream progress to completion."""
         client = self._build_client()
+        should_close = self._client is None
         submit_url = f"{self._cluster_url}/v1/runs"
 
         self._console.print(
             f"[bold blue]Submitting workload to Hexaqueue cluster:[/bold blue] {run_id}"
         )
         try:
-            resp = client.post(submit_url, json=payload, headers=self._get_headers())
-            if resp.status_code not in (200, 201):
-                self._console.print(
-                    f"[bold red]Cluster run submission failed ({resp.status_code}):[/bold red] {resp.text}"
+            try:
+                resp = client.post(submit_url, json=payload, headers=self._get_headers())
+                if resp.status_code not in (200, 201):
+                    self._err_console.print(
+                        f"[bold red]Cluster run submission failed ({resp.status_code}):[/bold red] {resp.text}"
+                    )
+                    return 1
+            except httpx.HTTPError as exc:
+                self._err_console.print(
+                    f"[bold red]Failed to connect to Hexaqueue cluster:[/bold red] {exc}"
                 )
                 return 1
-        except httpx.HTTPError as exc:
-            self._console.print(f"[bold red]Failed to connect to Hexaqueue cluster:[/bold red] {exc}")
-            return 1
 
-        return self._stream_run_progress(client=client, run_id=run_id)
+            return self._stream_run_progress(client=client, run_id=run_id)
+        finally:
+            if should_close:
+                client.close()
 
     def _stream_run_progress(self, client: httpx.Client, run_id: str) -> int:
         """Stream SSE run progress pulses, falling back to polling if necessary."""
         stream_url = f"{self._cluster_url}/v1/runs/{run_id}/stream"
+        start_time = time.time()
         params = {"poll_interval": self._poll_interval, "timeout": self._timeout}
 
         try:
-            with client.stream("GET", stream_url, params=params, headers=self._get_headers()) as stream_resp:
+            with client.stream(
+                "GET", stream_url, params=params, headers=self._get_headers()
+            ) as stream_resp:
                 if stream_resp.status_code == 200:
                     for line in stream_resp.iter_lines():
                         if not line:
@@ -310,7 +322,7 @@ class HexaqueueClusterRunnerAdapter(TestingRunnerPort):
         except Exception as exc:
             logger.debug("SSE streaming connection interrupted (%s), falling back to polling", exc)
 
-        return self._poll_run_progress(client=client, run_id=run_id)
+        return self._poll_run_progress(client=client, run_id=run_id, start_time=start_time)
 
     def _process_sse_data(self, raw_data: str) -> int | None:
         """Parse SSE JSON payload and print status pulses."""
@@ -334,28 +346,40 @@ class HexaqueueClusterRunnerAdapter(TestingRunnerPort):
         )
 
         if state == "DONE" or outcome is not None:
+            if outcome in ("FAILED", "failed", "CANCELLED", "cancelled"):
+                err = data.get("error") or data.get("failure_reason") or data.get("message")
+                if err:
+                    self._err_console.print(f"[bold red]Run failure details:[/bold red] {err}")
             return self._outcome_to_exit_code(outcome)
         return None
 
-    def _poll_run_progress(self, client: httpx.Client, run_id: str) -> int:
+    def _poll_run_progress(
+        self, client: httpx.Client, run_id: str, start_time: float | None = None
+    ) -> int:
         """Poll run status endpoint periodically until completion."""
         poll_url = f"{self._cluster_url}/v1/runs/{run_id}"
-        start_time = time.time()
+        if start_time is None:
+            start_time = time.time()
 
         while True:
             if time.time() - start_time > self._timeout:
-                self._console.print(f"[bold red]Run {run_id} timed out after {self._timeout}s[/bold red]")
+                with contextlib.suppress(Exception):
+                    client.post(
+                        f"{self._cluster_url}/v1/runs/{run_id}/cancel",
+                        headers=self._get_headers(),
+                    )
+                self._err_console.print(
+                    f"[bold red]Run {run_id} timed out after {self._timeout}s[/bold red]"
+                )
                 return 2
 
-            try:
+            with contextlib.suppress(httpx.HTTPError):
                 resp = client.get(poll_url, headers=self._get_headers())
                 if resp.status_code == 200:
                     data = resp.json()
                     exit_code = self._process_sse_data(json.dumps(data))
                     if exit_code is not None:
                         return exit_code
-            except httpx.HTTPError:
-                pass
 
             time.sleep(self._poll_interval)
 
@@ -395,9 +419,7 @@ class HexaqueueClusterRunnerAdapter(TestingRunnerPort):
         self, changed_lines: dict[Path, set[int]], cov_path: Path | None = None
     ) -> set[str]:
         """Delegate test impact correlation to base runner."""
-        return self._base_runner.find_impacted_tests(
-            changed_lines=changed_lines, cov_path=cov_path
-        )
+        return self._base_runner.find_impacted_tests(changed_lines=changed_lines, cov_path=cov_path)
 
     def get_tests_covering_line(
         self, file_path: str | Path, line_number: int, cov_path: Path | None = None
