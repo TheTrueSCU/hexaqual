@@ -291,3 +291,176 @@ def test_security_validation_allows_https_and_localhost() -> None:
         token="secret-token",
     )
     assert adapter2._token == "secret-token"
+
+
+def test_process_sse_data_edge_cases_and_outcomes() -> None:
+    """Verify _process_sse_data parses error payloads, invalid JSON, and maps exit codes."""
+    adapter = HexaqueueClusterRunnerAdapter(
+        cluster_url="http://localhost:8000",
+        console=Console(quiet=True),
+    )
+
+    invalid_code = adapter._process_sse_data("invalid-json{")
+    assert invalid_code is None
+
+    err_payload = json.dumps(
+        {
+            "state": "DONE",
+            "outcome": "FAILED",
+            "error": "SyntaxError in test file",
+        }
+    )
+    failed_code = adapter._process_sse_data(err_payload)
+    assert failed_code == 1
+
+    timeout_payload = json.dumps({"state": "DONE", "outcome": "TIMED_OUT"})
+    timeout_code = adapter._process_sse_data(timeout_payload)
+    assert timeout_code == 2
+
+    cancelled_payload = json.dumps({"state": "DONE", "outcome": "CANCELLED"})
+    cancel_code = adapter._process_sse_data(cancelled_payload)
+    assert cancel_code == 130
+
+    unknown_payload = json.dumps({"state": "DONE", "outcome": "UNEXPECTED_STATE"})
+    unknown_code = adapter._process_sse_data(unknown_payload)
+    assert unknown_code == 1
+
+
+def test_run_mutation_testing_defaults_and_report_file(tmp_path: Path) -> None:
+    """Verify mutation testing defaults numprocesses to auto and forwards report_file parent."""
+    submitted_payloads: list[dict] = []
+
+    def mock_handler(request: httpx.Request) -> httpx.Response:
+        if request.url.path == "/v1/runs":
+            payload = json.loads(request.content.decode("utf-8"))
+            submitted_payloads.append(payload)
+            return httpx.Response(status_code=201, json={"run_id": "r-defaults"})
+        if "/stream" in request.url.path:
+            sse_content = (
+                "event: run_done\n"
+                'data: {"state": "DONE", "outcome": "COMPLETED", "completed_jobs": 1, "total_jobs": 1}\n\n'
+            )
+            return httpx.Response(status_code=200, text=sse_content)
+        return httpx.Response(status_code=404)
+
+    client = httpx.Client(
+        transport=httpx.MockTransport(mock_handler), base_url="http://cluster.local:8000"
+    )
+    adapter = HexaqueueClusterRunnerAdapter(
+        cluster_url="http://cluster.local:8000",
+        http_client=client,
+        console=Console(quiet=True),
+    )
+
+    report_path = tmp_path / "reports" / "gremlins.html"
+    pkg_dir = tmp_path / "pkg"
+    pkg_dir.mkdir()
+    exit_code = adapter.run_mutation_testing(
+        package_dir=pkg_dir,
+        engine=MutationEngine.GREMLINS,
+        reset_cache=False,
+        numprocesses=None,
+        report_file=report_path,
+    )
+
+    assert exit_code == 0
+    assert len(submitted_payloads) == 1
+    job = submitted_payloads[0]["jobs"][0]
+    assert "-n" in job["args"]
+    assert "auto" in job["args"]
+    assert f"--gremlins-html-dir={report_path.parent}" in job["args"]
+    assert "--gremlin-clear-cache" not in job["args"]
+
+
+def test_submit_and_stream_connect_error(tmp_path: Path) -> None:
+    """Verify _submit_and_stream handles httpx.ConnectError gracefully and returns 1."""
+
+    def mock_handler(request: httpx.Request) -> httpx.Response:
+        raise httpx.ConnectError("Failed to establish cluster connection", request=request)
+
+    client = httpx.Client(
+        transport=httpx.MockTransport(mock_handler), base_url="http://cluster.local:8000"
+    )
+    adapter = HexaqueueClusterRunnerAdapter(
+        cluster_url="http://cluster.local:8000",
+        http_client=client,
+        console=Console(quiet=True),
+    )
+
+    code = adapter.execute_pytest(test_nodes=["tests/test_net.py"], cwd=tmp_path)
+    assert code == 1
+
+
+def test_build_client_lifecycle(tmp_path: Path) -> None:
+    """Verify _build_client instantiates default httpx.Client and cleans it up when none is injected."""
+    adapter = HexaqueueClusterRunnerAdapter(
+        cluster_url="http://localhost:8000",
+        console=Console(quiet=True),
+    )
+    client = adapter._build_client()
+    assert str(client.base_url) == "http://localhost:8000"
+    client.close()
+
+
+def test_stream_exception_falls_back_to_polling() -> None:
+    """Verify SSE streaming exception logs debug and falls back to polling."""
+    mock_client = MagicMock()
+    mock_client.stream.side_effect = httpx.ReadTimeout("Stream connection timed out")
+
+    adapter = HexaqueueClusterRunnerAdapter(
+        cluster_url="http://localhost:8000",
+        console=Console(quiet=True),
+    )
+    with pytest.MonkeyPatch.context() as mp:
+        mock_poll = MagicMock(return_value=0)
+        mp.setattr(adapter, "_poll_run_progress", mock_poll)
+        code = adapter._stream_run_progress(client=mock_client, run_id="r-stream-err")
+        assert code == 0
+        mock_poll.assert_called_once()
+
+
+def test_poll_run_progress_timeout(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Verify _poll_run_progress cancels timed out run, prints warning on non-200 cancel, and returns 2."""
+    cancelled_urls: list[str] = []
+
+    def mock_handler(request: httpx.Request) -> httpx.Response:
+        if "/cancel" in request.url.path:
+            cancelled_urls.append(request.url.path)
+            return httpx.Response(status_code=500, text="Cluster cancellation failed")
+        return httpx.Response(status_code=200, json={"state": "RUNNING"})
+
+    client = httpx.Client(
+        transport=httpx.MockTransport(mock_handler), base_url="http://cluster.local:8000"
+    )
+    adapter = HexaqueueClusterRunnerAdapter(
+        cluster_url="http://cluster.local:8000",
+        timeout=0.01,
+        poll_interval=0.005,
+        http_client=client,
+        console=Console(quiet=True),
+    )
+
+    exit_code = adapter._poll_run_progress(client=client, run_id="r-timed-out", start_time=0.0)
+    assert exit_code == 2
+    assert len(cancelled_urls) == 1
+
+    # Test when cancel returns 200 and start_time defaults to None
+    def mock_success_cancel(request: httpx.Request) -> httpx.Response:
+        if "/cancel" in request.url.path:
+            return httpx.Response(status_code=200, json={"status": "cancelled"})
+        return httpx.Response(status_code=200, json={"state": "RUNNING"})
+
+    client_success = httpx.Client(
+        transport=httpx.MockTransport(mock_success_cancel), base_url="http://cluster.local:8000"
+    )
+    adapter_fast_timeout = HexaqueueClusterRunnerAdapter(
+        cluster_url="http://cluster.local:8000",
+        timeout=-1.0,  # Immediately timeout
+        poll_interval=0.001,
+        http_client=client_success,
+        console=Console(quiet=True),
+    )
+    exit_code_success = adapter_fast_timeout._poll_run_progress(
+        client=client_success, run_id="r-success-cancel"
+    )
+    assert exit_code_success == 2
