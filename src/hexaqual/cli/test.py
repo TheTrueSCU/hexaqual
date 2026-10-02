@@ -119,8 +119,13 @@ def test_run(
         argv.append("-P")
     if with_context:
         argv.append("--with-context")
-    if cluster != "local":
-        argv.extend(["--cluster", cluster])
+    cluster_norm = cluster.lower()
+    if cluster_norm not in ("local", "hexaqueue"):
+        raise typer.BadParameter(
+            f"Invalid --cluster '{cluster}'. Supported values are 'local' or 'hexaqueue'."
+        )
+    if cluster_norm != "local":
+        argv.extend(["--cluster", cluster_norm])
         argv.extend(["--cluster-url", cluster_url])
         argv.extend(["--cluster-user", cluster_user])
         if cluster_token:

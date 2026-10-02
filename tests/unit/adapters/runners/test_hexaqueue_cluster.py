@@ -13,6 +13,7 @@ from pathlib import Path
 from unittest.mock import MagicMock
 
 import httpx
+import pytest
 from rich.console import Console
 
 from hexaqual.adapters.runners.hexaqueue_cluster import HexaqueueClusterRunnerAdapter
@@ -23,7 +24,7 @@ from hexaqual.ports.testing import TestingRunnerPort
 def test_headers_and_initialization() -> None:
     """Verify headers construction with user, elevation, and auth token."""
     adapter = HexaqueueClusterRunnerAdapter(
-        cluster_url="http://cluster.local:8080/",
+        cluster_url="https://cluster.local:8080/",
         user_id="alice",
         elevate=True,
         token="secret-token-123",
@@ -266,3 +267,27 @@ def test_delegated_boundary_and_redundancy_audits() -> None:
 
     adapter.audit_redundant_tests()
     mock_base.audit_redundant_tests.assert_called_once()
+
+
+def test_security_validation_rejects_insecure_remote_http_token() -> None:
+    """Verify CWE-319 protection: bearer tokens cannot be transmitted over remote plain HTTP."""
+    with pytest.raises(ValueError, match="Insecure transport"):
+        HexaqueueClusterRunnerAdapter(
+            cluster_url="http://remote-cluster.internal:8000",
+            token="secret-token",
+        )
+
+
+def test_security_validation_allows_https_and_localhost() -> None:
+    """Verify security validation permits HTTPS and localhost/testcluster."""
+    adapter1 = HexaqueueClusterRunnerAdapter(
+        cluster_url="https://remote-cluster.internal:8000",
+        token="secret-token",
+    )
+    assert adapter1._token == "secret-token"
+
+    adapter2 = HexaqueueClusterRunnerAdapter(
+        cluster_url="http://localhost:8000",
+        token="secret-token",
+    )
+    assert adapter2._token == "secret-token"

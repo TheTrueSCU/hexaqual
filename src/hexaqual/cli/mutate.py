@@ -130,7 +130,12 @@ def mutate_run(
         if engine.lower() in ("gremlins", "mutmut")
         else MutationEngine.GREMLINS
     )
-    if cluster.lower() == "local":
+    cluster_norm = cluster.lower()
+    if cluster_norm not in ("local", "hexaqueue"):
+        raise typer.BadParameter(
+            f"Invalid --cluster '{cluster}'. Supported values are 'local' or 'hexaqueue'."
+        )
+    if cluster_norm == "local":
         if eng == MutationEngine.GREMLINS:
             ensure_tool_installed("pytest_gremlins", extra_name="gremlins")
         else:
@@ -138,7 +143,7 @@ def mutate_run(
 
     root = get_repo_root()
     testing_runner = None
-    if cluster.lower() == "hexaqueue":
+    if cluster_norm == "hexaqueue":
         from hexaqual.adapters.runners.hexaqueue_cluster import HexaqueueClusterRunnerAdapter
 
         testing_runner = HexaqueueClusterRunnerAdapter(

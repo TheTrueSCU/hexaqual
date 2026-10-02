@@ -73,8 +73,27 @@ class HexaqueueClusterRunnerAdapter(TestingRunnerPort):
         self._timeout = timeout
         self._base_runner = base_runner or SubprocessTestingRunnerAdapter()
         self._console = console or Console()
-        self._err_console = Console(stderr=True)
+        self._err_console = console if console is not None else Console(stderr=True)
         self._client = http_client
+        self._validate_security()
+
+    def _validate_security(self) -> None:
+        """Enforce TLS for remote credential transmission (CWE-319)."""
+        if not self._token:
+            return
+        url_lower = self._cluster_url.lower()
+        is_local = (
+            url_lower.startswith("http://localhost")
+            or url_lower.startswith("http://127.0.0.1")
+            or url_lower.startswith("http://[::1]")
+            or url_lower.startswith("http://testcluster")
+            or url_lower.startswith("http://local-cluster")
+        )
+        if url_lower.startswith("http://") and not is_local:
+            raise ValueError(
+                f"Insecure transport: Bearer token cannot be transmitted over unencrypted HTTP ({self._cluster_url}). "
+                "Use HTTPS for remote cluster authentication."
+            )
 
     def _get_headers(self) -> dict[str, str]:
         """Construct HTTP request headers for Hexaqueue REST API."""
@@ -364,10 +383,15 @@ class HexaqueueClusterRunnerAdapter(TestingRunnerPort):
         while True:
             if time.time() - start_time > self._timeout:
                 with contextlib.suppress(Exception):
-                    client.post(
+                    cancel_resp = client.post(
                         f"{self._cluster_url}/v1/runs/{run_id}/cancel",
                         headers=self._get_headers(),
+                        timeout=5.0,
                     )
+                    if cancel_resp.status_code not in (200, 202, 204):
+                        self._err_console.print(
+                            f"[yellow]Warning: Remote run cancellation returned status {cancel_resp.status_code}[/yellow]"
+                        )
                 self._err_console.print(
                     f"[bold red]Run {run_id} timed out after {self._timeout}s[/bold red]"
                 )
