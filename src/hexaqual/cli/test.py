@@ -46,6 +46,34 @@ def test_run(
     with_context: bool = typer.Option(
         False, "--with-context", help="Capture test context in coverage."
     ),
+    cluster: str = typer.Option(
+        "local",
+        "--cluster",
+        help="Execution target cluster ('local' or 'hexaqueue').",
+    ),
+    cluster_url: str = typer.Option(
+        "http://localhost:8000",
+        "--cluster-url",
+        envvar="HEXAQUEUE_URL",
+        help="Hexaqueue cluster REST endpoint URL.",
+    ),
+    cluster_token: str | None = typer.Option(
+        None,
+        "--cluster-token",
+        envvar="HEXAQUEUE_TOKEN",
+        help="Authentication bearer token for Hexaqueue cluster.",
+    ),
+    cluster_user: str = typer.Option(
+        "default",
+        "--cluster-user",
+        envvar="HEXAQUEUE_USER",
+        help="Submitting user identity for Hexaqueue cluster.",
+    ),
+    cluster_elevate: bool = typer.Option(
+        False,
+        "--cluster-elevate",
+        help="Assert administrative elevation on Hexaqueue cluster.",
+    ),
 ) -> None:
     """Run pytest suite with dynamic worker allocation and coverage.
 
@@ -58,6 +86,11 @@ def test_run(
         unit: Whether to restrict execution to unit tests.
         properties: Whether to restrict execution to property tests.
         with_context: Whether to capture test context in coverage.
+        cluster: Execution target cluster ('local' or 'hexaqueue').
+        cluster_url: Hexaqueue cluster REST endpoint URL.
+        cluster_token: Authentication bearer token for Hexaqueue cluster.
+        cluster_user: Submitting user identity for Hexaqueue cluster.
+        cluster_elevate: Assert administrative elevation on Hexaqueue cluster.
 
     Raises:
         typer.Exit: If tests fail.
@@ -65,6 +98,7 @@ def test_run(
     Notes/Architectural Intent:
         Driving adapter delegating to pytest runner adapter and forwarding
         any additional unknown options or flags directly to pytest.
+        Supports distributing test execution to a remote Hexaqueue cluster.
     """
     from hexaqual.adapters.code_analysis.pytest_runner import run_main
 
@@ -85,6 +119,19 @@ def test_run(
         argv.append("-P")
     if with_context:
         argv.append("--with-context")
+    cluster_norm = cluster.lower()
+    if cluster_norm not in ("local", "hexaqueue"):
+        raise typer.BadParameter(
+            f"Invalid --cluster '{cluster}'. Supported values are 'local' or 'hexaqueue'."
+        )
+    if cluster_norm != "local":
+        argv.extend(["--cluster", cluster_norm])
+        argv.extend(["--cluster-url", cluster_url])
+        argv.extend(["--cluster-user", cluster_user])
+        if cluster_token:
+            argv.extend(["--cluster-token", cluster_token])
+        if cluster_elevate:
+            argv.append("--cluster-elevate")
     if ctx.args:
         argv.extend(ctx.args)
     exit_code = run_main(argv) or 0
