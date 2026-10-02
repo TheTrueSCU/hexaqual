@@ -71,6 +71,34 @@ def mutate_run(
         "--batch-size",
         help="Number of gremlins per worker batch (defaults to 10).",
     ),
+    cluster: str = typer.Option(
+        "local",
+        "--cluster",
+        help="Execution target cluster ('local' or 'hexaqueue').",
+    ),
+    cluster_url: str = typer.Option(
+        "http://localhost:8000",
+        "--cluster-url",
+        envvar="HEXAQUEUE_URL",
+        help="Hexaqueue cluster REST endpoint URL.",
+    ),
+    cluster_token: str | None = typer.Option(
+        None,
+        "--cluster-token",
+        envvar="HEXAQUEUE_TOKEN",
+        help="Authentication bearer token for Hexaqueue cluster.",
+    ),
+    cluster_user: str = typer.Option(
+        "default",
+        "--cluster-user",
+        envvar="HEXAQUEUE_USER",
+        help="Submitting user identity for Hexaqueue cluster.",
+    ),
+    cluster_elevate: bool = typer.Option(
+        False,
+        "--cluster-elevate",
+        help="Assert administrative elevation on Hexaqueue cluster.",
+    ),
 ) -> None:
     """Run mutation testing scoped to package or workspace.
 
@@ -83,6 +111,11 @@ def mutate_run(
         workers: Parallel workers during mutation phase.
         numprocesses: Pytest-xdist baseline process count.
         batch_size: Mutants per worker batch.
+        cluster: Execution target cluster ('local' or 'hexaqueue').
+        cluster_url: Hexaqueue cluster REST endpoint URL.
+        cluster_token: Authentication bearer token for Hexaqueue cluster.
+        cluster_user: Submitting user identity for Hexaqueue cluster.
+        cluster_elevate: Assert administrative elevation on Hexaqueue cluster.
 
     Raises:
         typer.Exit: If mutation testing fails.
@@ -90,19 +123,32 @@ def mutate_run(
     Notes/Architectural Intent:
         Executes mutation runner across targeted components via CQRS bus.
         Decouples baseline suite parallelism (-n) from mutation worker crunching (-w).
+        Supports distributing mutation workloads to a remote Hexaqueue cluster.
     """
     eng = (
         MutationEngine(engine.lower())
         if engine.lower() in ("gremlins", "mutmut")
         else MutationEngine.GREMLINS
     )
-    if eng == MutationEngine.GREMLINS:
-        ensure_tool_installed("pytest_gremlins", extra_name="gremlins")
-    else:
-        ensure_tool_installed("mutmut", cli_command="mutmut", extra_name="mutmut")
+    if cluster.lower() == "local":
+        if eng == MutationEngine.GREMLINS:
+            ensure_tool_installed("pytest_gremlins", extra_name="gremlins")
+        else:
+            ensure_tool_installed("mutmut", cli_command="mutmut", extra_name="mutmut")
 
     root = get_repo_root()
-    bus = create_governance_bus(repo_root=root)
+    testing_runner = None
+    if cluster.lower() == "hexaqueue":
+        from hexaqual.adapters.runners.hexaqueue_cluster import HexaqueueClusterRunnerAdapter
+
+        testing_runner = HexaqueueClusterRunnerAdapter(
+            cluster_url=cluster_url,
+            user_id=cluster_user,
+            elevate=cluster_elevate,
+            token=cluster_token,
+        )
+
+    bus = create_governance_bus(repo_root=root, testing_runner=testing_runner)
 
     exit_code = bus.dispatch(
         RunMutationTestsCommand(
