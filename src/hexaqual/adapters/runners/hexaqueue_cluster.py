@@ -145,7 +145,10 @@ class HexaqueueClusterRunnerAdapter(TestingRunnerPort):
             "name": f"mutation-{package_dir.name}",
             "command": cmd,
             "args": args,
-            "env": {"PYTHONUNBUFFERED": "1"},
+            "env": {
+                "PYTHONUNBUFFERED": "1",
+                "HEXAQUEUE_CWD": str(package_dir.resolve()),
+            },
             "resources": {"cpus": 2, "ram_mb": 2048},
             "tags": [f"package:{package_dir.name}", f"owner:{self._user_id}", "type:mutation"],
             "user": self._user_id,
@@ -194,13 +197,17 @@ class HexaqueueClusterRunnerAdapter(TestingRunnerPort):
         if extra_args:
             all_args.extend(extra_args)
 
+        effective_cwd = cwd.resolve() if cwd else Path.cwd().resolve()
         job_spec = {
             "id": f"job-{run_id}-0",
             "run_id": run_id,
             "name": f"pytest-{pkg_name}",
             "command": "pytest",
             "args": all_args,
-            "env": {"PYTHONUNBUFFERED": "1"},
+            "env": {
+                "PYTHONUNBUFFERED": "1",
+                "HEXAQUEUE_CWD": str(effective_cwd),
+            },
             "resources": {"cpus": 2, "ram_mb": 2048},
             "tags": [f"package:{pkg_name}", f"owner:{self._user_id}", "type:test"],
             "user": self._user_id,
@@ -355,7 +362,7 @@ class HexaqueueClusterRunnerAdapter(TestingRunnerPort):
     @staticmethod
     def _outcome_to_exit_code(outcome: str | None) -> int:
         """Map Hexaqueue RunOutcome to process exit code."""
-        if outcome in ("COMPLETED", "completed"):
+        if outcome in ("COMPLETED", "completed", "SUCCEEDED", "succeeded"):
             return 0
         if outcome in ("FAILED", "failed"):
             return 1
