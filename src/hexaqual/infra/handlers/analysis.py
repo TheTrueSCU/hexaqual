@@ -378,11 +378,27 @@ class FuzzRunHandler:
         Notes/Architectural Intent:
             Delegates execution to harness runners and standardizes metrics.
         """
-        raw_results = run_target_fuzz(
-            target=command.target,
-            runs=command.runs,
-            engine=command.engine,
-        )
+        try:
+            raw_results = run_target_fuzz(
+                target=command.target,
+                runs=command.runs,
+                engine=command.engine,
+            )
+        except (FileNotFoundError, ValueError):
+            return FuzzRunReport(
+                results=(
+                    FuzzTargetResult(
+                        target=command.target,
+                        engine=command.engine,
+                        runs=0,
+                        duration_seconds=0.0,
+                        crashes=1,
+                        redos_violations=0,
+                        passed=False,
+                    ),
+                ),
+                all_passed=False,
+            )
 
         results: list[FuzzTargetResult] = []
         for r in raw_results:

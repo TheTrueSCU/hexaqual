@@ -214,3 +214,90 @@ def test_run_target_fuzz_missing_harnesses() -> None:
         pytest.raises(FileNotFoundError, match="No fuzz test harnesses discovered"),
     ):
         run_target_fuzz(target="all", runs=10)
+
+
+def test_fuzz_run_handler_handles_missing_harness_gracefully(tmp_path: Path) -> None:
+    """Verify FuzzRunHandler returns failed report instead of crashing on missing harnesses."""
+    handler = FuzzRunHandler(root=tmp_path)
+    with patch(
+        "hexaqual.infra.handlers.analysis.run_target_fuzz",
+        side_effect=FileNotFoundError("No harnesses found"),
+    ):
+        report = handler.handle(FuzzRunCommand(target="all"))
+        assert report.all_passed is False
+        assert len(report.results) == 1
+        assert report.results[0].passed is False
+        assert report.results[0].crashes == 1
+
+
+def test_load_fuzz_module_reraises_dependency_error(tmp_path: Path) -> None:
+    """Verify _load_fuzz_module re-raises ModuleNotFoundError for harness dependencies."""
+    import pytest
+
+    from hexaqual.infra.handlers.analysis import _load_fuzz_module
+
+    with (
+        patch(
+            "importlib.import_module",
+            side_effect=ModuleNotFoundError("No module named 'dep'", name="dep"),
+        ),
+        pytest.raises(ModuleNotFoundError, match="No module named 'dep'"),
+    ):
+        _load_fuzz_module(
+            name_hints=("sanitizer",), legacy_module="fuzz.fuzz_log_sanitizer", repo_root=tmp_path
+        )
+
+
+def test_run_target_fuzz_required_targets_not_found(tmp_path: Path) -> None:
+    """Verify specific targets raise FileNotFoundError if their harness is not found."""
+    import pytest
+
+    from hexaqual.infra.handlers.analysis import run_target_fuzz
+
+    with (
+        patch("hexaqual.infra.handlers.analysis._load_fuzz_module", return_value=None),
+        patch("hexaqual.infra.handlers.analysis.get_repo_root", return_value=tmp_path),
+    ):
+        with pytest.raises(FileNotFoundError, match="sanitizer"):
+            run_target_fuzz(target="sanitizer", runs=10)
+
+        with pytest.raises(FileNotFoundError, match="proto"):
+            run_target_fuzz(target="proto", runs=10)
+
+    with (
+        patch("hexaqual.infra.handlers.analysis._run_owasp_target", return_value=None),
+        patch("hexaqual.infra.handlers.analysis.get_repo_root", return_value=tmp_path),
+        pytest.raises(FileNotFoundError, match="OWASP"),
+    ):
+        run_target_fuzz(target="owasp", runs=10)
+
+
+def test_run_owasp_target_execution(tmp_path: Path) -> None:
+    """Verify _run_owasp_target executes pytest command when harness is present."""
+    from hexaqual.infra.handlers.analysis import _run_owasp_target
+
+    owasp_file = tmp_path / "tests" / "test_owasp.py"
+    owasp_file.parent.mkdir(parents=True)
+    owasp_file.touch()
+
+    mock_proc = MagicMock(returncode=0)
+    with patch("subprocess.run", return_value=mock_proc):
+        res = _run_owasp_target(tmp_path, runs=50)
+        assert res is not None
+        assert res["passed"] is True
+        assert res["runs"] == 50
+
+
+def test_load_fuzz_module_from_spec(tmp_path: Path) -> None:
+    """Verify _load_fuzz_module dynamically imports a harness via spec loader."""
+    from hexaqual.infra.handlers.analysis import _load_fuzz_module
+
+    fuzz_file = tmp_path / "tests" / "fuzz" / "fuzz_custom_sanitizer.py"
+    fuzz_file.parent.mkdir(parents=True)
+    fuzz_file.write_text("EXPORTED_VAR = 42\n", encoding="utf-8")
+
+    mod = _load_fuzz_module(
+        name_hints=("custom_sanitizer",), legacy_module="fuzz.nonexistent", repo_root=tmp_path
+    )
+    assert mod is not None
+    assert getattr(mod, "EXPORTED_VAR", None) == 42

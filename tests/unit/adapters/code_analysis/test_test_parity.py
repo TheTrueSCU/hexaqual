@@ -104,3 +104,11 @@ def test_test_parity_analyzer_class(tmp_path: Path) -> None:
     analyzer = TestParityAnalyzer()
     assert analyzer.audit_parity(tmp_path) == []
     assert analyzer.audit_architecture_parity(tmp_path) == []
+
+
+def test_check_package_parity_no_src_dir(tmp_path: Path) -> None:
+    """Verify check_package_parity handles package without src directory."""
+    pkg_dir = tmp_path / "packages" / "no_src_pkg"
+    pkg_dir.mkdir(parents=True)
+    errors = check_package_parity(pkg_dir, tmp_path)
+    assert errors == []
