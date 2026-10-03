@@ -112,6 +112,26 @@ def test_gh_pr_watch_breaks_on_completed() -> None:
         assert mock_pres.present_pr_summary.called
 
 
+def test_gh_pr_watch_breaks_on_closed() -> None:
+    """Test gh pr --watch terminates when PR state is closed."""
+    mock_bus = MagicMock()
+    mock_rep = MagicMock()
+    mock_rep.summary.check_runs = []
+    mock_rep.summary.state = "closed"
+    mock_bus.dispatch.return_value = mock_rep
+    with (
+        patch("hexaqual.infra.bootstrap.create_governance_bus", return_value=mock_bus),
+        patch("hexaqual.adapters.presenters.github.create_github_presenter") as mock_create_pres,
+    ):
+        mock_pres = MagicMock()
+        mock_pres.present_pr_summary.return_value = 0
+        mock_create_pres.return_value = mock_pres
+
+        res = runner.invoke(gh_app, ["pr", "42", "--watch"])
+        assert res.exit_code == 0
+        assert mock_pres.present_pr_summary.called
+
+
 def test_gh_code_scanning() -> None:
     """Test gh code-scanning command."""
     mock_bus = MagicMock()

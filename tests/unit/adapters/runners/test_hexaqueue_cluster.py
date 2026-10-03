@@ -464,3 +464,34 @@ def test_poll_run_progress_timeout(monkeypatch: pytest.MonkeyPatch) -> None:
         client=client_success, run_id="r-success-cancel"
     )
     assert exit_code_success == 2
+
+
+def test_stream_run_progress_timeout(tmp_path: Path) -> None:
+    """Verify _stream_run_progress breaks and delegates to polling on timeout."""
+
+    def mock_handler(request: httpx.Request) -> httpx.Response:
+        if request.url.path == "/v1/runs" and request.method == "POST":
+            return httpx.Response(status_code=201, json={"run_id": "r-stream-to"})
+        if "/stream" in request.url.path:
+            return httpx.Response(
+                status_code=200,
+                text='data: {"state": "RUNNING", "completed_jobs": 0, "total_jobs": 1}\n\n',
+            )
+        if "/cancel" in request.url.path:
+            return httpx.Response(status_code=200, json={"status": "cancelled"})
+        if request.url.path.startswith("/v1/runs/"):
+            return httpx.Response(status_code=200, json={"state": "RUNNING"})
+        return httpx.Response(status_code=404)
+
+    client = httpx.Client(
+        transport=httpx.MockTransport(mock_handler), base_url="http://cluster.local:8000"
+    )
+    adapter = HexaqueueClusterRunnerAdapter(
+        cluster_url="http://cluster.local:8000",
+        poll_interval=0.01,
+        timeout=-1.0,
+        http_client=client,
+        console=Console(quiet=True),
+    )
+    code = adapter.execute_pytest(test_nodes=["tests/test_foo.py"], cwd=tmp_path)
+    assert code == 2
