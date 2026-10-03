@@ -200,3 +200,17 @@ def test_run_target_fuzz_valid_targets() -> None:
 
         res_owasp = run_target_fuzz(target="owasp", runs=10)
         assert len(res_owasp) == 1
+
+
+def test_run_target_fuzz_missing_harnesses() -> None:
+    """Verify run_target_fuzz raises FileNotFoundError when no harnesses are present."""
+    import pytest
+
+    from hexaqual.infra.handlers.analysis import run_target_fuzz
+
+    with (
+        patch("hexaqual.infra.handlers.analysis._load_fuzz_module", return_value=None),
+        patch("hexaqual.infra.handlers.analysis._run_owasp_target", return_value=None),
+        pytest.raises(FileNotFoundError, match="No fuzz test harnesses discovered"),
+    ):
+        run_target_fuzz(target="all", runs=10)

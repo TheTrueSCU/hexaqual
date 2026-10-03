@@ -327,10 +327,18 @@ class HexaqueueClusterRunnerAdapter(TestingRunnerPort):
         stream_url = f"{self._cluster_url}/v1/runs/{run_id}/stream"
         start_time = time.time()
         params = {"poll_interval": self._poll_interval, "timeout": self._timeout}
+        stream_timeout = httpx.Timeout(
+            timeout=float(self._timeout),
+            read=min(max(float(self._poll_interval) * 3, 5.0), float(self._timeout)),
+        )
 
         try:
             with client.stream(
-                "GET", stream_url, params=params, headers=self._get_headers()
+                "GET",
+                stream_url,
+                params=params,
+                headers=self._get_headers(),
+                timeout=stream_timeout,
             ) as stream_resp:
                 if stream_resp.status_code == 200:
                     for line in stream_resp.iter_lines():

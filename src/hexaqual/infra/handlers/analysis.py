@@ -215,6 +215,11 @@ def run_target_fuzz(
         elif target == "owasp":
             raise FileNotFoundError("OWASP fuzz harness not found in repository.")
 
+    if not results:
+        raise FileNotFoundError(
+            f"No fuzz test harnesses discovered in repository for target '{target}'."
+        )
+
     return results
 
 
@@ -391,7 +396,7 @@ class FuzzRunHandler:
                 )
             )
 
-        all_ok = all(r.passed for r in results) if results else True
+        all_ok = all(r.passed for r in results) if results else False
         return FuzzRunReport(results=tuple(results), all_passed=all_ok)
 
 
