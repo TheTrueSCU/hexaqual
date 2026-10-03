@@ -86,9 +86,11 @@ class RichAnalysisPresenterAdapter(AnalysisPresenterPort):
             return 0
 
         if report.error_message:
+            from rich.markup import escape
+
             self.console.print(
                 Panel.fit(
-                    f"[bold red]❌ {report.error_message}[/bold red]",
+                    f"[bold red]❌ {escape(report.error_message)}[/bold red]",
                     border_style="red",
                 )
             )
