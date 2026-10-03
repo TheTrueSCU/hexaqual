@@ -86,6 +86,7 @@ class FuzzRunReport:
     Attributes:
         results: Tuple of individual target run results.
         all_passed: True if all targeted fuzz harnesses passed cleanly.
+        error_message: Optional setup or harness discovery error message.
 
     Notes/Architectural Intent:
         Aggregates security fuzzing metrics across Atheris and OWASP targets.
@@ -93,6 +94,7 @@ class FuzzRunReport:
 
     results: tuple[FuzzTargetResult, ...] = ()
     all_passed: bool = True
+    error_message: str | None = None
 
 
 class FuzzRunCommand(Command):

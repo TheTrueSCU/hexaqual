@@ -51,13 +51,7 @@ class AlphabetizeCodeHandler:
     def _process_file(self, file_path: Path, dry_run: bool) -> tuple[str, bool]:
         rel = self._to_rel_path(file_path)
         try:
-            if dry_run:
-                content = file_path.read_text(encoding="utf-8")
-                changed = sort_python_file(file_path)
-                if changed:
-                    file_path.write_text(content, encoding="utf-8")
-                return rel, changed
-            changed = sort_python_file(file_path)
+            changed = sort_python_file(file_path, write=not dry_run)
             return rel, changed
         except Exception:
             return rel, False

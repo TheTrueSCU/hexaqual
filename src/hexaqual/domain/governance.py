@@ -172,6 +172,22 @@ class CheckDiagramsCommand(Command):
     precomputed_result: Any = UNSET
 
 
+def resolve_default_parallelism() -> int:
+    """Calculate default worker concurrency width (num_cores - 2, minimum 1).
+
+    Returns:
+        Default concurrency width integer.
+
+    Notes/Architectural Intent:
+        Mirrors pytest-xdist 'auto' allocation, reserving two CPU cores for OS,
+        editor, and terminal responsiveness while maximizing pipeline throughput.
+    """
+    import os
+
+    cores = os.cpu_count() or 1
+    return max(1, cores - 2)
+
+
 class RunSanityCheckCommand(Command):
     """Composite command orchestrating full sanity check battery across targets."""
 
@@ -187,23 +203,7 @@ class RunSanityCheckCommand(Command):
     skip_diagrams: bool = False
     skip_steps: tuple[str, ...] = ()
     max_complexity: int = 25
-    parallelism: int = Field(default_factory=lambda: resolve_default_parallelism())
-
-
-def resolve_default_parallelism() -> int:
-    """Calculate default worker concurrency width (num_cores - 2, minimum 1).
-
-    Returns:
-        Default concurrency width integer.
-
-    Notes/Architectural Intent:
-        Mirrors pytest-xdist 'auto' allocation, reserving two CPU cores for OS,
-        editor, and terminal responsiveness while maximizing pipeline throughput.
-    """
-    import os
-
-    cores = os.cpu_count() or 1
-    return max(1, cores - 2)
+    parallelism: int = Field(default_factory=resolve_default_parallelism)
 
 
 def resolve_parallelism(value: str | int | None = None) -> int:

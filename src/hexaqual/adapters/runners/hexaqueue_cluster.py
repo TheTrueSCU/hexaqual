@@ -14,6 +14,7 @@ import contextlib
 import json
 import logging
 import time
+import urllib.parse
 from pathlib import Path
 from typing import Any
 from uuid import uuid4
@@ -81,15 +82,16 @@ class HexaqueueClusterRunnerAdapter(TestingRunnerPort):
         """Enforce TLS for remote credential transmission (CWE-319)."""
         if not self._token:
             return
-        url_lower = self._cluster_url.lower()
-        is_local = (
-            url_lower.startswith("http://localhost")
-            or url_lower.startswith("http://127.0.0.1")
-            or url_lower.startswith("http://[::1]")
-            or url_lower.startswith("http://testcluster")
-            or url_lower.startswith("http://local-cluster")
+        parsed = urllib.parse.urlsplit(self._cluster_url)
+        hostname = (parsed.hostname or "").lower()
+        is_local = hostname in (
+            "localhost",
+            "127.0.0.1",
+            "::1",
+            "testcluster",
+            "local-cluster",
         )
-        if url_lower.startswith("http://") and not is_local:
+        if parsed.scheme.lower() == "http" and not is_local:
             raise ValueError(
                 f"Insecure transport: Bearer token cannot be transmitted over unencrypted HTTP ({self._cluster_url}). "
                 "Use HTTPS for remote cluster authentication."
@@ -324,13 +326,23 @@ class HexaqueueClusterRunnerAdapter(TestingRunnerPort):
         stream_url = f"{self._cluster_url}/v1/runs/{run_id}/stream"
         start_time = time.time()
         params = {"poll_interval": self._poll_interval, "timeout": self._timeout}
+        stream_timeout = httpx.Timeout(
+            timeout=float(self._timeout),
+            read=min(max(float(self._poll_interval) * 3, 5.0), float(self._timeout)),
+        )
 
         try:
             with client.stream(
-                "GET", stream_url, params=params, headers=self._get_headers()
+                "GET",
+                stream_url,
+                params=params,
+                headers=self._get_headers(),
+                timeout=stream_timeout,
             ) as stream_resp:
                 if stream_resp.status_code == 200:
                     for line in stream_resp.iter_lines():
+                        if time.time() - start_time > self._timeout:
+                            break
                         if not line:
                             continue
                         if line.startswith("data: "):

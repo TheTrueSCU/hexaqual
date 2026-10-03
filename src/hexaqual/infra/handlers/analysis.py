@@ -69,10 +69,15 @@ def _load_fuzz_module(
                 spec.loader.exec_module(mod)
                 return mod
 
-    return importlib.import_module(legacy_module)
+    try:
+        return importlib.import_module(legacy_module)
+    except ModuleNotFoundError as exc:
+        if exc.name and (exc.name == legacy_module or legacy_module.startswith(f"{exc.name}.")):
+            return None
+        raise
 
 
-def _run_owasp_target(repo_root: Path, runs: int) -> dict[str, Any]:
+def _run_owasp_target(repo_root: Path, runs: int) -> dict[str, Any] | None:
     """Execute the OWASP Hypothesis property security test suite."""
     start_time = time.perf_counter()
     owasp_path = (
@@ -84,6 +89,8 @@ def _run_owasp_target(repo_root: Path, runs: int) -> dict[str, Any]:
             matches = list(repo_root.glob("tests/**/*owasp*.py"))
         if matches:
             owasp_path = matches[0]
+        else:
+            return None
 
     cmd = [
         sys.executable,
@@ -107,6 +114,49 @@ def _run_owasp_target(repo_root: Path, runs: int) -> dict[str, Any]:
     }
 
 
+def _run_sanitizer_target(
+    repo_root: Path,
+    runs: int,
+    engine: str,
+    use_atheris: bool,
+    required: bool,
+) -> dict[str, Any] | None:
+    """Execute sanitizer fuzz target if present."""
+    mod = _load_fuzz_module(
+        name_hints=("sanitizer", "log_sanitizer"),
+        legacy_module="fuzz.fuzz_log_sanitizer",
+        repo_root=repo_root,
+    )
+    if mod:
+        runner = mod.run_atheris if use_atheris and engine != "standalone" else mod.run_standalone
+        return runner(runs=runs)
+    if required:
+        raise FileNotFoundError("Fuzz harness for 'sanitizer' not found in repository.")
+    return None
+
+
+def _run_proto_target(
+    repo_root: Path,
+    runs: int,
+    engine: str,
+    use_atheris: bool,
+    required: bool,
+) -> dict[str, Any] | None:
+    """Execute proto compiler fuzz target if present."""
+    mod = _load_fuzz_module(
+        name_hints=("proto", "proto_compiler"),
+        legacy_module="fuzz.fuzz_proto_compiler",
+        repo_root=repo_root,
+    )
+    if mod:
+        proto_runs = min(runs, 500) if runs > 500 else runs
+        runner = mod.run_atheris if use_atheris and engine != "standalone" else mod.run_standalone
+        return runner(runs=proto_runs)
+    if required:
+        raise FileNotFoundError("Fuzz harness for 'proto' not found in repository.")
+    return None
+
+
 def run_target_fuzz(
     target: str,
     runs: int = 1000,
@@ -124,7 +174,14 @@ def run_target_fuzz(
 
     Raises:
         ValueError: If target name is unrecognized.
+        FileNotFoundError: If a specific requested target harness is not found.
     """
+    valid_targets = {"all", "sanitizer", "proto", "owasp"}
+    if target not in valid_targets:
+        raise ValueError(
+            f"Unknown fuzz target: '{target}'. Choose from 'all', 'sanitizer', 'proto', 'owasp'."
+        )
+
     repo_root = get_repo_root()
     if str(repo_root) not in sys.path:
         sys.path.insert(0, str(repo_root))
@@ -140,38 +197,29 @@ def run_target_fuzz(
             use_atheris = False
 
     if target in ("all", "sanitizer"):
-        mod_san = _load_fuzz_module(
-            name_hints=("sanitizer", "log_sanitizer"),
-            legacy_module="fuzz.fuzz_log_sanitizer",
-            repo_root=repo_root,
+        san_res = _run_sanitizer_target(
+            repo_root, runs, engine, use_atheris, required=(target == "sanitizer")
         )
-        runner = (
-            mod_san.run_atheris
-            if use_atheris and engine != "standalone"
-            else mod_san.run_standalone
-        )
-        results.append(runner(runs=runs))
+        if san_res:
+            results.append(san_res)
 
     if target in ("all", "proto"):
-        mod_proto = _load_fuzz_module(
-            name_hints=("proto", "proto_compiler"),
-            legacy_module="fuzz.fuzz_proto_compiler",
-            repo_root=repo_root,
+        proto_res = _run_proto_target(
+            repo_root, runs, engine, use_atheris, required=(target == "proto")
         )
-        proto_runs = min(runs, 500) if runs > 500 else runs
-        runner = (
-            mod_proto.run_atheris
-            if use_atheris and engine != "standalone"
-            else mod_proto.run_standalone
-        )
-        results.append(runner(runs=proto_runs))
+        if proto_res:
+            results.append(proto_res)
 
     if target in ("all", "owasp"):
-        results.append(_run_owasp_target(repo_root, runs))
+        owasp_res = _run_owasp_target(repo_root, runs)
+        if owasp_res:
+            results.append(owasp_res)
+        elif target == "owasp":
+            raise FileNotFoundError("OWASP fuzz harness not found in repository.")
 
     if not results:
-        raise ValueError(
-            f"Unknown fuzz target: '{target}'. Choose from 'all', 'sanitizer', 'proto', 'owasp'."
+        raise FileNotFoundError(
+            f"No fuzz test harnesses discovered in repository for target '{target}'."
         )
 
     return results
@@ -330,11 +378,28 @@ class FuzzRunHandler:
         Notes/Architectural Intent:
             Delegates execution to harness runners and standardizes metrics.
         """
-        raw_results = run_target_fuzz(
-            target=command.target,
-            runs=command.runs,
-            engine=command.engine,
-        )
+        try:
+            raw_results = run_target_fuzz(
+                target=command.target,
+                runs=command.runs,
+                engine=command.engine,
+            )
+        except (FileNotFoundError, ValueError) as err:
+            return FuzzRunReport(
+                results=(
+                    FuzzTargetResult(
+                        target=command.target,
+                        engine=command.engine,
+                        runs=0,
+                        duration_seconds=0.0,
+                        crashes=0,
+                        redos_violations=0,
+                        passed=False,
+                    ),
+                ),
+                all_passed=False,
+                error_message=str(err),
+            )
 
         results: list[FuzzTargetResult] = []
         for r in raw_results:
@@ -350,7 +415,7 @@ class FuzzRunHandler:
                 )
             )
 
-        all_ok = all(r.passed for r in results) if results else True
+        all_ok = all(r.passed for r in results) if results else False
         return FuzzRunReport(results=tuple(results), all_passed=all_ok)
 
 

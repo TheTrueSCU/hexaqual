@@ -70,6 +70,7 @@ class FileSystemAgentAssetAdapter(AgentAssetPort):
             if res_path.is_dir():
                 return res_path
         except (ModuleNotFoundError, TypeError, ValueError):
+            # Fall back to local repository development tree if package is not installed as wheel
             pass
 
         # Fallback to local source tree if running in development mode

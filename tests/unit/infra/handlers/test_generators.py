@@ -299,3 +299,26 @@ def test_build_tools_usage_markdown_multi_command(tmp_path: Path) -> None:
         md = build_tools_usage_markdown(tmp_path)
         assert "Complete Command & Subcommand Reference" in md
         assert "### `tool_a` (aliases: `ta`)" in md
+
+
+def test_resolve_workspace_commands_invalid_toml(tmp_path: Path) -> None:
+    """Verify _resolve_workspace_commands gracefully ignores corrupted pyproject.toml."""
+    from hexaqual.infra.handlers.generators import _resolve_workspace_commands
+
+    pyproj = tmp_path / "pyproject.toml"
+    pyproj.write_bytes(b"\xff\xfe\x00\x00invalid")
+    res = _resolve_workspace_commands(tmp_path)
+    assert res == {tmp_path.name: []}
+
+
+def test_discover_usage_targets_invalid_toml(tmp_path: Path) -> None:
+    """Verify discover_usage_targets ignores corrupted pyproject.toml in root and packages."""
+    from hexaqual.infra.handlers.generators import discover_usage_targets
+
+    pyproj = tmp_path / "pyproject.toml"
+    pyproj.write_bytes(b"\xff\xfe\x00\x00invalid")
+    pkg_dir = tmp_path / "packages" / "bad_pkg"
+    pkg_dir.mkdir(parents=True)
+    (pkg_dir / "pyproject.toml").write_bytes(b"\xff\xfe\x00\x00invalid")
+    res = discover_usage_targets(tmp_path)
+    assert res == {}

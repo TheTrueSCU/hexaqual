@@ -76,6 +76,12 @@ def gh_pr(
         exit_code = presenter.present_pr_summary(rep) or 0
         if not watch:
             break
+        if rep.summary.state.lower() in ("closed", "merged"):
+            break
+        if rep.summary.check_runs and all(
+            c.status.lower() == "completed" for c in rep.summary.check_runs
+        ):
+            break
         time.sleep(15)
 
     if exit_code != 0:
@@ -150,18 +156,22 @@ def gh_repo(
 
 @gh_app.command("security")
 def gh_security(
+    pr_number: int = typer.Argument(
+        ..., help="Pull request number to inspect security review comments for."
+    ),
     format_type: str = typer.Option("auto", "-f", "--format", help="Output format."),
 ) -> None:
-    """Summarize GitHub security advisories and Dependabot alerts.
+    """Summarize review discussions and security comments on a PR.
 
     Args:
+        pr_number: Pull request number.
         format_type: Output format.
 
     Raises:
-        typer.Exit: If security alerts found or query fails.
+        typer.Exit: If security comments check fails or query fails.
 
     Notes/Architectural Intent:
-        Queries Dependabot security alerts and advisories.
+        Queries PR review discussions and security comment threads.
     """
     from hexaqual.adapters.github.client import GitHubHttpAdapter
     from hexaqual.adapters.presenters.github import create_github_presenter
@@ -172,7 +182,7 @@ def gh_security(
     root = get_repo_root()
     with GitHubHttpAdapter() as client:
         bus = create_governance_bus(github_client=client, repo_root=root)
-        rep = bus.dispatch(InspectSecurityCommentsCommand(pr_number=0))
+        rep = bus.dispatch(InspectSecurityCommentsCommand(pr_number=pr_number))
     presenter = create_github_presenter(output_format=format_type)
     exit_code = presenter.present_security_comments(rep) or 0
     if exit_code != 0:
