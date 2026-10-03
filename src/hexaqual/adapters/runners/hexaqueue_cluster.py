@@ -90,8 +90,7 @@ class HexaqueueClusterRunnerAdapter(TestingRunnerPort):
             "::1",
             "testcluster",
             "local-cluster",
-            "cluster.local",
-        ) or hostname.endswith(".local")
+        )
         if parsed.scheme.lower() == "http" and not is_local:
             raise ValueError(
                 f"Insecure transport: Bearer token cannot be transmitted over unencrypted HTTP ({self._cluster_url}). "
