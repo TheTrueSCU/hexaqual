@@ -14,8 +14,6 @@ from concurrent.futures import ProcessPoolExecutor
 from pathlib import Path
 from typing import Any
 
-from pydeps.pydeps import pydeps
-
 from hexaqual.adapters.workspace import (
     ensure_tool_installed,
     get_package_directories,
@@ -26,6 +24,27 @@ from hexaqual.domain.governance import (
     CheckStatus,
     SanityTarget,
 )
+
+try:
+    from pydeps.pydeps import pydeps
+except ImportError:
+    pydeps = None  # type: ignore[assignment]
+
+
+def _run_pydeps(**kwargs: Any) -> None:
+    """Execute pydeps safely with runtime import check.
+
+    Args:
+        **kwargs: Arguments forwarded to pydeps().
+
+    Raises:
+        RuntimeError: If pydeps is not installed.
+    """
+    if pydeps is None:
+        msg = "pydeps is required for diagram generation. Install with `pip install hexaqual[diagrams]`."
+        raise RuntimeError(msg)
+    pydeps(**kwargs)
+
 
 __all__ = [
     "audit_single_target_diagram",
@@ -143,7 +162,7 @@ def generate_package_diagram(pkg_path: Path, root: Path) -> str | None:
         return None
 
     try:
-        pydeps(
+        _run_pydeps(
             fname=str(entry_point),
             format="svg",
             output=str(svg_path),
@@ -188,7 +207,7 @@ def check_package_diagram(pkg_path: Path, root: Path) -> tuple[bool, str]:
     try:
         with tempfile.TemporaryDirectory() as tmpdir:
             tmp_svg = Path(tmpdir) / svg_path.name
-            pydeps(
+            _run_pydeps(
                 fname=str(entry_point),
                 format="svg",
                 output=str(tmp_svg),
@@ -322,7 +341,7 @@ def generate_overview_diagram(root: Path) -> str | None:
         return None
 
     try:
-        pydeps(
+        _run_pydeps(
             fname=str(packages_dir),
             format="svg",
             output=str(svg_path),
@@ -366,7 +385,7 @@ def check_overview_diagram(root: Path) -> tuple[bool, str]:
     try:
         with tempfile.TemporaryDirectory() as tmpdir:
             tmp_svg = Path(tmpdir) / svg_path.name
-            pydeps(
+            _run_pydeps(
                 fname=str(packages_dir),
                 format="svg",
                 output=str(tmp_svg),

@@ -137,10 +137,10 @@ def check_package_parity(pkg_dir: Path, repo_root: Path) -> list[str]:
     errors: list[str] = []
     errors.extend(check_test_directories_inits(pkg_dir))
 
-    src_dir = pkg_dir / "src" / pkg_dir.name
+    src_dir = get_package_module_dir(pkg_dir)
     unit_tests_dir = pkg_dir / "tests" / "unit"
 
-    if src_dir.exists() and unit_tests_dir.exists():
+    if src_dir and src_dir.exists() and unit_tests_dir.exists():
         errors.extend(_check_package_src_symmetry(pkg_dir, repo_root, src_dir, unit_tests_dir))
         errors.extend(_check_package_test_symmetry(pkg_dir, repo_root, src_dir, unit_tests_dir))
 

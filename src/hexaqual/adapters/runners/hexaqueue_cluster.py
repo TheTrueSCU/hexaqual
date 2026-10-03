@@ -14,6 +14,7 @@ import contextlib
 import json
 import logging
 import time
+import urllib.parse
 from pathlib import Path
 from typing import Any
 from uuid import uuid4
@@ -81,15 +82,17 @@ class HexaqueueClusterRunnerAdapter(TestingRunnerPort):
         """Enforce TLS for remote credential transmission (CWE-319)."""
         if not self._token:
             return
-        url_lower = self._cluster_url.lower()
-        is_local = (
-            url_lower.startswith("http://localhost")
-            or url_lower.startswith("http://127.0.0.1")
-            or url_lower.startswith("http://[::1]")
-            or url_lower.startswith("http://testcluster")
-            or url_lower.startswith("http://local-cluster")
-        )
-        if url_lower.startswith("http://") and not is_local:
+        parsed = urllib.parse.urlsplit(self._cluster_url)
+        hostname = (parsed.hostname or "").lower()
+        is_local = hostname in (
+            "localhost",
+            "127.0.0.1",
+            "::1",
+            "testcluster",
+            "local-cluster",
+            "cluster.local",
+        ) or hostname.endswith(".local")
+        if parsed.scheme.lower() == "http" and not is_local:
             raise ValueError(
                 f"Insecure transport: Bearer token cannot be transmitted over unencrypted HTTP ({self._cluster_url}). "
                 "Use HTTPS for remote cluster authentication."
@@ -331,6 +334,8 @@ class HexaqueueClusterRunnerAdapter(TestingRunnerPort):
             ) as stream_resp:
                 if stream_resp.status_code == 200:
                     for line in stream_resp.iter_lines():
+                        if time.time() - start_time > self._timeout:
+                            break
                         if not line:
                             continue
                         if line.startswith("data: "):

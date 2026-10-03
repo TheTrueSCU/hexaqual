@@ -126,3 +126,20 @@ def test_fetch_scorecard_success(mock_urlopen: MagicMock) -> None:
     assert len(res.checks) == 2
     assert res.checks[0].name == "Dangerous-Workflow"
     assert res.checks[0].score == 10
+
+
+@patch("urllib.request.urlopen")
+def test_fetch_scorecard_formats(mock_urlopen: MagicMock) -> None:
+    """Test fetch_scorecard with git SSH and HTTPS URLs."""
+    payload = {"date": "2026-09-27", "score": 8.0, "checks": []}
+    mock_resp = MagicMock()
+    mock_resp.read.return_value = json.dumps(payload).encode("utf-8")
+    mock_resp.__enter__.return_value = mock_resp
+    mock_urlopen.return_value = mock_resp
+
+    adapter = OpenSsfScorecardAdapter(base_url="https://test.securityscorecards.dev")
+    res1 = adapter.fetch_scorecard("git@github.com:TheTrueSCU/hexastack.git")
+    assert res1.repo == "github.com/TheTrueSCU/hexastack"
+
+    res2 = adapter.fetch_scorecard("https://github.com/TheTrueSCU/hexastack.git")
+    assert res2.repo == "github.com/TheTrueSCU/hexastack"
