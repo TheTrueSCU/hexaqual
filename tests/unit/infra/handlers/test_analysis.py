@@ -225,9 +225,10 @@ def test_fuzz_run_handler_handles_missing_harness_gracefully(tmp_path: Path) -> 
     ):
         report = handler.handle(FuzzRunCommand(target="all"))
         assert report.all_passed is False
+        assert report.error_message == "No harnesses found"
         assert len(report.results) == 1
         assert report.results[0].passed is False
-        assert report.results[0].crashes == 1
+        assert report.results[0].crashes == 0
 
 
 def test_load_fuzz_module_reraises_dependency_error(tmp_path: Path) -> None:

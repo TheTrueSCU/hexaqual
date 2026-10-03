@@ -384,7 +384,7 @@ class FuzzRunHandler:
                 runs=command.runs,
                 engine=command.engine,
             )
-        except (FileNotFoundError, ValueError):
+        except (FileNotFoundError, ValueError) as err:
             return FuzzRunReport(
                 results=(
                     FuzzTargetResult(
@@ -392,12 +392,13 @@ class FuzzRunHandler:
                         engine=command.engine,
                         runs=0,
                         duration_seconds=0.0,
-                        crashes=1,
+                        crashes=0,
                         redos_violations=0,
                         passed=False,
                     ),
                 ),
                 all_passed=False,
+                error_message=str(err),
             )
 
         results: list[FuzzTargetResult] = []
