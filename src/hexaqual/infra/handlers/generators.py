@@ -57,7 +57,7 @@ def _resolve_workspace_commands(root: Path) -> dict[str, list[str]]:
             try:
                 data = tomllib.loads(pyproject_path.read_text(encoding="utf-8"))
                 scripts = data.get("project", {}).get("scripts", {})
-            except (OSError, tomllib.TOMLDecodeError):
+            except (OSError, tomllib.TOMLDecodeError, UnicodeError):
                 # Ignore unreadable or invalid pyproject.toml
                 pass
 
@@ -69,7 +69,7 @@ def _resolve_workspace_commands(root: Path) -> dict[str, list[str]]:
             try:
                 data = tomllib.loads(pyproj.read_text(encoding="utf-8"))
                 name = data.get("project", {}).get("name", root.name)
-            except (OSError, tomllib.TOMLDecodeError):
+            except (OSError, tomllib.TOMLDecodeError, UnicodeError):
                 # Ignore unreadable or invalid pyproject.toml
                 pass
         commands_map = {name: []}
@@ -279,7 +279,7 @@ def discover_usage_targets(root: Path) -> dict[str, Path]:
             if data.get("project", {}).get("scripts"):
                 name = data.get("project", {}).get("name", root.name)
                 targets[name] = root / "USAGE.md"
-        except (OSError, tomllib.TOMLDecodeError):
+        except (OSError, tomllib.TOMLDecodeError, UnicodeError):
             # Ignore unreadable or invalid pyproject.toml
             pass
 
@@ -293,7 +293,7 @@ def discover_usage_targets(root: Path) -> dict[str, Path]:
                     if data.get("project", {}).get("scripts"):
                         name = data.get("project", {}).get("name", pkg_dir.name)
                         targets[name] = pkg_dir / "USAGE.md"
-                except (OSError, tomllib.TOMLDecodeError):
+                except (OSError, tomllib.TOMLDecodeError, UnicodeError):
                     # Ignore unreadable or invalid pyproject.toml
                     pass
 

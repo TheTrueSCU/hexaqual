@@ -71,8 +71,10 @@ def _load_fuzz_module(
 
     try:
         return importlib.import_module(legacy_module)
-    except ModuleNotFoundError:
-        return None
+    except ModuleNotFoundError as exc:
+        if exc.name and (exc.name == legacy_module or legacy_module.startswith(f"{exc.name}.")):
+            return None
+        raise
 
 
 def _run_owasp_target(repo_root: Path, runs: int) -> dict[str, Any] | None:
