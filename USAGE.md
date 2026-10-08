@@ -594,6 +594,18 @@ Usage: hexaqual gh [OPTIONS] COMMAND [ARGS]...
 │ code-scanning  Query CodeQL alerts and scanning status.                      │
 │ codeql         Run local CodeQL security and quality analysis with           │
 │                auto-detection.                                               │
+│ resolve        Resolve open review discussion threads on a Pull Request via  │
+│                GitHub GraphQL.                                               │
+╰──────────────────────────────────────────────────────────────────────────────╯
+```
+
+#### `hexaqual gh GitHub`
+
+```text
+Usage: hexaqual gh [OPTIONS] COMMAND [ARGS]...
+Try 'hexaqual gh --help' for help.
+╭─ Error ──────────────────────────────────────────────────────────────────────╮
+│ No such command 'GitHub'.                                                    │
 ╰──────────────────────────────────────────────────────────────────────────────╯
 ```
 
@@ -732,6 +744,37 @@ Usage: hexaqual gh repo [OPTIONS] [repo_name]
 ╰──────────────────────────────────────────────────────────────────────────────╯
 ╭─ Options ────────────────────────────────────────────────────────────────────╮
 │ --format  -f      <str>  Output format. [default: auto]                      │
+│ --help                   Show this message and exit.                         │
+╰──────────────────────────────────────────────────────────────────────────────╯
+```
+
+#### `hexaqual gh resolve`
+
+```text
+Usage: hexaqual gh resolve [OPTIONS] {pr_number}
+
+ Resolve open review discussion threads on a Pull Request via GitHub GraphQL.
+
+ Args:
+     pr_number: Pull request number.
+     bot_only: If True, only auto-resolve comments authored by bot accounts.
+
+ Raises:
+     typer.Exit: If thread retrieval or resolution encounters critical errors.
+
+ Notes/Architectural Intent:
+     Unblocks branch protection policies enforcing
+ 'required_conversation_resolution'
+     by programmatically resolving open review threads.
+
+╭─ Arguments ──────────────────────────────────────────────────────────────────╮
+│ *    pr_number      <str>  Pull request number to resolve threads on.        │
+│                            [required]                                        │
+╰──────────────────────────────────────────────────────────────────────────────╯
+╭─ Options ────────────────────────────────────────────────────────────────────╮
+│ --bot-only    --all      Resolve only automated bot review threads (e.g.     │
+│                          CodeRabbit, Dependabot).                            │
+│                          [default: bot-only]                                 │
 │ --help                   Show this message and exit.                         │
 ╰──────────────────────────────────────────────────────────────────────────────╯
 ```

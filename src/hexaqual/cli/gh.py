@@ -19,6 +19,7 @@ __all__ = [
     "gh_codeql",
     "gh_pr",
     "gh_repo",
+    "gh_resolve",
     "gh_security",
 ]
 
@@ -59,8 +60,23 @@ def gh_pr(
     from hexaqual.adapters.github.client import GitHubHttpAdapter
     from hexaqual.adapters.presenters.github import create_github_presenter
     from hexaqual.adapters.workspace import get_repo_root
+    from hexaqual.cli.options import is_interactive_terminal
     from hexaqual.domain.github import ExaminePrCommand
     from hexaqual.infra.bootstrap import create_governance_bus
+
+    if watch and not is_interactive_terminal():
+        from rich.console import Console
+
+        console = Console(stderr=True)
+        console.print(
+            f"[bold red]❌ Error:[/bold red] The '--watch' ('-w') flag requires an interactive terminal (TTY).\n"
+            f"[dim]Running continuous polling in headless, CI, or automated background environments is unsupported.[/dim]\n\n"
+            f"[yellow]💡 Suggested alternatives:[/yellow]\n"
+            f"  • Run without '-w' for a one-shot snapshot: [cyan]uv run hexaqual gh pr {pr_number}[/cyan]\n"
+            f"  • Inspect check runs directly: [cyan]uv run hexaqual gh checks {pr_number}[/cyan]\n"
+            f"  • Query GitHub CLI natively: [cyan]gh pr checks {pr_number}[/cyan]"
+        )
+        raise typer.Exit(code=1)
 
     root = get_repo_root()
     presenter = create_github_presenter(output_format=format_type)
@@ -265,3 +281,78 @@ def gh_codeql(
     exit_code = presenter.present_codeql(report)
     if exit_code != 0:
         raise typer.Exit(code=exit_code)
+
+
+@gh_app.command("resolve")
+def gh_resolve(
+    pr_number: str = typer.Argument(..., help="Pull request number to resolve threads on."),
+    bot_only: bool = typer.Option(
+        True,
+        "--bot-only/--all",
+        help="Resolve only automated bot review threads (e.g. CodeRabbit, Dependabot).",
+    ),
+) -> None:
+    """Resolve open review discussion threads on a Pull Request via GitHub GraphQL.
+
+    Args:
+        pr_number: Pull request number.
+        bot_only: If True, only auto-resolve comments authored by bot accounts.
+
+    Raises:
+        typer.Exit: If thread retrieval or resolution encounters critical errors.
+
+    Notes/Architectural Intent:
+        Unblocks branch protection policies enforcing 'required_conversation_resolution'
+        by programmatically resolving open review threads.
+    """
+    from rich.console import Console
+
+    from hexaqual.adapters.github.client import GitHubHttpAdapter
+
+    console = Console()
+    with GitHubHttpAdapter() as client:
+        threads = client.get_review_threads(int(pr_number))
+        if not threads:
+            console.print(
+                f"[green]✓ No review discussion threads found on PR #{pr_number}.[/green]"
+            )
+            return
+
+        unresolved = [t for t in threads if not t.is_resolved]
+        if not unresolved:
+            console.print(
+                f"[green]✓ All {len(threads)} review threads on PR #{pr_number} are already resolved.[/green]"
+            )
+            return
+
+        target_threads = []
+        for t in unresolved:
+            if not bot_only:
+                target_threads.append(t)
+            else:
+                is_bot = any(
+                    c.author.lower().endswith(("[bot]", "coderabbitai"))
+                    or c.author.lower() in ("coderabbitai", "github-actions", "dependabot")
+                    for c in t.comments
+                )
+                if is_bot:
+                    target_threads.append(t)
+
+        if not target_threads:
+            console.print(
+                f"[dim]No unresolved matching review threads to resolve on PR #{pr_number}.[/dim]"
+            )
+            return
+
+        resolved_count = 0
+        for t in target_threads:
+            author_snippet = t.comments[0].author if t.comments else "unknown"
+            if client.resolve_review_thread(t.id):
+                resolved_count += 1
+                console.print(f"[green]✓ Resolved thread {t.id} (author: {author_snippet})[/green]")
+            else:
+                console.print(f"[yellow]⚠ Failed to resolve thread {t.id}[/yellow]")
+
+        console.print(
+            f"[bold green]✨ Resolved {resolved_count}/{len(target_threads)} review threads on PR #{pr_number}.[/bold green]"
+        )

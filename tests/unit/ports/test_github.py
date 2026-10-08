@@ -16,6 +16,9 @@ class DummyGitHubAdapter:
     def get_review_threads(self, pr_number: int):
         pass
 
+    def resolve_review_thread(self, thread_id: str):
+        pass
+
     def get_code_scanning_alerts(self, ref=None, state="open"):
         pass
 
