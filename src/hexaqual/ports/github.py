@@ -77,6 +77,16 @@ class GitHubApiPort(Protocol):
             List of ReviewThread models.
         """
 
+    def resolve_review_thread(self, thread_id: str) -> bool:
+        """Resolve a review discussion thread via GitHub GraphQL mutation.
+
+        Args:
+            thread_id: GitHub GraphQL node ID of the review thread.
+
+        Returns:
+            True if resolved successfully, False otherwise.
+        """
+
     def get_code_scanning_alerts(
         self,
         ref: str | None = None,

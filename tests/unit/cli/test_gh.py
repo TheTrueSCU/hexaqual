@@ -102,6 +102,7 @@ def test_gh_pr_watch_breaks_on_completed() -> None:
     with (
         patch("hexaqual.infra.bootstrap.create_governance_bus", return_value=mock_bus),
         patch("hexaqual.adapters.presenters.github.create_github_presenter") as mock_create_pres,
+        patch("hexaqual.cli.options.is_interactive_terminal", return_value=True),
     ):
         mock_pres = MagicMock()
         mock_pres.present_pr_summary.return_value = 0
@@ -122,6 +123,7 @@ def test_gh_pr_watch_breaks_on_closed() -> None:
     with (
         patch("hexaqual.infra.bootstrap.create_governance_bus", return_value=mock_bus),
         patch("hexaqual.adapters.presenters.github.create_github_presenter") as mock_create_pres,
+        patch("hexaqual.cli.options.is_interactive_terminal", return_value=True),
     ):
         mock_pres = MagicMock()
         mock_pres.present_pr_summary.return_value = 0
@@ -203,3 +205,36 @@ def test_gh_codeql_failure() -> None:
     ):
         res = runner.invoke(gh_app, ["codeql"])
         assert res.exit_code == 1
+
+
+def test_gh_pr_watch_headless_guard() -> None:
+    """Test gh pr --watch aborts with code 1 in non-interactive environment."""
+    with patch("hexaqual.cli.options.is_interactive_terminal", return_value=False):
+        res = runner.invoke(gh_app, ["pr", "42", "-w"])
+        assert res.exit_code == 1
+        assert (
+            "requires an interactive terminal" in res.stderr
+            or "requires an interactive terminal" in res.stdout
+        )
+
+
+def test_gh_resolve() -> None:
+    """Test gh resolve command programmatically resolves bot discussion threads."""
+    mock_thread_bot = MagicMock()
+    mock_thread_bot.id = "THREAD_1"
+    mock_thread_bot.is_resolved = False
+    mock_comment_bot = MagicMock()
+    mock_comment_bot.author = "coderabbitai"
+    mock_thread_bot.comments = [mock_comment_bot]
+
+    mock_client = MagicMock()
+    mock_client.get_review_threads.return_value = [mock_thread_bot]
+    mock_client.resolve_review_thread.return_value = True
+
+    with patch("hexaqual.adapters.github.client.GitHubHttpAdapter") as mock_adapter_cls:
+        mock_adapter_cls.return_value.__enter__.return_value = mock_client
+
+        res = runner.invoke(gh_app, ["resolve", "64", "--bot-only"])
+        assert res.exit_code == 0
+        assert mock_client.resolve_review_thread.called
+        assert "Resolved 1/1" in res.stdout
