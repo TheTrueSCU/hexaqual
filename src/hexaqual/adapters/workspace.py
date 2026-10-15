@@ -132,7 +132,7 @@ def _find_workspace_member_dirs(root: Path, root_pyproject: Path) -> list[Path]:
                     if p.is_dir() and (p / "pyproject.toml").is_file():
                         found.append(p.resolve())
             return found
-    except (OSError, tomllib.TOMLDecodeError):
+    except (OSError, tomllib.TOMLDecodeError, UnicodeError):
         # Invalid TOML or unreadable workspace configuration
         pass
     return []
@@ -235,7 +235,7 @@ def _is_single_package_root_match(root_dir: Path, target: str) -> bool:
             p_name = data.get("project", {}).get("name", "")
             if p_name in (target, clean_target, target.replace("_", "-")):
                 return True
-        except (OSError, tomllib.TOMLDecodeError):
+        except (OSError, tomllib.TOMLDecodeError, UnicodeError):
             # Invalid pyproject.toml, fallback to directory heuristics
             pass
     mod_dir = get_package_module_dir(root_dir)
@@ -422,7 +422,7 @@ def get_workspace_scripts(repo_root: Path | None = None) -> dict[str, str]:
         data = tomllib.loads(pyproject_path.read_text(encoding="utf-8"))
         scripts: dict[str, str] = data.get("project", {}).get("scripts", {})
         return scripts
-    except (OSError, tomllib.TOMLDecodeError):
+    except (OSError, tomllib.TOMLDecodeError, UnicodeError):
         return {}
 
 
@@ -478,7 +478,7 @@ def get_package_dependencies(pkg_dir: Path) -> set[str]:
 
     try:
         data = tomllib.loads(pyproject.read_text(encoding="utf-8"))
-    except (OSError, tomllib.TOMLDecodeError):
+    except (OSError, tomllib.TOMLDecodeError, UnicodeError):
         # Unreadable or invalid TOML
         return set()
 

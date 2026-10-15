@@ -71,7 +71,7 @@
   description: Ensure shared .agents rules, workflows, and skills are in sync with hexaqual
   entry: uv run hexaqual agents check
   language: system
-  files: ^(\.agents/|pyproject\.toml|uv\.lock)$
+  files: ^(\.agents/.*|pyproject\.toml|uv\.lock)$
   pass_filenames: false
 
 - id: hexaqual-agents-sync

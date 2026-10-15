@@ -388,7 +388,7 @@ def test_record_medium_url_with_directory(medium_dir: Path) -> None:
         medium_dir=medium_dir,
     )
     assert slug == "test-article"
-    assert "https://medium.com" in msg
+    assert msg == "Recorded Medium URL: https://medium.com/@user/test-article"
 
     slug, msg = record_medium_url(
         slug="test-article",

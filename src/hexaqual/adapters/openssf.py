@@ -193,11 +193,26 @@ class OpenSsfScorecardAdapter(OpenSsfScorecardPort):
             to GitHub target path 'github.com/{owner}/{repo}' expected by Scorecard API.
         """
         clean_repo = repo.strip()
-        clean_repo = re.sub(r"^https?://", "", clean_repo)
-        clean_repo = re.sub(r"^git@", "", clean_repo)
-        clean_repo = re.sub(r"\.git$", "", clean_repo)
-        if not clean_repo.startswith("github.com/"):
-            clean_repo = f"github.com/{clean_repo.lstrip('/')}"
+        if clean_repo.startswith("git@"):
+            clean_repo = re.sub(r"^git@([^:]+):", r"https://\1/", clean_repo)
+
+        if "://" in clean_repo:
+            parsed = urllib.parse.urlsplit(clean_repo)
+            netloc = parsed.netloc.lower()
+            path = parsed.path.strip("/").removesuffix(".git")
+            if netloc in ("github.com", "www.github.com"):
+                clean_repo = f"github.com/{path}"
+            elif netloc:
+                clean_repo = f"{netloc}/{path}"
+            else:
+                clean_repo = f"github.com/{path}"
+        else:
+            clean_repo = clean_repo.removesuffix(".git").strip("/")
+            parts = clean_repo.split("/")
+            if len(parts) >= 2 and parts[0].lower() in ("github.com", "www.github.com"):
+                clean_repo = f"github.com/{'/'.join(parts[1:])}"
+            else:
+                clean_repo = f"github.com/{clean_repo}"
 
         url = f"{self.base_url}/projects/{clean_repo}"
         req = urllib.request.Request(url, headers={"User-Agent": "Hexaqual-OpenSSF/0.5.1"})

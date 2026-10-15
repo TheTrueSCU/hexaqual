@@ -15,6 +15,7 @@ import pytest
 
 from hexaqual.adapters.code_analysis.pydeps import (
     _output_dir,
+    _run_pydeps,
     check_all_diagrams,
     check_overview_diagram,
     check_package_diagram,
@@ -360,3 +361,12 @@ def test_generate_and_check_all_diagrams_execution_modes(tmp_path: Path) -> None
         chk_par = check_all_diagrams(tmp_path, packages=[pkg], parallel=True)
         assert len(chk_par) == 1
         assert chk_par[0] == ("hexastack_core", "pkg.svg", True)
+
+
+def test_run_pydeps_missing_dependency() -> None:
+    """Verify RuntimeError is raised when pydeps is None."""
+    with (
+        patch("hexaqual.adapters.code_analysis.pydeps.pydeps", None),
+        pytest.raises(RuntimeError, match="pydeps is required"),
+    ):
+        _run_pydeps()

@@ -57,7 +57,8 @@ def _resolve_workspace_commands(root: Path) -> dict[str, list[str]]:
             try:
                 data = tomllib.loads(pyproject_path.read_text(encoding="utf-8"))
                 scripts = data.get("project", {}).get("scripts", {})
-            except Exception:
+            except (OSError, tomllib.TOMLDecodeError, UnicodeError):
+                # Ignore unreadable or invalid pyproject.toml
                 pass
 
     commands_map = get_canonical_scripts(scripts)
@@ -68,7 +69,8 @@ def _resolve_workspace_commands(root: Path) -> dict[str, list[str]]:
             try:
                 data = tomllib.loads(pyproj.read_text(encoding="utf-8"))
                 name = data.get("project", {}).get("name", root.name)
-            except Exception:
+            except (OSError, tomllib.TOMLDecodeError, UnicodeError):
+                # Ignore unreadable or invalid pyproject.toml
                 pass
         commands_map = {name: []}
     return commands_map
@@ -277,7 +279,8 @@ def discover_usage_targets(root: Path) -> dict[str, Path]:
             if data.get("project", {}).get("scripts"):
                 name = data.get("project", {}).get("name", root.name)
                 targets[name] = root / "USAGE.md"
-        except Exception:
+        except (OSError, tomllib.TOMLDecodeError, UnicodeError):
+            # Ignore unreadable or invalid pyproject.toml
             pass
 
     packages_dir = root / "packages"
@@ -290,7 +293,8 @@ def discover_usage_targets(root: Path) -> dict[str, Path]:
                     if data.get("project", {}).get("scripts"):
                         name = data.get("project", {}).get("name", pkg_dir.name)
                         targets[name] = pkg_dir / "USAGE.md"
-                except Exception:
+                except (OSError, tomllib.TOMLDecodeError, UnicodeError):
+                    # Ignore unreadable or invalid pyproject.toml
                     pass
 
     return targets
@@ -702,7 +706,25 @@ class GenerateArchonTestsHandler:
             test_lines = [
                 f'"""Hexagonal architecture boundary tests for {pkg_name}."""',
                 "",
-                "from hexastack_core.testing import assert_clean_architecture",
+                "try:",
+                "    from hexastack_core.testing import assert_clean_architecture",
+                "except ImportError:",
+                "    from pytest_archon import archrule",
+                "",
+                "    def assert_clean_architecture(package_name: str) -> None:",
+                '        """Assert hexagonal layer boundary isolation using pytest-archon."""',
+                '        archrule("domain_isolation").match(f"{package_name}.domain*").should_not_import(',
+                '            f"{package_name}.ports*",',
+                '            f"{package_name}.adapters*",',
+                '            f"{package_name}.infra*",',
+                "        ).check(package_name)",
+                '        archrule("ports_isolation").match(f"{package_name}.ports*").should_not_import(',
+                '            f"{package_name}.adapters*",',
+                '            f"{package_name}.infra*",',
+                "        ).check(package_name)",
+                '        archrule("adapters_isolation").match(f"{package_name}.adapters*").should_not_import(',
+                '            f"{package_name}.infra*",',
+                "        ).check(package_name)",
                 "",
                 "",
                 f"def test_{pkg_name.replace('-', '_')}_clean_architecture():",

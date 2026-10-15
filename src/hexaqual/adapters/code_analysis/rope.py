@@ -14,12 +14,10 @@ from rich.console import Console
 from hexaqual.adapters.workspace import (
     HexastackScriptArgumentParser,
     ensure_tool_installed,
-    get_repo_root,
     resolve_target_python_files,
 )
 
 console = Console()
-ROOT_DIR = get_repo_root()
 
 
 class FunctionAndMethodAlphabetizerCST(cst.CSTTransformer):
@@ -59,36 +57,33 @@ class FunctionAndMethodAlphabetizerCST(cst.CSTTransformer):
         return updated_node.with_changes(body=updated_node.body.with_changes(body=new_body))
 
     def leave_Module(self, original_node: cst.Module, updated_node: cst.Module) -> cst.Module:
-        module_header = []
-        functions = []
-        trailing_statements = []
-        collecting_header = True
+        def _sort_run(funcs: list[cst.FunctionDef]) -> list[cst.FunctionDef]:
+            return sorted(funcs, key=lambda f: f.name.value.lower())
 
+        new_body: list[cst.CSTNode] = []
+        current_run: list[cst.FunctionDef] = []
         for stmt in updated_node.body:
             if isinstance(stmt, cst.FunctionDef):
-                collecting_header = False
-                functions.append(stmt)
-            elif self._is_main_guard(stmt):
-                collecting_header = False
-                trailing_statements.append(stmt)
-            elif collecting_header:
-                module_header.append(stmt)
-            else:
-                trailing_statements.append(stmt)
-
-        sorted_functions = sorted(functions, key=lambda f: f.name.value.lower())
-        new_body = module_header + sorted_functions + trailing_statements
+                current_run.append(stmt)
+                continue
+            if current_run:
+                new_body.extend(_sort_run(current_run))
+                current_run = []
+            new_body.append(stmt)
+        if current_run:
+            new_body.extend(_sort_run(current_run))
         return updated_node.with_changes(body=new_body)
 
 
-def sort_python_file(file_path: Path) -> bool:
+def sort_python_file(file_path: Path, write: bool = True) -> bool:
     """Sort functions and class methods in a Python file alphabetically.
 
     Args:
         file_path: Path to target Python file.
+        write: Whether to write changes to disk. Defaults to True.
 
     Returns:
-        True if file content was changed, False otherwise.
+        True if file content was changed (or would be changed), False otherwise.
     """
     try:
         source_code = file_path.read_text(encoding="utf-8")
@@ -96,7 +91,8 @@ def sort_python_file(file_path: Path) -> bool:
         transformer = FunctionAndMethodAlphabetizerCST()
         modified_tree = tree.visit(transformer)
         if modified_tree.code != source_code:
-            file_path.write_text(modified_tree.code, encoding="utf-8")
+            if write:
+                file_path.write_text(modified_tree.code, encoding="utf-8")
             return True
         return False
     except Exception:

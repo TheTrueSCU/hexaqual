@@ -360,14 +360,14 @@ class SubprocessTestingRunnerAdapter(TestingRunnerPort):
             cur = con.cursor()
             query = """
             WITH ArcCoverage AS (
-                SELECT file_id, from_line, to_line, context_id
+                SELECT file_id, fromno, tono, context_id
                 FROM arc
                 WHERE context_id != (SELECT id FROM context WHERE context = '')
             ),
             UniqueCoverage AS (
-                SELECT file_id, from_line, to_line
+                SELECT file_id, fromno, tono
                 FROM ArcCoverage
-                GROUP BY file_id, from_line, to_line
+                GROUP BY file_id, fromno, tono
                 HAVING COUNT(DISTINCT context_id) = 1
             )
             SELECT DISTINCT
@@ -378,8 +378,8 @@ class SubprocessTestingRunnerAdapter(TestingRunnerPort):
                 FROM ArcCoverage ac
                 JOIN UniqueCoverage uc
                   ON ac.file_id = uc.file_id
-                 AND ac.from_line = uc.from_line
-                 AND ac.to_line = uc.to_line
+                 AND ac.fromno = uc.fromno
+                 AND ac.tono = uc.tono
             )
             AND c.context != ''
             ORDER BY c.context

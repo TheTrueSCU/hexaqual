@@ -85,12 +85,22 @@ class RichAnalysisPresenterAdapter(AnalysisPresenterPort):
             )
             return 0
 
-        self.console.print(
-            Panel.fit(
-                "[bold red]❌ One or more fuzzing targets detected crashes or violations.[/bold red]",
-                border_style="red",
+        if report.error_message:
+            from rich.markup import escape
+
+            self.console.print(
+                Panel.fit(
+                    f"[bold red]❌ {escape(report.error_message)}[/bold red]",
+                    border_style="red",
+                )
             )
-        )
+        else:
+            self.console.print(
+                Panel.fit(
+                    "[bold red]❌ One or more fuzzing targets detected crashes or violations.[/bold red]",
+                    border_style="red",
+                )
+            )
         return 1
 
     def present_inline_snapshots(self, report: InlineSnapshotsReport) -> int:
@@ -129,6 +139,7 @@ class JsonAnalysisPresenterAdapter(AnalysisPresenterPort):
         """Format fuzz report as JSON."""
         data = {
             "all_passed": report.all_passed,
+            "error_message": report.error_message,
             "targets": [
                 {
                     "target": r.target,
@@ -197,6 +208,8 @@ class MarkdownAnalysisPresenterAdapter(AnalysisPresenterPort):
                 f"| `{r.target}` | `{r.engine}` | {r.runs} | {r.duration_seconds}s | {r.crashes} | {r.redos_violations} | {status} |"
             )
         lines.append("")
+        if report.error_message:
+            lines.append(f"> ❌ **Error**: {report.error_message}\n")
         self.console.print("\n".join(lines))
         return 0 if report.all_passed else 1
 

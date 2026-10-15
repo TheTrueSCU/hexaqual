@@ -70,6 +70,16 @@ class MyClass:
     assert new_code.find("def bar") < new_code.find("def zoo")
 
 
+def test_cst_alphabetizer_no_write(tmp_path: Path) -> None:
+    """Verify sort_python_file with write=False does not modify file on disk."""
+    py_file = tmp_path / "sample_no_write.py"
+    code = "def zebra():\n    pass\n\ndef alpha():\n    pass\n\n__all__ = ['alpha', 'zebra']\n"
+    py_file.write_text(code, encoding="utf-8")
+    modified = sort_python_file(py_file, write=False)
+    assert modified is True
+    assert py_file.read_text(encoding="utf-8") == code
+
+
 def test_get_line_offsets(tmp_path: Path) -> None:
     """Verify character offset calculation."""
     f = tmp_path / "test.py"

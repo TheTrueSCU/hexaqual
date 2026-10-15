@@ -374,6 +374,41 @@ class GitHubHttpAdapter(GitHubApiPort):
             )
         return results
 
+    def resolve_review_thread(self, thread_id: str) -> bool:
+        """Resolve a review discussion thread via GitHub GraphQL mutation.
+
+        Args:
+            thread_id: GitHub GraphQL node ID of the review thread.
+
+        Returns:
+            True if resolved successfully, False otherwise.
+
+        Notes/Architectural Intent:
+            Executes resolveReviewThread GraphQL mutation to unblock branch policies
+            requiring conversation resolution prior to merge.
+        """
+        mutation = """
+        mutation($threadId: ID!) {
+          resolveReviewThread(input: {threadId: $threadId}) {
+            thread {
+              id
+              isResolved
+            }
+          }
+        }
+        """
+        payload = {"query": mutation, "variables": {"threadId": thread_id}}
+        resp = self._client.post("/graphql", json=payload)
+        if resp.status_code != 200:
+            return False
+        data = resp.json()
+        return bool(
+            data.get("data", {})
+            .get("resolveReviewThread", {})
+            .get("thread", {})
+            .get("isResolved", False)
+        )
+
     def get_code_scanning_alerts(
         self,
         ref: str | None = None,

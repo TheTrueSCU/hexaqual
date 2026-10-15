@@ -8,7 +8,6 @@ Notes/Architectural Intent:
 
 from __future__ import annotations
 
-import json
 from dataclasses import asdict
 from typing import Any
 
@@ -146,7 +145,7 @@ class JsonGitHubPresenterAdapter(GitHubPresenterPort):
             "failed_logs": report.failed_logs or {},
             "is_clean": report.summary.is_clean,
         }
-        self._console.print(json.dumps(data, indent=2))
+        self._console.print_json(data=data)
         return 0 if report.summary.is_clean else 1
 
     def present_checks(self, report: ChecksReport) -> int:
@@ -156,12 +155,12 @@ class JsonGitHubPresenterAdapter(GitHubPresenterPort):
             "has_failure": report.has_failure,
             "checks": [asdict(c) for c in report.check_runs],
         }
-        self._console.print(json.dumps(data, indent=2))
+        self._console.print_json(data=data)
         return 1 if report.has_failure else 0
 
     def present_repo_status(self, status: RepoStatus) -> int:
         """Output repository governance status as JSON."""
-        self._console.print(json.dumps(asdict(status), indent=2))
+        self._console.print_json(data=asdict(status))
         return 0
 
     def present_security_comments(self, report: SecurityCommentsReport) -> int:
@@ -170,7 +169,7 @@ class JsonGitHubPresenterAdapter(GitHubPresenterPort):
             "pr_number": report.pr_number,
             "threads": [asdict(t) for t in report.threads],
         }
-        self._console.print(json.dumps(data, indent=2))
+        self._console.print_json(data=data)
         return 0
 
     def present_code_scanning(self, report: CodeScanningReport) -> int:
@@ -182,7 +181,7 @@ class JsonGitHubPresenterAdapter(GitHubPresenterPort):
         }
         if report.single_alert:
             data["single_alert"] = asdict(report.single_alert)
-        self._console.print(json.dumps(data, indent=2))
+        self._console.print_json(data=data)
         return 0
 
 

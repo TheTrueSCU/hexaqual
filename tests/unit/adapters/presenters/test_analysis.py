@@ -72,6 +72,9 @@ def test_rich_analysis_presenter() -> None:
     fuzz_err = FuzzRunReport(results=(fuzz_fail_res,), all_passed=False)
     assert presenter.present_fuzz(fuzz_err) == 1
 
+    fuzz_setup_err = FuzzRunReport(all_passed=False, error_message="No harnesses found")
+    assert presenter.present_fuzz(fuzz_setup_err) == 1
+
     snap_rep = InlineSnapshotsReport(targets_updated=("packages/core",), exit_code=0)
     assert presenter.present_inline_snapshots(snap_rep) == 0
 
@@ -87,6 +90,9 @@ def test_json_analysis_presenter() -> None:
 
     fuzz_ok = FuzzRunReport(all_passed=True)
     assert presenter.present_fuzz(fuzz_ok) == 0
+
+    fuzz_err = FuzzRunReport(all_passed=False, error_message="No harnesses found")
+    assert presenter.present_fuzz(fuzz_err) == 1
 
     snap_rep = InlineSnapshotsReport(exit_code=0)
     assert presenter.present_inline_snapshots(snap_rep) == 0
@@ -107,6 +113,9 @@ def test_markdown_analysis_presenter() -> None:
 
     fuzz_ok = FuzzRunReport(all_passed=True)
     assert presenter.present_fuzz(fuzz_ok) == 0
+
+    fuzz_err = FuzzRunReport(all_passed=False, error_message="No harnesses found")
+    assert presenter.present_fuzz(fuzz_err) == 1
 
     snap_rep = InlineSnapshotsReport(exit_code=0)
     assert presenter.present_inline_snapshots(snap_rep) == 0

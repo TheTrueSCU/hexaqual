@@ -72,8 +72,31 @@ def format_option(
     return typer.Option(default, "-f", "--format", help=help_text)
 
 
+def is_interactive_terminal() -> bool:
+    """Determine whether standard output is connected to an interactive TTY.
+
+    Returns:
+        True if running in an interactive terminal with TTY attached to stdin/stdout;
+        False if output is piped, redirected, running in CI, or headless.
+
+    Notes/Architectural Intent:
+        Prevents infinite polling loops in automated subagents, background jobs,
+        and headless CI environments while respecting HEXAQUAL_FORCE_WATCH=1.
+    """
+    import os
+
+    if os.environ.get("HEXAQUAL_FORCE_WATCH", "").lower() in ("1", "true", "yes"):
+        return True
+
+    if os.environ.get("CI") == "true" or os.environ.get("GITHUB_ACTIONS") == "true":
+        return False
+
+    return sys.stdout.isatty() and sys.stdin.isatty()
+
+
 __all__ = [
     "format_option",
+    "is_interactive_terminal",
     "OutputFormat",
     "resolve_format",
 ]

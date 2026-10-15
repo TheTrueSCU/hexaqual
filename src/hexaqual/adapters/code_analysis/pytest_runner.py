@@ -121,6 +121,31 @@ def run_main(argv: list[str] | None = None) -> int:
         action="store_true",
         help="Capture test function contexts in .coverage for Test Impact Analysis and boundary audits (disables xdist).",
     )
+    parser.add_argument(
+        "--cluster",
+        default="local",
+        help="Execution target cluster ('local' or 'hexaqueue').",
+    )
+    parser.add_argument(
+        "--cluster-url",
+        default=os.environ.get("HEXAQUEUE_URL", "http://localhost:8000"),
+        help="Hexaqueue cluster REST endpoint URL.",
+    )
+    parser.add_argument(
+        "--cluster-token",
+        default=os.environ.get("HEXAQUEUE_TOKEN"),
+        help="Authentication bearer token for Hexaqueue cluster.",
+    )
+    parser.add_argument(
+        "--cluster-user",
+        default=os.environ.get("HEXAQUEUE_USER", "default"),
+        help="Submitting user identity for Hexaqueue cluster.",
+    )
+    parser.add_argument(
+        "--cluster-elevate",
+        action="store_true",
+        help="Assert administrative elevation on Hexaqueue cluster.",
+    )
     args, unknown = parser.parse_known_args(argv)
 
     root = get_repo_root()
@@ -157,6 +182,21 @@ def run_main(argv: list[str] | None = None) -> int:
             cov_args.append("--no-cov")
 
     call_args = test_paths + cov_args + (unknown or [])
+
+    if getattr(args, "cluster", "local").lower() == "hexaqueue":
+        from hexaqual.adapters.runners.hexaqueue_cluster import HexaqueueClusterRunnerAdapter
+
+        cluster_runner = HexaqueueClusterRunnerAdapter(
+            cluster_url=args.cluster_url,
+            user_id=args.cluster_user,
+            elevate=args.cluster_elevate,
+            token=args.cluster_token,
+        )
+        returncode = cluster_runner.execute_pytest(test_nodes=call_args, cwd=root)
+        if argv is None:
+            sys.exit(returncode)
+        return returncode
+
     res = subprocess.run([sys.executable, "-m", "pytest", *call_args])
     if argv is None:
         sys.exit(res.returncode)

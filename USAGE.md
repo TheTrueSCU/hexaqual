@@ -590,10 +590,22 @@ Usage: hexaqual gh [OPTIONS] COMMAND [ARGS]...
 │ pr             Examine a Pull Request health dashboard.                      │
 │ checks         Inspect CI status checks for a given PR number or Git ref.    │
 │ repo           Inspect GitHub repository settings and permissions.           │
-│ security       Summarize GitHub security advisories and Dependabot alerts.   │
+│ security       Summarize review discussions and security comments on a PR.   │
 │ code-scanning  Query CodeQL alerts and scanning status.                      │
 │ codeql         Run local CodeQL security and quality analysis with           │
 │                auto-detection.                                               │
+│ resolve        Resolve open review discussion threads on a Pull Request via  │
+│                GitHub GraphQL.                                               │
+╰──────────────────────────────────────────────────────────────────────────────╯
+```
+
+#### `hexaqual gh GitHub`
+
+```text
+Usage: hexaqual gh [OPTIONS] COMMAND [ARGS]...
+Try 'hexaqual gh --help' for help.
+╭─ Error ──────────────────────────────────────────────────────────────────────╮
+│ No such command 'GitHub'.                                                    │
 ╰──────────────────────────────────────────────────────────────────────────────╯
 ```
 
@@ -736,22 +748,59 @@ Usage: hexaqual gh repo [OPTIONS] [repo_name]
 ╰──────────────────────────────────────────────────────────────────────────────╯
 ```
 
+#### `hexaqual gh resolve`
+
+```text
+Usage: hexaqual gh resolve [OPTIONS] {pr_number}
+
+ Resolve open review discussion threads on a Pull Request via GitHub GraphQL.
+
+ Args:
+     pr_number: Pull request number.
+     bot_only: If True, only auto-resolve comments authored by bot accounts.
+
+ Raises:
+     typer.Exit: If thread retrieval or resolution encounters critical errors.
+
+ Notes/Architectural Intent:
+     Unblocks branch protection policies enforcing
+ 'required_conversation_resolution'
+     by programmatically resolving open review threads.
+
+╭─ Arguments ──────────────────────────────────────────────────────────────────╮
+│ *    pr_number      <str>  Pull request number to resolve threads on.        │
+│                            [required]                                        │
+╰──────────────────────────────────────────────────────────────────────────────╯
+╭─ Options ────────────────────────────────────────────────────────────────────╮
+│ --bot-only    --all      Resolve only automated bot review threads (e.g.     │
+│                          CodeRabbit, Dependabot).                            │
+│                          [default: bot-only]                                 │
+│ --help                   Show this message and exit.                         │
+╰──────────────────────────────────────────────────────────────────────────────╯
+```
+
 #### `hexaqual gh security`
 
 ```text
-Usage: hexaqual gh security [OPTIONS]
+Usage: hexaqual gh security [OPTIONS] {pr_number}
 
- Summarize GitHub security advisories and Dependabot alerts.
+ Summarize review discussions and security comments on a PR.
 
  Args:
+     pr_number: Pull request number.
      format_type: Output format.
 
  Raises:
-     typer.Exit: If security alerts found or query fails.
+     typer.Exit: If security comments check fails or query fails.
 
  Notes/Architectural Intent:
-     Queries Dependabot security alerts and advisories.
+     Queries PR review discussions and security comment threads.
 
+╭─ Arguments ──────────────────────────────────────────────────────────────────╮
+│ *    pr_number      <int>  Pull request number to inspect security review    │
+│                            comments for.                                     │
+│                            [required]                                        │
+╰──────────────────────────────────────────────────────────────────────────────╯
 ╭─ Options ────────────────────────────────────────────────────────────────────╮
 │ --format  -f      <str>  Output format. [default: auto]                      │
 │ --help                   Show this message and exit.                         │
@@ -977,6 +1026,11 @@ Usage: hexaqual mutate run [OPTIONS]
      workers: Parallel workers during mutation phase.
      numprocesses: Pytest-xdist baseline process count.
      batch_size: Mutants per worker batch.
+     cluster: Execution target cluster ('local' or 'hexaqueue').
+     cluster_url: Hexaqueue cluster REST endpoint URL.
+     cluster_token: Authentication bearer token for Hexaqueue cluster.
+     cluster_user: Submitting user identity for Hexaqueue cluster.
+     cluster_elevate: Assert administrative elevation on Hexaqueue cluster.
 
  Raises:
      typer.Exit: If mutation testing fails.
@@ -985,24 +1039,41 @@ Usage: hexaqual mutate run [OPTIONS]
      Executes mutation runner across targeted components via CQRS bus.
      Decouples baseline suite parallelism (-n) from mutation worker crunching
  (-w).
+     Supports distributing mutation workloads to a remote Hexaqueue cluster.
 
 ╭─ Options ────────────────────────────────────────────────────────────────────╮
-│ --package       -p      <str>  Target package name (e.g. core).              │
-│ --all           -a             Run across all workspace packages             │
-│                                sequentially.                                 │
-│ --affected      -A             Run only on packages affected by git diff.    │
-│ --reset         -r             Clear cache and re-run.                       │
-│ --engine        -e      <str>  Mutation engine to use ('gremlins' or         │
-│                                'mutmut').                                    │
-│                                [default: gremlins]                           │
-│ --workers       -w      <str>  Number of parallel mutation workers (defaults │
-│                                to 'auto' across available cores).            │
-│ --numprocesses  -n      <str>  Pytest-xdist worker count for baseline test   │
-│                                execution (defaults to 'auto' when xdist is   │
-│                                installed).                                   │
-│ --batch-size            <int>  Number of gremlins per worker batch (defaults │
-│                                to 10).                                       │
-│ --help                         Show this message and exit.                   │
+│ --package          -p      <str>  Target package name (e.g. core).           │
+│ --all              -a             Run across all workspace packages          │
+│                                   sequentially.                              │
+│ --affected         -A             Run only on packages affected by git diff. │
+│ --reset            -r             Clear cache and re-run.                    │
+│ --engine           -e      <str>  Mutation engine to use ('gremlins' or      │
+│                                   'mutmut').                                 │
+│                                   [default: gremlins]                        │
+│ --workers          -w      <str>  Number of parallel mutation workers        │
+│                                   (defaults to 'auto' across available       │
+│                                   cores).                                    │
+│ --numprocesses     -n      <str>  Pytest-xdist worker count for baseline     │
+│                                   test execution (defaults to 'auto' when    │
+│                                   xdist is installed).                       │
+│ --batch-size               <int>  Number of gremlins per worker batch        │
+│                                   (defaults to 10).                          │
+│ --cluster                  <str>  Execution target cluster ('local' or       │
+│                                   'hexaqueue').                              │
+│                                   [default: local]                           │
+│ --cluster-url              <str>  Hexaqueue cluster REST endpoint URL.       │
+│                                   [env var: HEXAQUEUE_URL]                   │
+│                                   [default: http://localhost:8000]           │
+│ --cluster-token            <str>  Authentication bearer token for Hexaqueue  │
+│                                   cluster.                                   │
+│                                   [env var: HEXAQUEUE_TOKEN]                 │
+│ --cluster-user             <str>  Submitting user identity for Hexaqueue     │
+│                                   cluster.                                   │
+│                                   [env var: HEXAQUEUE_USER]                  │
+│                                   [default: default]                         │
+│ --cluster-elevate                 Assert administrative elevation on         │
+│                                   Hexaqueue cluster.                         │
+│ --help                            Show this message and exit.                │
 ╰──────────────────────────────────────────────────────────────────────────────╯
 ```
 
@@ -1840,6 +1911,11 @@ Usage: hexaqual test run [OPTIONS]
      unit: Whether to restrict execution to unit tests.
      properties: Whether to restrict execution to property tests.
      with_context: Whether to capture test context in coverage.
+     cluster: Execution target cluster ('local' or 'hexaqueue').
+     cluster_url: Hexaqueue cluster REST endpoint URL.
+     cluster_token: Authentication bearer token for Hexaqueue cluster.
+     cluster_user: Submitting user identity for Hexaqueue cluster.
+     cluster_elevate: Assert administrative elevation on Hexaqueue cluster.
 
  Raises:
      typer.Exit: If tests fail.
@@ -1847,16 +1923,32 @@ Usage: hexaqual test run [OPTIONS]
  Notes/Architectural Intent:
      Driving adapter delegating to pytest runner adapter and forwarding
      any additional unknown options or flags directly to pytest.
+     Supports distributing test execution to a remote Hexaqueue cluster.
 
 ╭─ Options ────────────────────────────────────────────────────────────────────╮
-│ --package       -p      <str>  Target package(s).                            │
-│ --example       -e      <str>  Target example project(s).                    │
-│ --all           -a             Run across all workspace packages.            │
-│ --affected      -A             Run only affected packages.                   │
-│ --unit          -U             Run only unit tests.                          │
-│ --properties    -P             Run only property tests.                      │
-│ --with-context                 Capture test context in coverage.             │
-│ --help                         Show this message and exit.                   │
+│ --package          -p      <str>  Target package(s).                         │
+│ --example          -e      <str>  Target example project(s).                 │
+│ --all              -a             Run across all workspace packages.         │
+│ --affected         -A             Run only affected packages.                │
+│ --unit             -U             Run only unit tests.                       │
+│ --properties       -P             Run only property tests.                   │
+│ --with-context                    Capture test context in coverage.          │
+│ --cluster                  <str>  Execution target cluster ('local' or       │
+│                                   'hexaqueue').                              │
+│                                   [default: local]                           │
+│ --cluster-url              <str>  Hexaqueue cluster REST endpoint URL.       │
+│                                   [env var: HEXAQUEUE_URL]                   │
+│                                   [default: http://localhost:8000]           │
+│ --cluster-token            <str>  Authentication bearer token for Hexaqueue  │
+│                                   cluster.                                   │
+│                                   [env var: HEXAQUEUE_TOKEN]                 │
+│ --cluster-user             <str>  Submitting user identity for Hexaqueue     │
+│                                   cluster.                                   │
+│                                   [env var: HEXAQUEUE_USER]                  │
+│                                   [default: default]                         │
+│ --cluster-elevate                 Assert administrative elevation on         │
+│                                   Hexaqueue cluster.                         │
+│ --help                            Show this message and exit.                │
 ╰──────────────────────────────────────────────────────────────────────────────╯
 ```
 

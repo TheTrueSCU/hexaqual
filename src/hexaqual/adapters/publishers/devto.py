@@ -47,7 +47,6 @@ from hexaqual.ports.publishers import ArticlePublisherPort
 console = Console()
 
 DEVTO_API_BASE = "https://dev.to/api"
-MEDIUM_IMPORT_URL = "https://medium.com/p/import"
 _FRONT_MATTER_RE = re.compile(r"^---\s*\n(.*?)\n---\s*\n", re.DOTALL)
 _DEVTO_LINK_RE = re.compile(r"\(devto://([a-z0-9\-]+)\)")
 

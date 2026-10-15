@@ -3,6 +3,9 @@
 from hexaqual.adapters.runners.dependency_runner import (
     SubprocessDependencyAuditorAdapter,
 )
+from hexaqual.adapters.runners.hexaqueue_cluster import (
+    HexaqueueClusterRunnerAdapter,
+)
 from hexaqual.adapters.runners.pypi_runner import (
     SubprocessPyPiRunnerAdapter,
 )
@@ -16,6 +19,7 @@ from hexaqual.adapters.runners.testing_runner import (
 
 __all__ = [
     "find_executable",
+    "HexaqueueClusterRunnerAdapter",
     "SubprocessDependencyAuditorAdapter",
     "SubprocessPyPiRunnerAdapter",
     "SubprocessTestingRunnerAdapter",
