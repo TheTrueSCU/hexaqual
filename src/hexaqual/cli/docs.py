@@ -14,7 +14,9 @@ import typer
 from hexaqual.cli.options import format_option, resolve_format
 
 __all__ = [
+    "blog_app",
     "docs_app",
+    "docs_blog_medium",
     "docs_links",
     "docs_publish",
     "docs_usage",
@@ -25,6 +27,44 @@ docs_app = typer.Typer(
     help="Documentation generation and verification.",
     no_args_is_help=True,
 )
+
+blog_app = typer.Typer(
+    name="blog",
+    help="Blog publishing and Medium syndication commands.",
+    no_args_is_help=True,
+)
+
+
+@blog_app.command("medium")
+def docs_blog_medium(
+    slug: str = typer.Argument(
+        ..., help="Article filename stem (e.g. 'ai-guardrails-manifesto') or path."
+    ),
+    url: str = typer.Argument(..., help="Syndicated Medium post URL."),
+    dry_run: bool = typer.Option(False, "--dry-run", help="Validate without writing files."),
+    root: Path | None = typer.Option(None, "--root", help="Workspace root directory."),
+) -> None:
+    """Record canonical syndicated Medium URL for an article.
+
+    Args:
+        slug: Article slug identifier.
+        url: Canonical syndicated Medium post URL.
+        dry_run: Validate without disk modifications.
+        root: Workspace root directory.
+
+    Notes/Architectural Intent:
+        Driving adapter updating article front matter with medium_url and
+        regenerating the syndication registry table in docs/medium/README.md.
+    """
+    from hexaqual.adapters.publishers.devto import record_medium_url
+    from hexaqual.infra.workspace import get_repo_root
+
+    repo_root = root or get_repo_root()
+    record_medium_url(slug, url, repo_root=repo_root, dry_run=dry_run)
+    typer.secho(f"✓ Recorded Medium URL for {slug}: {url}", fg=typer.colors.GREEN)
+
+
+docs_app.add_typer(blog_app)
 
 
 @docs_app.command("usage")

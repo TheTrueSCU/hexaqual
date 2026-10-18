@@ -108,3 +108,23 @@ def test_docs_links_failure() -> None:
     ):
         res = runner.invoke(docs_app, ["links"])
         assert res.exit_code == 1
+
+
+def test_docs_blog_medium() -> None:
+    """Test docs blog medium subcommand records syndicated Medium URL."""
+    with patch("hexaqual.adapters.publishers.devto.record_medium_url") as mock_record:
+        mock_record.return_value = ("ai-guardrails-manifesto", "Recorded Medium URL")
+        res = runner.invoke(
+            docs_app,
+            [
+                "blog",
+                "medium",
+                "ai-guardrails-manifesto",
+                "https://medium.com/@user/ai-guardrails-manifesto",
+                "--dry-run",
+            ],
+        )
+        res_code = res.exit_code
+        assert res_code == 0
+        assert mock_record.called is True
+        assert "Recorded Medium URL" in res.stdout

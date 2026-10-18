@@ -49,6 +49,7 @@ console = Console()
 DEVTO_API_BASE = "https://dev.to/api"
 _FRONT_MATTER_RE = re.compile(r"^---\s*\n(.*?)\n---\s*\n", re.DOTALL)
 _DEVTO_LINK_RE = re.compile(r"\(devto://([a-z0-9\-]+)\)")
+_IMAGE_MD_RE = re.compile(r"!\[(.*?)\]\((.*?)\)")
 
 
 # ---------------------------------------------------------------------------
@@ -253,6 +254,91 @@ def _resolve_cross_links(body: str, slug_map: dict[str, str]) -> str:
     return _DEVTO_LINK_RE.sub(_replace, body)
 
 
+def _rewrite_relative_images_to_github(
+    body: str,
+    repo: str = "TheTrueSCU/hexastack",
+    branch: str = "main",
+) -> str:
+    """Rewrite relative image paths in markdown to absolute raw GitHub URLs.
+
+    Args:
+        body: Raw markdown body.
+        repo: GitHub repository slug in 'owner/repo' format.
+        branch: Git branch name (default: 'main').
+
+    Returns:
+        Markdown body with relative image URLs rewritten to raw.githubusercontent.com.
+
+    Notes/Architectural Intent:
+        External blog platforms like DEV.to and Medium require absolute image
+        URLs to render figures and diagrams correctly without broken asset links.
+    """
+
+    def _replace_image(m: re.Match) -> str:
+        alt_text = m.group(1)
+        src = m.group(2).strip()
+        if src.startswith(("http://", "https://", "data:")):
+            return m.group(0)
+
+        norm_src = src.lstrip("/")
+        if norm_src.startswith("./"):
+            norm_src = norm_src[2:]
+        while norm_src.startswith("../"):
+            norm_src = norm_src[3:]
+
+        raw_path = f"docs/{norm_src}" if not norm_src.startswith("docs/") else norm_src
+        github_url = f"https://raw.githubusercontent.com/{repo}/{branch}/{raw_path}"
+        return f"![{alt_text}]({github_url})"
+
+    return _IMAGE_MD_RE.sub(_replace_image, body)
+
+
+def generate_medium_import_issue(
+    slug: str,
+    title: str,
+    devto_url: str,
+    repo: str = "TheTrueSCU/hexastack",
+) -> tuple[str, str]:
+    """Generate title and body for Medium Syndication tracking issue.
+
+    Args:
+        slug: Article slug identifier.
+        title: Article display title.
+        devto_url: Canonical DEV.to URL to import from.
+        repo: GitHub repository slug.
+
+    Returns:
+        Tuple of (issue_title, issue_body).
+
+    Notes/Architectural Intent:
+        Medium's official API was deprecated, requiring manual Web GUI import
+        via https://medium.com/p/import to preserve canonical SEO links.
+        This helper generates a structured GitHub tracking issue checklist.
+    """
+    issue_title = f"Syndicate to Medium: {title}"
+    issue_body = f"""## Medium Syndication Checklist for: {title}
+
+### 1. Import Story to Medium
+1. Navigate to [Medium Story Import](https://medium.com/p/import)
+2. Enter the canonical DEV.to article URL:
+   `{devto_url}`
+3. Click **Import Story**.
+
+### 2. Verify Canonical & Formatting
+- [ ] Confirm canonical link points to: `{devto_url}`
+- [ ] Verify code blocks and callouts rendered accurately
+- [ ] Verify image rendering and alt tags
+- [ ] Configure story tags (e.g. `python`, `architecture`, `software-engineering`)
+
+### 3. Record Canonical Syndicated URL
+Once published on Medium, record the canonical URL back into Hexaqual:
+```bash
+uv run hexaqual docs blog medium {slug} <medium-post-url>
+```
+"""
+    return issue_title, issue_body
+
+
 # ---------------------------------------------------------------------------
 # File resolution
 # ---------------------------------------------------------------------------
@@ -439,6 +525,7 @@ def _upload_draft(payload: ArticlePayload, api_key: str, slug_map: dict[str, str
 
     fm = payload.front_matter
     body = _resolve_cross_links(payload.body_markdown, slug_map)
+    body = _rewrite_relative_images_to_github(body)
 
     article: dict[str, Any] = {
         "title": fm.title,
@@ -483,6 +570,7 @@ def _publish_draft(payload: ArticlePayload, api_key: str, slug_map: dict[str, st
 
     fm = payload.front_matter
     body = _resolve_cross_links(payload.body_markdown, slug_map)
+    body = _rewrite_relative_images_to_github(body)
 
     article: dict[str, Any] = {
         "published": True,
@@ -1036,6 +1124,7 @@ __all__ = [
     "_regenerate_blog_index",
     "_resolve_article_path",
     "_resolve_cross_links",
+    "_rewrite_relative_images_to_github",
     "_update_docs_links",
     "_update_readme_registry",
     "_upload_draft",
@@ -1044,6 +1133,7 @@ __all__ = [
     "check_all",
     "DevToPublisherAdapter",
     "FrontMatter",
+    "generate_medium_import_issue",
     "get_article_status_table",
     "publish_all",
     "publish_or_upload_single",

@@ -1,0 +1,13 @@
+WEBVTT
+
+1
+00:00:00.500 --> 00:00:02.135
+1. Validating package distributions and inspecting PyPI release status
+
+2
+00:00:02.135 --> 00:00:03.770
+2. Building reproducible distribution wheels and source archives
+
+3
+00:00:03.770 --> 00:00:06.905
+3. Verifying byte-for-byte reproducible wheel package builds across isolated environments

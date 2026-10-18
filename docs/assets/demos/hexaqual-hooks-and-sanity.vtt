@@ -1,0 +1,17 @@
+WEBVTT
+
+1
+00:00:00.500 --> 00:00:02.135
+1. Installing Git lifecycle hooks across pre-commit, commit-msg, pre-push, post-merge, post-checkout
+
+2
+00:00:02.135 --> 00:00:03.770
+2. Verifying Git hook registration status and execution permissions
+
+3
+00:00:03.770 --> 00:00:05.405
+3. Auto-formatting and alphabetizing __all__ export declarations
+
+4
+00:00:05.405 --> 00:00:08.540
+4. Executing turnkey workspace sanity check across governance rules
