@@ -63,12 +63,15 @@ build-backend = "hatchling.build"
 
 [dependency-groups]
 dev = [
+    "hexastack-cli>=0.9.0",
     "hypothesis>=6.168.0",
+    "playwright>=1.50.0",
     "pre-commit>=4.6.2",
     "pytest>=9.1.1",
     "pytest-asyncio>=1.4.0",
     "pytest-cov>=7.1.0",
     "pytest-gremlins>=1.9.0",
+    "pytest-playwright>=0.7.0",
     "pytest-xdist>=3.8.0",
     "ruff>=0.16.2",
     "ty>=0.0.75",
@@ -85,6 +88,7 @@ asyncio_mode = "auto"
 addopts = "-ra -q --strict-markers"
 markers = [
     "integration: End-to-end integration tests across synthetic workspaces.",
+    "demo: Demo user journey tests recorded with CliNarrator.",
 ]
 
 [tool.ruff]

@@ -6,6 +6,7 @@
 [![License: Apache 2.0](https://img.shields.io/badge/license-Apache%202.0-green.svg)](https://github.com/TheTrueSCU/hexaqual/blob/main/LICENSE)
 [![Architecture: Hexagonal](https://img.shields.io/badge/architecture-hexagonal-emerald.svg)](architecture.md)
 [![Sanity: <11s](https://img.shields.io/badge/sanity--gate-11s-purple.svg)](cli-reference.md)
+[![Demos: Interactive](https://img.shields.io/badge/demos-interactive-blueviolet.svg)](demos.md)
 
 ---
 

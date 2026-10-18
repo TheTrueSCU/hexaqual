@@ -5,6 +5,7 @@ site_url = "https://dopplereffect.us/hexaqual/"
 
 nav = [
     { "Overview" = "index.md" },
+    { "Interactive Demos" = "demos.md" },
     { "Architecture & Design" = "architecture.md" },
     { "CLI Command Catalog" = "cli-reference.md" },
     { "AI Agent Governance" = "agents-guide.md" },

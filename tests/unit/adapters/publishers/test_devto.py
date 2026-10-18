@@ -400,3 +400,52 @@ def test_record_medium_url_with_directory(medium_dir: Path) -> None:
     assert "Recorded" in msg
     content = (medium_dir / "test-article.md").read_text()
     assert "medium_url" in content
+
+
+def test_rewrite_relative_images_to_github() -> None:
+    """Verify relative image markdown paths are rewritten to absolute raw GitHub URLs."""
+    from hexaqual.adapters.publishers.devto import _rewrite_relative_images_to_github
+
+    body = (
+        "# Title\n\n"
+        "![Architecture Diagram](assets/images/arch.png)\n"
+        "![Workflow](../assets/flow.png)\n"
+        "![External](https://example.com/logo.png)\n"
+    )
+    rewritten = _rewrite_relative_images_to_github(body, repo="TheTrueSCU/hexastack", branch="main")
+
+    expected_arch = (
+        "https://raw.githubusercontent.com/TheTrueSCU/hexastack/main/docs/assets/images/arch.png"
+    )
+    expected_flow = (
+        "https://raw.githubusercontent.com/TheTrueSCU/hexastack/main/docs/assets/flow.png"
+    )
+
+    has_arch = expected_arch in rewritten
+    has_flow = expected_flow in rewritten
+    has_external = "https://example.com/logo.png" in rewritten
+
+    assert has_arch is True
+    assert has_flow is True
+    assert has_external is True
+
+
+def test_generate_medium_import_issue() -> None:
+    """Verify generation of structured Medium syndication checklist issue payload."""
+    from hexaqual.adapters.publishers.devto import generate_medium_import_issue
+
+    title, body = generate_medium_import_issue(
+        slug="uv-monorepo",
+        title="Managing 17 Python Packages",
+        devto_url="https://dev.to/user/managing-17-packages-abc",
+    )
+
+    has_slug = "uv-monorepo" in body
+    has_url = "https://dev.to/user/managing-17-packages-abc" in body
+    has_import_step = "medium.com/p/import" in body
+    has_title = title == "Syndicate to Medium: Managing 17 Python Packages"
+
+    assert has_title is True
+    assert has_slug is True
+    assert has_url is True
+    assert has_import_step is True
