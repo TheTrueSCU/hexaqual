@@ -17,6 +17,7 @@ __all__ = [
     "blog_app",
     "docs_app",
     "docs_blog_medium",
+    "docs_drift",
     "docs_links",
     "docs_publish",
     "docs_usage",
@@ -141,6 +142,48 @@ def docs_links(
     presenter = create_generator_presenter(resolved_fmt)
     report = scan_doc_links(target_path=path, repo_root=repo_root)
     exit_code = presenter.present_doc_links(report)
+    if exit_code != 0:
+        raise typer.Exit(code=exit_code)
+
+
+@docs_app.command("drift")
+def docs_drift(
+    path: Path | None = typer.Argument(
+        None, help="Specific markdown document or directory to audit."
+    ),
+    fix: bool = typer.Option(
+        False, "--fix", help="Automatically repair detected prose data drift."
+    ),
+    format_type: str = format_option(
+        default="table",
+        help_text="Output presentation format (table, json, markdown, auto).",
+    ),
+    root: Path | None = typer.Option(None, "--root", help="Workspace root directory."),
+) -> None:
+    """Audit documentation prose for data drift against codebase schemas and constants.
+
+    Args:
+        path: Path to markdown document or directory.
+        fix: Whether to write repairs back to disk in-place.
+        format_type: Output presentation format.
+        root: Workspace root directory.
+
+    Raises:
+        typer.Exit: If un-remediated prose drift is detected.
+
+    Notes/Architectural Intent:
+        Driving adapter scanning documentation for version badge mismatches and
+        monorepo package count drift ('The Lying Prose Linter').
+    """
+    from hexaqual.adapters.code_analysis.docs_drift import scan_docs_drift
+    from hexaqual.adapters.presenters.generators import create_generator_presenter
+    from hexaqual.infra.workspace import get_repo_root
+
+    repo_root = root or get_repo_root()
+    resolved_fmt = resolve_format(format_type, default_tty="table", default_pipe="json")
+    presenter = create_generator_presenter(resolved_fmt)
+    report = scan_docs_drift(target_path=path, repo_root=repo_root, fix=fix)
+    exit_code = presenter.present_doc_drift(report)
     if exit_code != 0:
         raise typer.Exit(code=exit_code)
 

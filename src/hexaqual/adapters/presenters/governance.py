@@ -17,6 +17,7 @@ from rich.table import Table
 
 from hexaqual.domain.governance import (
     CheckStatus,
+    GateInventoryReport,
     SanityCheckReport,
 )
 from hexaqual.ports.governance import GovernancePresenterPort
@@ -217,6 +218,74 @@ class RichGovernancePresenterAdapter(GovernancePresenterPort):
         )
         return 0
 
+    def present_gate_inventory(
+        self,
+        report: GateInventoryReport,
+    ) -> int:
+        """Render repository quality gate inventory matrix and status in Rich table.
+
+        Args:
+            report: Aggregated GateInventoryReport object.
+
+        Returns:
+            0 if all required gates active, 1 if any missing.
+        """
+        table = Table(
+            title="Repository Quality Gate Inventory Matrix",
+            box=box.ROUNDED,
+            header_style="bold cyan",
+            expand=True,
+        )
+        table.add_column("Category", style="bold magenta", ratio=2)
+        table.add_column("Quality Gate", style="bold", ratio=3)
+        table.add_column("Status", justify="center", ratio=1)
+        table.add_column("Details", style="dim", ratio=4)
+        table.add_column("Remediation", style="yellow", ratio=3)
+
+        for item in report.items:
+            status_style = {
+                "ACTIVE": "[bold green]✅ ACTIVE[/bold green]",
+                "WARNING": "[bold yellow]⚠️ WARNING[/bold yellow]",
+                "MISSING": "[bold red]❌ MISSING[/bold red]",
+            }.get(item.status, item.status)
+            table.add_row(
+                item.category,
+                item.name,
+                status_style,
+                item.details,
+                item.remediation,
+            )
+
+        self._console.print()
+        self._console.print(table)
+
+        missing = [i for i in report.items if i.status == "MISSING"]
+        warnings = [i for i in report.items if i.status == "WARNING"]
+
+        if missing:
+            self._console.print(
+                Panel(
+                    f"[bold red]❌ {len(missing)} required quality gate(s) are missing or deactivated![/bold red]\n"
+                    "Address the missing gates or configuration items listed above.",
+                    border_style="red",
+                )
+            )
+        elif warnings:
+            self._console.print(
+                Panel(
+                    f"[bold yellow]⚠️ All required quality gates active with {len(warnings)} warning(s).[/bold yellow]",
+                    border_style="yellow",
+                )
+            )
+        else:
+            self._console.print(
+                Panel(
+                    f"[bold green]✨ All {len(report.items)} canonical quality gates are fully configured and enforced![/bold green]",
+                    border_style="green",
+                )
+            )
+        return report.exit_code
+
 
 class JsonGovernancePresenterAdapter(GovernancePresenterPort):
     """Machine-readable JSON presenter for governance outputs."""
@@ -320,6 +389,39 @@ class JsonGovernancePresenterAdapter(GovernancePresenterPort):
         }
         self._console.print(json.dumps(payload, indent=2))
         return 1 if errors else 0
+
+    def present_gate_inventory(
+        self,
+        report: GateInventoryReport,
+    ) -> int:
+        """Serialize quality gate inventory report to structured JSON.
+
+        Args:
+            report: Aggregated GateInventoryReport object.
+
+        Returns:
+            Process exit code.
+        """
+        payload = {
+            "status": "PASS" if report.exit_code == 0 else "FAIL",
+            "exit_code": report.exit_code,
+            "total_gates": len(report.items),
+            "missing_count": sum(1 for i in report.items if i.status == "MISSING"),
+            "warning_count": sum(1 for i in report.items if i.status == "WARNING"),
+            "active_count": sum(1 for i in report.items if i.status == "ACTIVE"),
+            "items": [
+                {
+                    "name": item.name,
+                    "category": item.category,
+                    "status": item.status,
+                    "details": item.details,
+                    "remediation": item.remediation,
+                }
+                for item in report.items
+            ],
+        }
+        self._console.print(json.dumps(payload, indent=2))
+        return report.exit_code
 
 
 class MarkdownGovernancePresenterAdapter(GovernancePresenterPort):
@@ -476,6 +578,49 @@ class MarkdownGovernancePresenterAdapter(GovernancePresenterPort):
 
         self._console.print("\n".join(lines))
         return 1 if errors else 0
+
+    def present_gate_inventory(
+        self,
+        report: GateInventoryReport,
+    ) -> int:
+        """Render quality gate inventory report as Markdown table.
+
+        Args:
+            report: Aggregated GateInventoryReport object.
+
+        Returns:
+            Process exit code.
+        """
+        lines: list[str] = [
+            "# Repository Quality Gate Inventory Matrix",
+            "",
+            "| Category | Quality Gate | Status | Details | Remediation |",
+            "| :--- | :--- | :---: | :--- | :--- |",
+        ]
+        for item in report.items:
+            icon = {
+                "ACTIVE": "✅ ACTIVE",
+                "WARNING": "⚠️ WARNING",
+                "MISSING": "❌ MISSING",
+            }.get(item.status, item.status)
+            remediation = item.remediation or "-"
+            lines.append(
+                f"| {item.category} | {item.name} | {icon} | {item.details} | {remediation} |"
+            )
+
+        lines.append("")
+        missing = [i for i in report.items if i.status == "MISSING"]
+        if missing:
+            lines.append(
+                f"> ❌ **{len(missing)} required quality gate(s) missing or deactivated.**"
+            )
+        else:
+            lines.append(
+                f"> ✨ **All {len(report.items)} canonical quality gates are fully configured and active.**"
+            )
+
+        self._console.print("\n".join(lines))
+        return report.exit_code
 
 
 def create_governance_presenter(

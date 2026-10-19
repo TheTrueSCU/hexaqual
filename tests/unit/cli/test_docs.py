@@ -128,3 +128,48 @@ def test_docs_blog_medium() -> None:
         assert res_code == 0
         assert mock_record.called is True
         assert "Recorded Medium URL" in res.stdout
+
+
+def test_docs_drift_success() -> None:
+    """Test docs drift command passes when no drift detected."""
+    from hexaqual.domain.docs_drift import DocDriftReport
+
+    mock_report = DocDriftReport(findings=(), is_successful=True)
+    with (
+        patch(
+            "hexaqual.adapters.code_analysis.docs_drift.scan_docs_drift", return_value=mock_report
+        ),
+        patch(
+            "hexaqual.adapters.presenters.generators.RichGeneratorPresenterAdapter.present_doc_drift",
+            return_value=0,
+        ),
+    ):
+        res = runner.invoke(docs_app, ["drift"])
+        assert res.exit_code == 0
+
+
+def test_docs_drift_failure() -> None:
+    """Test docs drift command exits non-zero when drift detected."""
+    from hexaqual.domain.docs_drift import DocDriftFinding, DocDriftReport
+
+    finding = DocDriftFinding(
+        file_path="README.md",
+        line_number=10,
+        drift_type="version_mismatch",
+        matched_text="v0.8.0",
+        expected_text="v0.9.0",
+        snippet="https://img.shields.io/badge/version-v0.8.0-blue.svg",
+        fixable=True,
+    )
+    mock_report = DocDriftReport(findings=(finding,), is_successful=False)
+    with (
+        patch(
+            "hexaqual.adapters.code_analysis.docs_drift.scan_docs_drift", return_value=mock_report
+        ),
+        patch(
+            "hexaqual.adapters.presenters.generators.RichGeneratorPresenterAdapter.present_doc_drift",
+            return_value=1,
+        ),
+    ):
+        res = runner.invoke(docs_app, ["drift"])
+        assert res.exit_code == 1

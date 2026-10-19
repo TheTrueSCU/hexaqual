@@ -12,6 +12,7 @@ from rich.console import Console
 from rich.panel import Panel
 from rich.table import Table
 
+from hexaqual.domain.docs_drift import DocDriftReport
 from hexaqual.domain.generators import (
     ArchonReport,
     DocLinksReport,
@@ -201,6 +202,66 @@ class RichGeneratorPresenterAdapter(GeneratorPresenterPort):
         )
         return 0
 
+    def present_doc_drift(self, report: DocDriftReport) -> int:
+        """Render documentation prose drift findings in a formatted table.
+
+        Args:
+            report: DocDriftReport containing detected prose contradictions and repairs.
+
+        Returns:
+            0 if clean or repaired, 1 if drift detected.
+        """
+        if report.findings:
+            table = Table(
+                title=(
+                    f"[bold red]Documentation Prose Data Drift Audit "
+                    f"(Version: {report.canonical_version or 'N/A'}, "
+                    f"Packages: {report.package_count})[/bold red]"
+                ),
+                show_header=True,
+                header_style="bold magenta",
+            )
+            table.add_column("File", style="cyan")
+            table.add_column("Line", justify="right", style="dim")
+            table.add_column("Drift Type", style="bold yellow")
+            table.add_column("Found", style="red")
+            table.add_column("Expected", style="green")
+            table.add_column("Status", justify="center")
+
+            for finding in report.findings:
+                status_str = (
+                    "[bold green]FIXED[/bold green]"
+                    if finding.fixable and report.fixed_count > 0
+                    else "[bold red]DRIFT[/bold red]"
+                )
+                table.add_row(
+                    finding.file_path,
+                    str(finding.line_number),
+                    finding.drift_type,
+                    finding.matched_text,
+                    finding.expected_text,
+                    status_str,
+                )
+
+            self.console.print(table)
+            if report.is_successful:
+                self.console.print(
+                    f"[bold green]✨ Remediated {report.fixed_count} documentation prose drift(s) across "
+                    f"{report.scanned_files_count} file(s)![/bold green]"
+                )
+                return 0
+            self.console.print(
+                f"[bold red]❌ Found {len(report.findings)} documentation prose drift(s) across "
+                f"{report.scanned_files_count} file(s). Run with --fix to automatically repair.[/bold red]"
+            )
+            return 1
+
+        self.console.print(
+            f"[bold green]✅ Documentation is in sync with codebase! ({report.scanned_files_count} files checked, "
+            f"version {report.canonical_version})[/bold green]"
+        )
+        return 0
+
 
 class JsonGeneratorPresenterAdapter(GeneratorPresenterPort):
     """Machine-readable JSON presenter for generator outputs."""
@@ -265,6 +326,31 @@ class JsonGeneratorPresenterAdapter(GeneratorPresenterPort):
                     "reason": b.reason,
                 }
                 for b in report.broken_links
+            ],
+        }
+        self.console.print_json(data=data)
+        return 0 if report.is_successful else 1
+
+    def present_doc_drift(self, report: DocDriftReport) -> int:
+        """Format docs drift report as structured JSON."""
+        data = {
+            "is_successful": report.is_successful,
+            "scanned_files_count": report.scanned_files_count,
+            "canonical_version": report.canonical_version,
+            "package_count": report.package_count,
+            "fixed_count": report.fixed_count,
+            "findings_count": len(report.findings),
+            "findings": [
+                {
+                    "file_path": f.file_path,
+                    "line_number": f.line_number,
+                    "drift_type": f.drift_type,
+                    "matched_text": f.matched_text,
+                    "expected_text": f.expected_text,
+                    "snippet": f.snippet,
+                    "fixable": f.fixable,
+                }
+                for f in report.findings
             ],
         }
         self.console.print_json(data=data)
@@ -359,6 +445,39 @@ class MarkdownGeneratorPresenterAdapter(GeneratorPresenterPort):
             )
             for b in report.broken_links:
                 lines.append(f"| `{b.source_file}` | {b.line} | `{b.target}` | {b.reason} |")
+            lines.append("")
+        self.console.print("\n".join(lines))
+        return 0 if report.is_successful else 1
+
+    def present_doc_drift(self, report: DocDriftReport) -> int:
+        """Format docs drift report as Markdown."""
+        status = (
+            "✅ Documentation in sync"
+            if report.is_successful
+            else "❌ Documentation prose drift detected"
+        )
+        lines = [
+            f"### 📝 Documentation Prose Data Drift Audit: {status}",
+            "",
+            f"- **Scanned Files**: {report.scanned_files_count}",
+            f"- **Canonical Version**: {report.canonical_version or 'N/A'}",
+            f"- **Monorepo Package Count**: {report.package_count}",
+            f"- **Drift Findings**: {len(report.findings)}",
+            f"- **Fixed Count**: {report.fixed_count}",
+            "",
+        ]
+        if report.findings:
+            lines.extend(
+                [
+                    "| File | Line | Drift Type | Found | Expected | Status |",
+                    "|---|---|---|---|---|---|",
+                ]
+            )
+            for f in report.findings:
+                status_str = "FIXED" if f.fixable and report.fixed_count > 0 else "DRIFT"
+                lines.append(
+                    f"| `{f.file_path}` | {f.line_number} | {f.drift_type} | `{f.matched_text}` | `{f.expected_text}` | {status_str} |"
+                )
             lines.append("")
         self.console.print("\n".join(lines))
         return 0 if report.is_successful else 1

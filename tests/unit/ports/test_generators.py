@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import pytest
 
+from hexaqual.domain.docs_drift import DocDriftReport
 from hexaqual.domain.generators import (
     ArchonReport,
     DocLinksReport,
@@ -26,6 +27,9 @@ class DummyGeneratorPresenter(GeneratorPresenterPort):
         return 0 if report.is_successful else 1
 
     def present_doc_links(self, report: DocLinksReport) -> int:
+        return 0 if report.is_successful else 1
+
+    def present_doc_drift(self, report: DocDriftReport) -> int:
         return 0 if report.is_successful else 1
 
 

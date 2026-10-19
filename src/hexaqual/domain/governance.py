@@ -18,12 +18,15 @@ from hexaqual.domain.base import Command
 
 __all__ = [
     "AuditComplexityCommand",
+    "AuditGateInventoryCommand",
     "CheckAllStatementsCommand",
     "CheckDiagramsCommand",
     "CheckResult",
     "CheckStatus",
     "CheckTestParityCommand",
     "DiagramAuditTask",
+    "GateInventoryItem",
+    "GateInventoryReport",
     "resolve_default_parallelism",
     "resolve_parallelism",
     "RunDeptryCommand",
@@ -88,6 +91,57 @@ class CheckResult:
     duration: float
     details: str = ""
     error_output: str = ""
+
+
+@dataclass(frozen=True)
+class GateInventoryItem:
+    """Individual quality gate status and metadata.
+
+    Attributes:
+        name: Name of the quality gate.
+        category: Category of gate (e.g. 'static', 'analysis', 'verification', 'lifecycle', 'ai-guardrails').
+        status: Status string ('ACTIVE', 'WARNING', 'MISSING').
+        details: Diagnostic details or configuration location.
+        remediation: Guidance for resolving missing or warning status.
+
+    Notes/Architectural Intent:
+        Represents an inspected gate in the repository quality gate inventory matrix.
+    """
+
+    name: str
+    category: str
+    status: str
+    details: str
+    remediation: str = ""
+
+
+@dataclass(frozen=True)
+class GateInventoryReport:
+    """Aggregated inventory report auditing active repository quality gates.
+
+    Attributes:
+        items: Tuple of audited gate items.
+        exit_code: Exit status code (0 if all required gates active, 1 if any missing).
+
+    Notes/Architectural Intent:
+        Aggregates quality gate inspection results across all governance layers.
+    """
+
+    items: tuple[GateInventoryItem, ...]
+    exit_code: int
+
+
+class AuditGateInventoryCommand(Command):
+    """Command requesting quality gate inventory audit.
+
+    Attributes:
+        repo_root: Root directory of the repository to inspect.
+
+    Notes/Architectural Intent:
+        CQRS command auditing the active inventory of quality gates across the repo.
+    """
+
+    repo_root: Path
 
 
 @dataclass(frozen=True)

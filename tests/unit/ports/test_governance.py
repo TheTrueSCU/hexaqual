@@ -12,6 +12,7 @@ import pytest
 from hexaqual.domain.governance import (
     CheckResult,
     CheckStatus,
+    GateInventoryReport,
     SanityCheckReport,
     SanityTarget,
 )
@@ -106,9 +107,16 @@ def test_concrete_presenter_implementation():
         ) -> int:
             return 1 if errors else 0
 
+        def present_gate_inventory(
+            self,
+            report: GateInventoryReport,
+        ) -> int:
+            return report.exit_code
+
     presenter = DummyPresenter()
     report = SanityCheckReport(results=(), total_duration=0.0, exit_code=0)
     assert presenter.present_sanity_dashboard(report) == 0
     assert presenter.present_all_statements([]) == 0
     assert presenter.present_test_parity([], []) == 0
     assert presenter.present_architecture_parity([]) == 0
+    assert presenter.present_gate_inventory(GateInventoryReport(items=(), exit_code=0)) == 0

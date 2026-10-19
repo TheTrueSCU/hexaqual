@@ -191,6 +191,7 @@ Usage: hexaqual check [OPTIONS] [files]...
      numprocesses: Concurrency width ('auto' for cores - 2, or 1..num_cores).
      sequential: Whether to execute checks sequentially (equivalent to -n 1).
      max_complexity: Cognitive complexity ceiling.
+     audit_gates: Whether to audit repository quality gates inventory.
      format_type: Output presentation format.
      skip_steps: Step names dynamically skipped via CLI flags.
      files: Optional explicit file or directory targets.
@@ -219,6 +220,8 @@ Usage: hexaqual check [OPTIONS] [files]...
 │                                                (equivalent to -n 1).         │
 │ --max-complexity               -mx      <int>  Cognitive complexity ceiling. │
 │                                                [default: 25]                 │
+│ --audit-gates                                  Audit repository quality      │
+│                                                gates inventory.              │
 │ --format                       -f       <str>  Output format (table, json,   │
 │                                                markdown).                    │
 │                                                [default: table]              │
@@ -460,7 +463,69 @@ Usage: hexaqual docs [OPTIONS] COMMAND [ARGS]...
 │ usage    Generate or verify USAGE.md documentation catalogs.                 │
 │ links    Validate relative links and local anchors across documentation      │
 │          trees.                                                              │
+│ drift    Audit documentation prose for data drift against codebase schemas   │
+│          and constants.                                                      │
 │ publish  Syndicate or publish documentation articles to DEV.to / Medium.     │
+│ blog     Blog publishing and Medium syndication commands.                    │
+╰──────────────────────────────────────────────────────────────────────────────╯
+```
+
+#### `hexaqual docs and`
+
+```text
+Usage: hexaqual docs [OPTIONS] COMMAND [ARGS]...
+Try 'hexaqual docs --help' for help.
+╭─ Error ──────────────────────────────────────────────────────────────────────╮
+│ No such command 'and'.                                                       │
+╰──────────────────────────────────────────────────────────────────────────────╯
+```
+
+#### `hexaqual docs blog`
+
+```text
+Usage: hexaqual docs blog [OPTIONS] COMMAND [ARGS]...
+
+ Blog publishing and Medium syndication commands.
+
+╭─ Options ────────────────────────────────────────────────────────────────────╮
+│ --help          Show this message and exit.                                  │
+╰──────────────────────────────────────────────────────────────────────────────╯
+╭─ Commands ───────────────────────────────────────────────────────────────────╮
+│ medium  Record canonical syndicated Medium URL for an article.               │
+╰──────────────────────────────────────────────────────────────────────────────╯
+```
+
+#### `hexaqual docs drift`
+
+```text
+Usage: hexaqual docs drift [OPTIONS] [path]
+
+ Audit documentation prose for data drift against codebase schemas and
+ constants.
+
+ Args:
+     path: Path to markdown document or directory.
+     fix: Whether to write repairs back to disk in-place.
+     format_type: Output presentation format.
+     root: Workspace root directory.
+
+ Raises:
+     typer.Exit: If un-remediated prose drift is detected.
+
+ Notes/Architectural Intent:
+     Driving adapter scanning documentation for version badge mismatches and
+     monorepo package count drift ('The Lying Prose Linter').
+
+╭─ Arguments ──────────────────────────────────────────────────────────────────╮
+│   path      <path>  Specific markdown document or directory to audit.        │
+╰──────────────────────────────────────────────────────────────────────────────╯
+╭─ Options ────────────────────────────────────────────────────────────────────╮
+│ --fix                     Automatically repair detected prose data drift.    │
+│ --format  -f      <str>   Output presentation format (table, json, markdown, │
+│                           auto).                                             │
+│                           [default: table]                                   │
+│ --root            <path>  Workspace root directory.                          │
+│ --help                    Show this message and exit.                        │
 ╰──────────────────────────────────────────────────────────────────────────────╯
 ```
 
@@ -1624,6 +1689,7 @@ Usage: hexaqual sanity [OPTIONS] [files]...
      numprocesses: Concurrency width ('auto' for cores - 2, or 1..num_cores).
      sequential: Whether to execute checks sequentially (equivalent to -n 1).
      max_complexity: Cognitive complexity ceiling.
+     audit_gates: Whether to audit repository quality gates inventory.
      format_type: Output presentation format.
      skip_steps: Step names dynamically skipped via CLI flags.
      files: Optional explicit file or directory targets.
@@ -1652,6 +1718,8 @@ Usage: hexaqual sanity [OPTIONS] [files]...
 │                                                (equivalent to -n 1).         │
 │ --max-complexity               -mx      <int>  Cognitive complexity ceiling. │
 │                                                [default: 25]                 │
+│ --audit-gates                                  Audit repository quality      │
+│                                                gates inventory.              │
 │ --format                       -f       <str>  Output format (table, json,   │
 │                                                markdown).                    │
 │                                                [default: table]              │
@@ -1916,6 +1984,7 @@ Usage: hexaqual test run [OPTIONS]
      cluster_token: Authentication bearer token for Hexaqueue cluster.
      cluster_user: Submitting user identity for Hexaqueue cluster.
      cluster_elevate: Assert administrative elevation on Hexaqueue cluster.
+     allow_empty: Whether to permit test runs with 0 collected tests.
 
  Raises:
      typer.Exit: If tests fail.
@@ -1948,6 +2017,8 @@ Usage: hexaqual test run [OPTIONS]
 │                                   [default: default]                         │
 │ --cluster-elevate                 Assert administrative elevation on         │
 │                                   Hexaqueue cluster.                         │
+│ --allow-empty                     Permit test runs with 0 collected tests    │
+│                                   (exercise gate override).                  │
 │ --help                            Show this message and exit.                │
 ╰──────────────────────────────────────────────────────────────────────────────╯
 ```

@@ -55,6 +55,18 @@ def test_test_run() -> None:
         assert "--verbose" in call_argv
 
 
+def test_test_run_allow_empty() -> None:
+    """Test test run command forwards --allow-empty flag."""
+    with patch(
+        "hexaqual.adapters.code_analysis.pytest_runner.run_main", return_value=0
+    ) as mock_run:
+        res = runner.invoke(cli_test_app, ["run", "--allow-empty"])
+        assert res.exit_code == 0
+        assert mock_run.called
+        call_argv = mock_run.call_args[0][0]
+        assert "--allow-empty" in call_argv
+
+
 def test_test_boundary() -> None:
     """Test test boundary audit command."""
     mock_bus = MagicMock()

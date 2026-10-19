@@ -9,6 +9,7 @@ from __future__ import annotations
 
 from abc import ABC, abstractmethod
 
+from hexaqual.domain.docs_drift import DocDriftReport
 from hexaqual.domain.generators import (
     ArchonReport,
     DocLinksReport,
@@ -80,6 +81,22 @@ class GeneratorPresenterPort(ABC):
         Notes/Architectural Intent:
             Renders documentation link validation reports across Rich terminal tables,
             JSON records, or GitHub Flavored Markdown.
+        """
+        raise NotImplementedError
+
+    @abstractmethod
+    def present_doc_drift(self, report: DocDriftReport) -> int:
+        """Present results of documentation prose data drift audit.
+
+        Args:
+            report: DocDriftReport containing detected prose contradictions and repairs.
+
+        Returns:
+            Exit code (0 for clean or all fixed, 1 if drift detected).
+
+        Notes/Architectural Intent:
+            Renders documentation prose drift diagnostics in formatted tables, JSON,
+            or markdown reports.
         """
         raise NotImplementedError
 

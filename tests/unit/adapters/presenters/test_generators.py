@@ -12,6 +12,10 @@ from hexaqual.adapters.presenters.generators import (
     RichGeneratorPresenterAdapter,
     create_generator_presenter,
 )
+from hexaqual.domain.docs_drift import (
+    DocDriftFinding,
+    DocDriftReport,
+)
 from hexaqual.domain.generators import (
     ArchonReport,
     BrokenDocLink,
@@ -217,3 +221,36 @@ def test_markdown_generator_presenter() -> None:
     )
     res_dl_fail = presenter.present_doc_links(doc_links_fail)
     assert res_dl_fail == 1
+
+
+def test_present_doc_drift_all_formats() -> None:
+    """Verify present_doc_drift renders correctly in rich, json, and markdown formats."""
+    finding = DocDriftFinding(
+        file_path="docs/test.md",
+        line_number=5,
+        drift_type="version_mismatch",
+        matched_text="v0.8.0",
+        expected_text="v0.9.0",
+        snippet="https://img.shields.io/badge/version-v0.8.0-blue.svg",
+        fixable=True,
+    )
+    drift_dirty = DocDriftReport(findings=(finding,), is_successful=False)
+    drift_clean = DocDriftReport(findings=(), is_successful=True)
+
+    # Rich Presenter
+    mock_console = MagicMock(spec=Console)
+    rich_presenter = RichGeneratorPresenterAdapter(console=mock_console)
+    assert rich_presenter.present_doc_drift(drift_dirty) == 1
+    assert rich_presenter.present_doc_drift(drift_clean) == 0
+
+    # JSON Presenter
+    mock_json_console = MagicMock(spec=Console)
+    json_presenter = JsonGeneratorPresenterAdapter(console=mock_json_console)
+    assert json_presenter.present_doc_drift(drift_dirty) == 1
+    assert json_presenter.present_doc_drift(drift_clean) == 0
+
+    # Markdown Presenter
+    mock_md_console = MagicMock(spec=Console)
+    md_presenter = MarkdownGeneratorPresenterAdapter(console=mock_md_console)
+    assert md_presenter.present_doc_drift(drift_dirty) == 1
+    assert md_presenter.present_doc_drift(drift_clean) == 0

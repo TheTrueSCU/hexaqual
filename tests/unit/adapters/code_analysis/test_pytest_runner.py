@@ -77,3 +77,23 @@ def test_run_main_with_affected(
         cmd_args = mock_subproc.call_args[0][0]
         assert str(pkg_dir / "tests" / "unit") in cmd_args
         assert "--cov-reset" in cmd_args
+
+
+def test_run_main_exercise_gate_refuses_zero_tests(tmp_path: Path) -> None:
+    """Verify run_main intercepts pytest exit code 5 (0 tests collected) and refuses."""
+    with (
+        patch("hexaqual.adapters.code_analysis.pytest_runner.get_repo_root", return_value=tmp_path),
+        patch("subprocess.run", return_value=MagicMock(returncode=5)),
+    ):
+        code = run_main([])
+        assert code == 1
+
+
+def test_run_main_exercise_gate_allows_empty_override(tmp_path: Path) -> None:
+    """Verify run_main allows 0 tests when --allow-empty is explicitly set."""
+    with (
+        patch("hexaqual.adapters.code_analysis.pytest_runner.get_repo_root", return_value=tmp_path),
+        patch("subprocess.run", return_value=MagicMock(returncode=5)),
+    ):
+        code = run_main(["--allow-empty"])
+        assert code == 0
