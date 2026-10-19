@@ -41,7 +41,7 @@ def test_audit_gate_inventory_configured_repo(tmp_path: Path) -> None:
     hooks_dir.mkdir(parents=True)
     hook = hooks_dir / "pre-commit"
     hook.write_text("#!/bin/sh\nexit 0\n", encoding="utf-8")
-    os.chmod(hook, 0o755)
+    os.chmod(hook, 0o700)
     # AGENTS.md and rules
     (tmp_path / "AGENTS.md").write_text("# Agents\n", encoding="utf-8")
     rules_dir = tmp_path / ".agents" / "rules"
