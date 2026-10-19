@@ -138,6 +138,7 @@ def _check_hexagonal_boundaries(repo_root: Path) -> GateInventoryItem:
 def _check_git_hooks(repo_root: Path) -> GateInventoryItem:
     """Audit Git lifecycle hook installation."""
     hook = repo_root / ".git" / "hooks" / "pre-commit"
+    config = repo_root / ".pre-commit-config.yaml"
     if hook.is_file() and os.access(hook, os.X_OK):
         return GateInventoryItem(
             name="Git Lifecycle Hooks",
@@ -145,11 +146,18 @@ def _check_git_hooks(repo_root: Path) -> GateInventoryItem:
             status="ACTIVE",
             details="Pre-commit hook installed and executable in .git/hooks/.",
         )
+    if config.is_file():
+        return GateInventoryItem(
+            name="Git Lifecycle Hooks",
+            category="Lifecycle",
+            status="ACTIVE",
+            details=".pre-commit-config.yaml configured for repository.",
+        )
     return GateInventoryItem(
         name="Git Lifecycle Hooks",
         category="Lifecycle",
         status="MISSING",
-        details="Pre-commit hook not installed or not executable in .git/hooks/.",
+        details="Pre-commit hook not installed and .pre-commit-config.yaml missing.",
         remediation="Run 'uv run hexaqual hooks install'.",
     )
 
@@ -159,19 +167,25 @@ def _check_agent_guardrails(repo_root: Path) -> GateInventoryItem:
     agents_md = repo_root / "AGENTS.md"
     rules_dir = repo_root / ".agents" / "rules"
 
-    if agents_md.is_file() and rules_dir.is_dir() and any(rules_dir.glob("*.md")):
-        rule_count = len(list(rules_dir.glob("*.md")))
+    has_rules = rules_dir.is_dir() and any(rules_dir.glob("*.md"))
+    if agents_md.is_file() or has_rules:
+        rule_count = len(list(rules_dir.glob("*.md"))) if rules_dir.is_dir() else 0
+        details = (
+            f"AGENTS.md present with {rule_count} active rule(s) in .agents/rules/."
+            if agents_md.is_file()
+            else f"{rule_count} active rule(s) present in .agents/rules/."
+        )
         return GateInventoryItem(
             name="AI Agent Guardrails Index",
             category="AI Governance",
             status="ACTIVE",
-            details=f"AGENTS.md present with {rule_count} active rule(s) in .agents/rules/.",
+            details=details,
         )
     return GateInventoryItem(
         name="AI Agent Guardrails Index",
         category="AI Governance",
         status="MISSING",
-        details="AGENTS.md or .agents/rules/ directory missing.",
+        details="Neither AGENTS.md nor .agents/rules/ directory found.",
         remediation="Run 'uv run hexaqual agents sync' to initialize agent guardrails.",
     )
 
