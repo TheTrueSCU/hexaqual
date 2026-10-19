@@ -114,10 +114,11 @@ def _check_hexagonal_boundaries(repo_root: Path) -> GateInventoryItem:
     """Audit hexagonal boundary enforcement and architecture tests."""
     importlinter = repo_root / ".importlinter"
     arch_tests = list(repo_root.glob("**/test_hexagonal_boundaries.py"))
+    has_linter_config = _has_pyproject_section(repo_root / "pyproject.toml", "[tool.importlinter")
 
-    if importlinter.is_file() or arch_tests:
+    if importlinter.is_file() or arch_tests or has_linter_config:
         details = f"Active: {len(arch_tests)} architecture test suite(s)" + (
-            ", .importlinter present." if importlinter.is_file() else "."
+            ", import-linter configured." if (importlinter.is_file() or has_linter_config) else "."
         )
         return GateInventoryItem(
             name="Hexagonal Boundary Isolation",

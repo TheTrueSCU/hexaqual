@@ -65,3 +65,15 @@ def test_audit_gate_inventory_configured_repo(tmp_path: Path) -> None:
     assert "Git Lifecycle Hooks" in active_names
     assert "AI Agent Guardrails Index" in active_names
     assert "Architectural Decisions & Re-Anchoring" in active_names
+
+
+def test_audit_gate_inventory_pyproject_importlinter(tmp_path: Path) -> None:
+    """Verify hexagonal boundary gate is ACTIVE when [tool.importlinter] is in pyproject.toml."""
+    (tmp_path / "pyproject.toml").write_text(
+        '[tool.importlinter]\nroot_packages = ["demo"]\n',
+        encoding="utf-8",
+    )
+    report = audit_gate_inventory(tmp_path)
+    arch_gate = next(i for i in report.items if i.name == "Hexagonal Boundary Isolation")
+    assert arch_gate.status == "ACTIVE"
+    assert "import-linter configured" in arch_gate.details

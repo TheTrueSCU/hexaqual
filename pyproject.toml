@@ -107,6 +107,9 @@ ignore = ["E501", "RUF022"]
 [tool.ruff.lint.isort]
 known-first-party = ["hexaqual"]
 
+[tool.ty.environment]
+extra-paths = ["src"]
+
 [project.scripts]
 hexaqual = "hexaqual.cli.main:app"
 
