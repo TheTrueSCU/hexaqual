@@ -22,6 +22,8 @@ from hexaqual.adapters.presenters.governance import (
 from hexaqual.domain.governance import (
     CheckResult,
     CheckStatus,
+    GateInventoryItem,
+    GateInventoryReport,
     SanityCheckReport,
 )
 
@@ -208,3 +210,63 @@ def test_present_architecture_parity_all_formats():
     assert presenter_md.present_architecture_parity([]) == 0
     assert presenter_md.present_architecture_parity(["Missing test in pkg_c"]) == 1
     assert "Architecture Test Parity Violations" in buf_md.getvalue()
+
+
+def test_present_gate_inventory_all_formats():
+    """Verify present_gate_inventory across Rich, JSON, and Markdown adapters."""
+    item_ok = GateInventoryItem(
+        name="Linter",
+        category="Static",
+        status="ACTIVE",
+        details="Configured",
+    )
+    item_warn = GateInventoryItem(
+        name="Boundaries",
+        category="Architecture",
+        status="WARNING",
+        details="Optional warning",
+        remediation="Add tests",
+    )
+    item_missing = GateInventoryItem(
+        name="Hooks",
+        category="Lifecycle",
+        status="MISSING",
+        details="Not installed",
+        remediation="Run hooks install",
+    )
+
+    report_clean = GateInventoryReport(items=(item_ok,), exit_code=0)
+    report_warn = GateInventoryReport(items=(item_ok, item_warn), exit_code=0)
+    report_fail = GateInventoryReport(items=(item_ok, item_missing), exit_code=1)
+
+    # 1. Rich
+    buf_rich = StringIO()
+    presenter_rich = RichGovernancePresenterAdapter(
+        console=Console(file=buf_rich, force_terminal=False)
+    )
+    assert presenter_rich.present_gate_inventory(report_clean) == 0
+    assert "Repository Quality Gate Inventory Matrix" in buf_rich.getvalue()
+    assert presenter_rich.present_gate_inventory(report_warn) == 0
+    assert presenter_rich.present_gate_inventory(report_fail) == 1
+
+    # 2. JSON
+    buf_json = StringIO()
+    presenter_json = JsonGovernancePresenterAdapter(
+        console=Console(file=buf_json, force_terminal=False)
+    )
+    assert presenter_json.present_gate_inventory(report_clean) == 0
+    buf_json.seek(0)
+    buf_json.truncate(0)
+    assert presenter_json.present_gate_inventory(report_fail) == 1
+    data = json.loads(buf_json.getvalue())
+    assert data["status"] == "FAIL"
+    assert data["missing_count"] == 1
+
+    # 3. Markdown
+    buf_md = StringIO()
+    presenter_md = MarkdownGovernancePresenterAdapter(
+        console=Console(file=buf_md, force_terminal=False)
+    )
+    assert presenter_md.present_gate_inventory(report_clean) == 0
+    assert presenter_md.present_gate_inventory(report_fail) == 1
+    assert "Repository Quality Gate Inventory Matrix" in buf_md.getvalue()

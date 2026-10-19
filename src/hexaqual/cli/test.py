@@ -74,6 +74,11 @@ def test_run(
         "--cluster-elevate",
         help="Assert administrative elevation on Hexaqueue cluster.",
     ),
+    allow_empty: bool = typer.Option(
+        False,
+        "--allow-empty",
+        help="Permit test runs with 0 collected tests (exercise gate override).",
+    ),
 ) -> None:
     """Run pytest suite with dynamic worker allocation and coverage.
 
@@ -91,6 +96,7 @@ def test_run(
         cluster_token: Authentication bearer token for Hexaqueue cluster.
         cluster_user: Submitting user identity for Hexaqueue cluster.
         cluster_elevate: Assert administrative elevation on Hexaqueue cluster.
+        allow_empty: Whether to permit test runs with 0 collected tests.
 
     Raises:
         typer.Exit: If tests fail.
@@ -119,6 +125,8 @@ def test_run(
         argv.append("-P")
     if with_context:
         argv.append("--with-context")
+    if allow_empty:
+        argv.append("--allow-empty")
     cluster_norm = cluster.lower()
     if cluster_norm not in ("local", "hexaqueue"):
         raise typer.BadParameter(

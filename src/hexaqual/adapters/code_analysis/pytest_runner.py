@@ -146,6 +146,11 @@ def run_main(argv: list[str] | None = None) -> int:
         action="store_true",
         help="Assert administrative elevation on Hexaqueue cluster.",
     )
+    parser.add_argument(
+        "--allow-empty",
+        action="store_true",
+        help="Permit test runs where zero tests are collected or executed (exercise gate override).",
+    )
     args, unknown = parser.parse_known_args(argv)
 
     root = get_repo_root()
@@ -198,9 +203,21 @@ def run_main(argv: list[str] | None = None) -> int:
         return returncode
 
     res = subprocess.run([sys.executable, "-m", "pytest", *call_args])
+    returncode = res.returncode
+    if returncode == 5:
+        if args.allow_empty:
+            returncode = 0
+        else:
+            print(
+                "❌ [Exercise Gate] Refused test run with 0 executed tests. "
+                "A check that refuses zero activity prevents misleading green passes "
+                "(use --allow-empty if intentional).",
+                file=sys.stderr,
+            )
+            returncode = 1
     if argv is None:
-        sys.exit(res.returncode)
-    return res.returncode
+        sys.exit(returncode)
+    return returncode
 
 
 __all__ = [

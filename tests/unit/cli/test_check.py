@@ -208,3 +208,39 @@ def test_execute_sanity_pipeline_parallelism() -> None:
             )
         err_code = exc_info.value.exit_code
         assert err_code == 2
+
+
+def test_check_audit_gates() -> None:
+    """Test check --audit-gates executes audit_gate_inventory and delegates to presenter."""
+    from hexaqual.domain.governance import GateInventoryReport
+
+    test_app = typer.Typer()
+    register_check_commands(test_app)
+
+    clean_report = GateInventoryReport(items=(), exit_code=0)
+    with (
+        patch(
+            "hexaqual.adapters.code_analysis.gate_inventory.audit_gate_inventory",
+            return_value=clean_report,
+        ),
+        patch(
+            "hexaqual.adapters.presenters.governance.RichGovernancePresenterAdapter.present_gate_inventory",
+            return_value=0,
+        ),
+    ):
+        res = runner.invoke(test_app, ["check", "--audit-gates"])
+        assert res.exit_code == 0
+
+    fail_report = GateInventoryReport(items=(), exit_code=1)
+    with (
+        patch(
+            "hexaqual.adapters.code_analysis.gate_inventory.audit_gate_inventory",
+            return_value=fail_report,
+        ),
+        patch(
+            "hexaqual.adapters.presenters.governance.RichGovernancePresenterAdapter.present_gate_inventory",
+            return_value=1,
+        ),
+    ):
+        res_fail = runner.invoke(test_app, ["sanity", "--audit-gates"])
+        assert res_fail.exit_code == 1

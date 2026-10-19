@@ -106,6 +106,7 @@ def _execute_sanity_pipeline(
     files: list[str] | None,
     numprocesses: str = "auto",
     sequential: bool = False,
+    audit_gates: bool = False,
 ) -> None:
     """Execute shared sanity pipeline across targets.
 
@@ -121,6 +122,7 @@ def _execute_sanity_pipeline(
         files: Optional explicit file or directory targets.
         numprocesses: Concurrency width ('auto' for cores - 2, or 1..num_cores).
         sequential: Whether to execute checks sequentially (sets parallelism to 1).
+        audit_gates: Whether to audit repository quality gates inventory.
 
     Raises:
         typer.Exit: If any sanity checks fail.
@@ -132,6 +134,18 @@ def _execute_sanity_pipeline(
     from hexaqual.infra.bootstrap import create_governance_bus
 
     repo_root = get_repo_root()
+    if audit_gates:
+        from pathlib import Path
+
+        from hexaqual.adapters.code_analysis.gate_inventory import audit_gate_inventory
+
+        target_root = Path(files[0]).resolve() if (files and Path(files[0]).is_dir()) else repo_root
+        report = audit_gate_inventory(target_root)
+        presenter = create_governance_presenter(format_type=format_type)
+        exit_code = presenter.present_gate_inventory(report)
+        if exit_code != 0:
+            raise typer.Exit(code=exit_code)
+        return
     targets = resolve_targets(
         packages=packages,
         examples=examples,
@@ -199,6 +213,9 @@ def check(
     max_complexity: int = typer.Option(
         25, "-mx", "--max-complexity", help="Cognitive complexity ceiling."
     ),
+    audit_gates: bool = typer.Option(
+        False, "--audit-gates", help="Audit repository quality gates inventory."
+    ),
     format_type: str = typer.Option(
         "table", "-f", "--format", help="Output format (table, json, markdown)."
     ),
@@ -216,6 +233,7 @@ def check(
         numprocesses: Concurrency width ('auto' for cores - 2, or 1..num_cores).
         sequential: Whether to execute checks sequentially (equivalent to -n 1).
         max_complexity: Cognitive complexity ceiling.
+        audit_gates: Whether to audit repository quality gates inventory.
         format_type: Output presentation format.
         skip_steps: Step names dynamically skipped via CLI flags.
         files: Optional explicit file or directory targets.
@@ -238,6 +256,7 @@ def check(
         files=files,
         numprocesses=numprocesses,
         sequential=sequential,
+        audit_gates=audit_gates,
     )
 
 
@@ -265,6 +284,9 @@ def sanity(
     max_complexity: int = typer.Option(
         25, "-mx", "--max-complexity", help="Cognitive complexity ceiling."
     ),
+    audit_gates: bool = typer.Option(
+        False, "--audit-gates", help="Audit repository quality gates inventory."
+    ),
     format_type: str = typer.Option(
         "table", "-f", "--format", help="Output format (table, json, markdown)."
     ),
@@ -282,6 +304,7 @@ def sanity(
         numprocesses: Concurrency width ('auto' for cores - 2, or 1..num_cores).
         sequential: Whether to execute checks sequentially (equivalent to -n 1).
         max_complexity: Cognitive complexity ceiling.
+        audit_gates: Whether to audit repository quality gates inventory.
         format_type: Output presentation format.
         skip_steps: Step names dynamically skipped via CLI flags.
         files: Optional explicit file or directory targets.
@@ -304,6 +327,7 @@ def sanity(
         files=files,
         numprocesses=numprocesses,
         sequential=sequential,
+        audit_gates=audit_gates,
     )
 
 

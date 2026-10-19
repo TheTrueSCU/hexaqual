@@ -12,6 +12,7 @@ from pathlib import Path
 
 from hexaqual.domain.governance import (
     CheckResult,
+    GateInventoryReport,
     SanityCheckReport,
     SanityTarget,
 )
@@ -219,6 +220,20 @@ class GovernancePresenterPort(ABC):
 
         Args:
             errors: List of detected architecture parity violation errors.
+
+        Returns:
+            Process exit code (0 for pass/success, 1 for failure).
+        """
+
+    @abstractmethod
+    def present_gate_inventory(
+        self,
+        report: GateInventoryReport,
+    ) -> int:
+        """Render repository quality gate inventory matrix and status.
+
+        Args:
+            report: Aggregated GateInventoryReport object.
 
         Returns:
             Process exit code (0 for pass/success, 1 for failure).
