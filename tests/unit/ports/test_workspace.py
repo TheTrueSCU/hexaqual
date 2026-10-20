@@ -1,8 +1,7 @@
 """Unit tests for WorkspaceDiscoveryPort ABC."""
 
+import inspect
 from pathlib import Path
-
-import pytest
 
 from hexaqual.ports.workspace import WorkspaceDiscoveryPort
 
@@ -34,5 +33,6 @@ def test_workspace_discovery_port_instantiation() -> None:
 
 
 def test_workspace_discovery_port_abstract() -> None:
-    with pytest.raises(TypeError):
-        WorkspaceDiscoveryPort()  # type: ignore[abstract]  # ty: ignore[call-non-callable]
+    """Verify WorkspaceDiscoveryPort is an abstract interface."""
+    assert inspect.isabstract(WorkspaceDiscoveryPort)
+    assert "get_repo_root" in WorkspaceDiscoveryPort.__abstractmethods__

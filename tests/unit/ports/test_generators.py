@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-import pytest
+import inspect
 
 from hexaqual.domain.docs_drift import DocDriftReport
 from hexaqual.domain.generators import (
@@ -34,9 +34,9 @@ class DummyGeneratorPresenter(GeneratorPresenterPort):
 
 
 def test_generator_presenter_port_instantiation() -> None:
-    """Verify GeneratorPresenterPort cannot be instantiated directly without implementations."""
-    with pytest.raises(TypeError):
-        GeneratorPresenterPort()  # type: ignore[abstract]  # ty: ignore[call-non-callable]
+    """Verify GeneratorPresenterPort is an abstract interface."""
+    assert inspect.isabstract(GeneratorPresenterPort)
+    assert "present_pydeps" in GeneratorPresenterPort.__abstractmethods__
 
 
 def test_concrete_generator_presenter() -> None:

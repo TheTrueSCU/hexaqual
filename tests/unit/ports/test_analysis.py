@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-import pytest
+import inspect
 
 from hexaqual.domain.analysis import (
     CodeQlScanReport,
@@ -26,9 +26,9 @@ class DummyAnalysisPresenter(AnalysisPresenterPort):
 
 
 def test_analysis_presenter_port_instantiation() -> None:
-    """Verify AnalysisPresenterPort cannot be instantiated directly without implementations."""
-    with pytest.raises(TypeError):
-        AnalysisPresenterPort()  # type: ignore[abstract]  # ty: ignore[call-non-callable]
+    """Verify AnalysisPresenterPort is an abstract interface."""
+    assert inspect.isabstract(AnalysisPresenterPort)
+    assert "present_codeql" in AnalysisPresenterPort.__abstractmethods__
 
 
 def test_concrete_analysis_presenter() -> None:
