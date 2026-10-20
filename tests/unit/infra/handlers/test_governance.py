@@ -263,9 +263,12 @@ def test_run_sanity_check_handler_parallel_diagrams(tmp_path: Path):
         ]
         num_diagram_calls = len(diagram_calls)
         assert num_diagram_calls == 2
-        p1_cmd = diagram_calls[0].args[0]
-        assert p1_cmd.precomputed_result is not None
-        assert p1_cmd.precomputed_result.target_name == "p1"
+        target_names = {
+            c.args[0].precomputed_result.target_name
+            for c in diagram_calls
+            if c.args[0].precomputed_result is not None
+        }
+        assert target_names == {"p1", "p2"}
 
 
 def test_run_sanity_check_handler_sequential(tmp_path: Path):

@@ -36,7 +36,7 @@ class DummyGeneratorPresenter(GeneratorPresenterPort):
 def test_generator_presenter_port_instantiation() -> None:
     """Verify GeneratorPresenterPort cannot be instantiated directly without implementations."""
     with pytest.raises(TypeError):
-        GeneratorPresenterPort()  # type: ignore[abstract]
+        GeneratorPresenterPort()  # type: ignore[abstract]  # ty: ignore[call-non-callable]
 
 
 def test_concrete_generator_presenter() -> None:

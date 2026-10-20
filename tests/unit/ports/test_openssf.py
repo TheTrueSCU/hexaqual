@@ -15,10 +15,10 @@ from hexaqual.ports.openssf import OpenSsfBadgePort, OpenSsfScorecardPort
 def test_openssf_badge_port_is_abstract() -> None:
     """Test that OpenSsfBadgePort cannot be instantiated directly without implementations."""
     with pytest.raises(TypeError):
-        OpenSsfBadgePort()  # type: ignore[abstract]
+        OpenSsfBadgePort()  # type: ignore[abstract]  # ty: ignore[call-non-callable]
 
 
 def test_openssf_scorecard_port_is_abstract() -> None:
     """Test that OpenSsfScorecardPort cannot be instantiated directly without implementations."""
     with pytest.raises(TypeError):
-        OpenSsfScorecardPort()  # type: ignore[abstract]
+        OpenSsfScorecardPort()  # type: ignore[abstract]  # ty: ignore[call-non-callable]

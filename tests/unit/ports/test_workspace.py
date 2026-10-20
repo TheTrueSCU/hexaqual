@@ -35,4 +35,4 @@ def test_workspace_discovery_port_instantiation() -> None:
 
 def test_workspace_discovery_port_abstract() -> None:
     with pytest.raises(TypeError):
-        WorkspaceDiscoveryPort()  # type: ignore[abstract]
+        WorkspaceDiscoveryPort()  # type: ignore[abstract]  # ty: ignore[call-non-callable]

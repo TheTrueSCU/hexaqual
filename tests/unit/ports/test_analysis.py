@@ -28,7 +28,7 @@ class DummyAnalysisPresenter(AnalysisPresenterPort):
 def test_analysis_presenter_port_instantiation() -> None:
     """Verify AnalysisPresenterPort cannot be instantiated directly without implementations."""
     with pytest.raises(TypeError):
-        AnalysisPresenterPort()  # type: ignore[abstract]
+        AnalysisPresenterPort()  # type: ignore[abstract]  # ty: ignore[call-non-callable]
 
 
 def test_concrete_analysis_presenter() -> None:

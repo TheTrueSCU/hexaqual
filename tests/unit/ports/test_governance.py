@@ -25,13 +25,13 @@ from hexaqual.ports.governance import (
 def test_tool_runner_port_is_abstract():
     """Verify ToolRunnerPort cannot be instantiated directly."""
     with pytest.raises(TypeError):
-        ToolRunnerPort()  # type: ignore[abstract]
+        ToolRunnerPort()  # type: ignore[abstract]  # ty: ignore[call-non-callable]
 
 
 def test_governance_presenter_port_is_abstract():
     """Verify GovernancePresenterPort cannot be instantiated directly."""
     with pytest.raises(TypeError):
-        GovernancePresenterPort()  # type: ignore[abstract]
+        GovernancePresenterPort()  # type: ignore[abstract]  # ty: ignore[call-non-callable]
 
 
 def test_concrete_tool_runner_implementation():
