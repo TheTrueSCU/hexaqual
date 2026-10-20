@@ -285,3 +285,17 @@ def test_create_governance_bus_wires_and_dispatches():
 
     medium_res = bus.dispatch(PublishMediumArticlesCommand())
     assert isinstance(medium_res, MediumPublishReport)
+
+
+def test_lazy_github_client_delegates_resolve_review_thread() -> None:
+    """Verify _LazyGitHubClient delegates resolve_review_thread to underlying adapter."""
+    from hexaqual.infra.bootstrap import _LazyGitHubClient
+
+    lazy_client = _LazyGitHubClient()
+    mock_inner = MagicMock(spec=GitHubApiPort)
+    mock_inner.resolve_review_thread.return_value = True
+    lazy_client._client = mock_inner
+
+    result = lazy_client.resolve_review_thread("thread_123")
+    assert result is True
+    mock_inner.resolve_review_thread.assert_called_once_with("thread_123")
