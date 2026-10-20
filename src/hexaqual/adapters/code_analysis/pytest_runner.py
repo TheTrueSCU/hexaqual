@@ -44,6 +44,25 @@ def _setup_example_target(example_name: str, sub_dir: str, root: Path) -> str:
     return str(ex_dir)
 
 
+def _is_pytest_benchmark_installed() -> bool:
+    """Check if pytest-benchmark plugin is installed in current Python environment."""
+    try:
+        import pytest_benchmark  # noqa: F401
+
+        return True
+    except ImportError:
+        return False
+
+
+def _pkg_test_path(pkg_dir: Path, sub_dir: str) -> str:
+    """Resolve sub-directory path for package tests, falling back to tests if needed."""
+    if (pkg_dir / sub_dir).is_dir():
+        return str(pkg_dir / sub_dir)
+    if sub_dir == "tests/benchmarks" and (pkg_dir / "tests").is_dir():
+        return str(pkg_dir / "tests")
+    return str(pkg_dir / sub_dir)
+
+
 def _resolve_package_targets(
     packages: list[str] | None,
     affected: bool,
@@ -52,24 +71,20 @@ def _resolve_package_targets(
 ) -> tuple[list[str], set[str] | None]:
     """Resolve target test directory paths for workspace packages."""
     if packages:
-        paths = [str(get_package_directory(p, root) / sub_dir) for p in packages]
+        paths = [_pkg_test_path(get_package_directory(p, root), sub_dir) for p in packages]
         return paths, set(packages)
 
     if affected:
         changed = _get_git_changed_files()
         affected_pkgs = resolve_affected_packages(changed, root)
         if affected_pkgs is not None:
-            paths = [
-                str(target)
-                for p in affected_pkgs
-                if (target := get_package_directory(p, root) / sub_dir).is_dir()
-            ]
+            paths = [_pkg_test_path(get_package_directory(p, root), sub_dir) for p in affected_pkgs]
             return paths, affected_pkgs
 
     paths = [
-        str(target)
+        _pkg_test_path(pkg_dir, sub_dir)
         for pkg_dir in get_package_directories(root)
-        if (target := pkg_dir / sub_dir).is_dir()
+        if (pkg_dir / "tests").is_dir()
     ]
     return paths, None
 
@@ -80,10 +95,13 @@ def _resolve_test_targets(
     affected: bool,
     unit_only: bool,
     properties_only: bool,
+    benchmark_only: bool,
     root: Path,
 ) -> tuple[list[str], set[str] | None]:
     """Resolve target test directory paths and active package set based on CLI flags."""
-    if properties_only:
+    if benchmark_only:
+        sub_dir = "tests/benchmarks"
+    elif properties_only:
         sub_dir = "tests/properties"
     elif unit_only:
         sub_dir = "tests/unit"
@@ -95,6 +113,70 @@ def _resolve_test_targets(
         return paths, None
 
     return _resolve_package_targets(packages, affected, sub_dir, root)
+
+
+def _build_coverage_args(
+    args: argparse.Namespace,
+    active_pkgs: set[str] | None,
+    root: Path,
+) -> list[str]:
+    """Construct coverage scoping and context arguments for pytest."""
+    cov_args: list[str] = []
+    if args.with_context:
+        cov_args.extend(["-n", "0", "--cov-context=test"])
+
+    if getattr(args, "benchmark", False) or args.examples:
+        cov_args.append("--no-cov")
+    elif active_pkgs is not None:
+        cov_pkgs = [
+            p
+            for p in active_pkgs
+            if p != "tools" and (get_package_directory(p, root) / "src").is_dir()
+        ]
+        if cov_pkgs:
+            cov_args.append("--cov-reset")
+            for p in cov_pkgs:
+                pkg_src = get_package_directory(p, root) / "src"
+                cov_args.append(f"--cov={pkg_src}")
+        else:
+            cov_args.append("--no-cov")
+    return cov_args
+
+
+def _build_benchmark_options(args: argparse.Namespace) -> list[str]:
+    """Construct specific benchmark execution options."""
+    opts: list[str] = []
+    if getattr(args, "smoke", False):
+        opts.append("--benchmark-disable")
+    else:
+        opts.append("--benchmark-only")
+    if save := getattr(args, "benchmark_save", None):
+        opts.append(f"--benchmark-save={save}")
+    if getattr(args, "benchmark_compare", False):
+        opts.append("--benchmark-compare")
+    if json_path := getattr(args, "benchmark_json", None):
+        opts.append(f"--benchmark-json={json_path}")
+    if min_rounds := getattr(args, "benchmark_min_rounds", None):
+        opts.append(f"--benchmark-min-rounds={min_rounds}")
+    return opts
+
+
+def _build_benchmark_args(args: argparse.Namespace, unknown: list[str]) -> list[str]:
+    """Construct pytest-benchmark specific arguments based on parsed CLI flags."""
+    if getattr(args, "benchmark", False):
+        if not _is_pytest_benchmark_installed():
+            print(
+                "❌ [Benchmark Error] pytest-benchmark is not installed. "
+                "Install with 'uv add --dev pytest-benchmark' or 'pip install hexaqual[bench]'.",
+                file=sys.stderr,
+            )
+            sys.exit(1)
+        return _build_benchmark_options(args)
+
+    has_bench_unknown = any(arg.startswith("--benchmark-") for arg in unknown)
+    if not has_bench_unknown and _is_pytest_benchmark_installed():
+        return ["--benchmark-skip"]
+    return []
 
 
 def run_main(argv: list[str] | None = None) -> int:
@@ -151,6 +233,41 @@ def run_main(argv: list[str] | None = None) -> int:
         action="store_true",
         help="Permit test runs where zero tests are collected or executed (exercise gate override).",
     )
+    parser.add_argument(
+        "-B",
+        "--bench",
+        "--benchmark",
+        dest="benchmark",
+        action="store_true",
+        help="Run benchmark suite using pytest-benchmark with zero coverage overhead.",
+    )
+    parser.add_argument(
+        "--benchmark-save",
+        dest="benchmark_save",
+        help="Save benchmark results with given name tag under .benchmarks/.",
+    )
+    parser.add_argument(
+        "--benchmark-compare",
+        dest="benchmark_compare",
+        action="store_true",
+        help="Compare against latest saved benchmark baseline.",
+    )
+    parser.add_argument(
+        "--benchmark-json",
+        dest="benchmark_json",
+        help="Export benchmark results to JSON file path.",
+    )
+    parser.add_argument(
+        "--benchmark-min-rounds",
+        dest="benchmark_min_rounds",
+        type=int,
+        help="Minimum number of benchmark rounds per test.",
+    )
+    parser.add_argument(
+        "--smoke",
+        action="store_true",
+        help="Smoke mode: disable measurement cycles and run each benchmark once.",
+    )
     args, unknown = parser.parse_known_args(argv)
 
     root = get_repo_root()
@@ -160,33 +277,13 @@ def run_main(argv: list[str] | None = None) -> int:
         affected=args.affected,
         unit_only=args.unit,
         properties_only=args.properties,
+        benchmark_only=args.benchmark,
         root=root,
     )
 
-    cov_args: list[str] = []
-    if args.with_context:
-        cov_args.extend(["-n", "0", "--cov-context=test"])
-
-    if args.examples:
-        # For example runs, disable global fail-under coverage or scope directly
-        cov_args.append("--no-cov")
-    elif active_pkgs is not None:
-        # Dynamically scope coverage only to tested packages
-        cov_pkgs = [
-            p
-            for p in active_pkgs
-            if p != "tools" and (get_package_directory(p, root) / "src").is_dir()
-        ]
-        if cov_pkgs:
-            cov_args.append("--cov-reset")
-            for p in cov_pkgs:
-                pkg_src = get_package_directory(p, root) / "src"
-                cov_args.append(f"--cov={pkg_src}")
-        else:
-            # Only test tooling/non-covered packages: disable coverage fail-under
-            cov_args.append("--no-cov")
-
-    call_args = test_paths + cov_args + (unknown or [])
+    cov_args = _build_coverage_args(args=args, active_pkgs=active_pkgs, root=root)
+    bench_args = _build_benchmark_args(args=args, unknown=unknown or [])
+    call_args = test_paths + cov_args + bench_args + (unknown or [])
 
     if getattr(args, "cluster", "local").lower() == "hexaqueue":
         from hexaqual.adapters.runners.hexaqueue_cluster import HexaqueueClusterRunnerAdapter

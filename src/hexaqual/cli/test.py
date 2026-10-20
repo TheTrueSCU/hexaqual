@@ -12,6 +12,7 @@ import typer
 __all__ = [
     "test_app",
     "test_archon",
+    "test_bench",
     "test_boundary",
     "test_fuzz",
     "test_impact",
@@ -25,6 +26,69 @@ test_app = typer.Typer(
     help="Test execution, coverage audits, and architecture verification.",
     no_args_is_help=True,
 )
+
+
+def _append_cluster_args(
+    argv: list[str],
+    cluster: str,
+    cluster_url: str,
+    cluster_user: str,
+    cluster_token: str | None,
+    cluster_elevate: bool,
+) -> None:
+    """Validate and append cluster distribution arguments to argv."""
+    cluster_norm = cluster.lower()
+    if cluster_norm not in ("local", "hexaqueue"):
+        raise typer.BadParameter(
+            f"Invalid --cluster '{cluster}'. Supported values are 'local' or 'hexaqueue'."
+        )
+    if cluster_norm != "local":
+        argv.extend(["--cluster", cluster_norm])
+        argv.extend(["--cluster-url", cluster_url])
+        argv.extend(["--cluster-user", cluster_user])
+        if cluster_token:
+            argv.extend(["--cluster-token", cluster_token])
+        if cluster_elevate:
+            argv.append("--cluster-elevate")
+
+
+def _build_bench_argv(
+    package: list[str] | None,
+    example: list[str] | None,
+    all_packages: bool,
+    affected: bool,
+    save: str | None,
+    compare: bool,
+    json_path: str | None,
+    min_rounds: int | None,
+    smoke: bool,
+    allow_empty: bool,
+) -> list[str]:
+    """Construct benchmark argv flags for pytest runner adapter."""
+    argv: list[str] = ["--bench"]
+    if package:
+        for p in package:
+            argv.extend(["-p", p])
+    if example:
+        for e in example:
+            argv.extend(["-e", e])
+    if all_packages:
+        argv.append("-a")
+    if affected:
+        argv.append("-A")
+    if save:
+        argv.extend(["--benchmark-save", save])
+    if compare:
+        argv.append("--benchmark-compare")
+    if json_path:
+        argv.extend(["--benchmark-json", json_path])
+    if min_rounds:
+        argv.extend(["--benchmark-min-rounds", str(min_rounds)])
+    if smoke:
+        argv.append("--smoke")
+    if allow_empty:
+        argv.append("--allow-empty")
+    return argv
 
 
 @test_app.command(
@@ -127,19 +191,138 @@ def test_run(
         argv.append("--with-context")
     if allow_empty:
         argv.append("--allow-empty")
-    cluster_norm = cluster.lower()
-    if cluster_norm not in ("local", "hexaqueue"):
-        raise typer.BadParameter(
-            f"Invalid --cluster '{cluster}'. Supported values are 'local' or 'hexaqueue'."
-        )
-    if cluster_norm != "local":
-        argv.extend(["--cluster", cluster_norm])
-        argv.extend(["--cluster-url", cluster_url])
-        argv.extend(["--cluster-user", cluster_user])
-        if cluster_token:
-            argv.extend(["--cluster-token", cluster_token])
-        if cluster_elevate:
-            argv.append("--cluster-elevate")
+    _append_cluster_args(
+        argv=argv,
+        cluster=cluster,
+        cluster_url=cluster_url,
+        cluster_user=cluster_user,
+        cluster_token=cluster_token,
+        cluster_elevate=cluster_elevate,
+    )
+    if ctx.args:
+        argv.extend(ctx.args)
+    exit_code = run_main(argv) or 0
+    if exit_code != 0:
+        raise typer.Exit(code=exit_code)
+
+
+@test_app.command(
+    "bench",
+    context_settings={"allow_extra_args": True, "ignore_unknown_options": True},
+)
+def test_bench(
+    ctx: typer.Context,
+    package: list[str] | None = typer.Option(None, "-p", "--package", help="Target package(s)."),
+    example: list[str] | None = typer.Option(
+        None, "-e", "--example", help="Target example project(s)."
+    ),
+    all_packages: bool = typer.Option(
+        False, "-a", "--all", help="Run benchmarks across all workspace packages."
+    ),
+    affected: bool = typer.Option(
+        False, "-A", "--affected", help="Run benchmarks only for affected packages."
+    ),
+    save: str | None = typer.Option(
+        None, "--save", help="Save benchmark results with given name tag under .benchmarks/."
+    ),
+    compare: bool = typer.Option(
+        False, "--compare", help="Compare against latest saved benchmark baseline."
+    ),
+    json_path: str | None = typer.Option(
+        None, "--json", help="Export benchmark results to JSON file path."
+    ),
+    min_rounds: int | None = typer.Option(
+        None, "--min-rounds", help="Minimum number of benchmark rounds per test."
+    ),
+    smoke: bool = typer.Option(
+        False,
+        "--smoke",
+        help="Smoke mode: disable measurement cycles and run each benchmark once (for CI PR checks).",
+    ),
+    cluster: str = typer.Option(
+        "local",
+        "--cluster",
+        help="Execution target cluster ('local' or 'hexaqueue').",
+    ),
+    cluster_url: str = typer.Option(
+        "http://localhost:8000",
+        "--cluster-url",
+        envvar="HEXAQUEUE_URL",
+        help="Hexaqueue cluster REST endpoint URL.",
+    ),
+    cluster_token: str | None = typer.Option(
+        None,
+        "--cluster-token",
+        envvar="HEXAQUEUE_TOKEN",
+        help="Authentication bearer token for Hexaqueue cluster.",
+    ),
+    cluster_user: str = typer.Option(
+        "default",
+        "--cluster-user",
+        envvar="HEXAQUEUE_USER",
+        help="Submitting user identity for Hexaqueue cluster.",
+    ),
+    cluster_elevate: bool = typer.Option(
+        False,
+        "--cluster-elevate",
+        help="Assert administrative elevation on Hexaqueue cluster.",
+    ),
+    allow_empty: bool = typer.Option(
+        False,
+        "--allow-empty",
+        help="Permit benchmark runs with 0 collected benchmarks (exercise gate override).",
+    ),
+) -> None:
+    """Execute microbenchmarks via pytest-benchmark with zero coverage instrumentation overhead.
+
+    Args:
+        ctx: Command execution context capturing extra CLI options.
+        package: Optional sequence of target package names.
+        example: Optional sequence of target example project names.
+        all_packages: Whether to run benchmarks across all packages unconditionally.
+        affected: Whether to run only benchmarks in packages affected by git diff.
+        save: Tag name under which to persist benchmark baseline.
+        compare: Whether to compare benchmark timings against latest saved baseline.
+        json_path: Optional JSON path to export benchmark results.
+        min_rounds: Minimum number of benchmark iterations per test case.
+        smoke: Whether to disable timing measurement cycles (running once as correctness check).
+        cluster: Execution target cluster ('local' or 'hexaqueue').
+        cluster_url: Hexaqueue cluster REST endpoint URL.
+        cluster_token: Authentication bearer token for Hexaqueue cluster.
+        cluster_user: Submitting user identity for Hexaqueue cluster.
+        cluster_elevate: Assert administrative elevation on Hexaqueue cluster.
+        allow_empty: Whether to permit benchmark runs with 0 collected benchmarks.
+
+    Raises:
+        typer.Exit: If benchmarks fail or regression thresholds are breached.
+
+    Notes/Architectural Intent:
+        Driving adapter dispatching to pytest runner with `--bench` and `--no-cov`.
+        Ensures that coverage instrumentation overhead does not distort microsecond
+        architectural latency benchmarks, and supports baseline diffing and CI smoke runs.
+    """
+    from hexaqual.adapters.code_analysis.pytest_runner import run_main
+
+    argv = _build_bench_argv(
+        package=package,
+        example=example,
+        all_packages=all_packages,
+        affected=affected,
+        save=save,
+        compare=compare,
+        json_path=json_path,
+        min_rounds=min_rounds,
+        smoke=smoke,
+        allow_empty=allow_empty,
+    )
+    _append_cluster_args(
+        argv=argv,
+        cluster=cluster,
+        cluster_url=cluster_url,
+        cluster_user=cluster_user,
+        cluster_token=cluster_token,
+        cluster_elevate=cluster_elevate,
+    )
     if ctx.args:
         argv.extend(ctx.args)
     exit_code = run_main(argv) or 0

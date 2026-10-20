@@ -1,6 +1,6 @@
 [project]
 name = "hexaqual"
-version = "0.9.3"
+version = "0.9.4"
 description = "Universal Python quality gates, architectural boundary enforcement, and release engineering toolchain."
 readme = "README.md"
 license = "Apache-2.0"
@@ -48,8 +48,11 @@ mutmut = [
 rope = [
     "rope>=1.14.0",
 ]
+bench = [
+    "pytest-benchmark>=5.1.0",
+]
 all = [
-    "hexaqual[diagrams,gremlins,mutmut,rope]",
+    "hexaqual[bench,diagrams,gremlins,mutmut,rope]",
 ]
 
 [project.urls]
@@ -69,6 +72,7 @@ dev = [
     "pre-commit>=4.6.2",
     "pytest>=9.1.1",
     "pytest-asyncio>=1.4.0",
+    "pytest-benchmark>=5.1.0",
     "pytest-cov>=7.1.0",
     "pytest-gremlins>=1.9.0",
     "pytest-playwright>=0.7.0",

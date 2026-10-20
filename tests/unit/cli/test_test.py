@@ -270,3 +270,54 @@ def test_test_archon_failure() -> None:
     ):
         res = runner.invoke(cli_test_app, ["archon"])
         assert res.exit_code == 1
+
+
+def test_test_bench() -> None:
+    """Test test bench command delegates to pytest runner with benchmark flags."""
+    with patch(
+        "hexaqual.adapters.code_analysis.pytest_runner.run_main", return_value=0
+    ) as mock_run:
+        res = runner.invoke(
+            cli_test_app,
+            [
+                "bench",
+                "-p",
+                "core",
+                "--save",
+                "baseline_v1",
+                "--compare",
+                "--json",
+                "bench.json",
+                "--min-rounds",
+                "50",
+                "--smoke",
+                "--allow-empty",
+                "--",
+                "-k",
+                "cache",
+            ],
+        )
+        assert res.exit_code == 0
+        assert mock_run.called
+        call_argv = mock_run.call_args[0][0]
+        assert "--bench" in call_argv
+        assert "-p" in call_argv
+        assert "core" in call_argv
+        assert "--benchmark-save" in call_argv
+        assert "baseline_v1" in call_argv
+        assert "--benchmark-compare" in call_argv
+        assert "--benchmark-json" in call_argv
+        assert "bench.json" in call_argv
+        assert "--benchmark-min-rounds" in call_argv
+        assert "50" in call_argv
+        assert "--smoke" in call_argv
+        assert "--allow-empty" in call_argv
+        assert "-k" in call_argv
+        assert "cache" in call_argv
+
+
+def test_test_bench_failure() -> None:
+    """Test test bench command exits with non-zero code on failure."""
+    with patch("hexaqual.adapters.code_analysis.pytest_runner.run_main", return_value=2):
+        res = runner.invoke(cli_test_app, ["bench", "-p", "core"])
+        assert res.exit_code == 2

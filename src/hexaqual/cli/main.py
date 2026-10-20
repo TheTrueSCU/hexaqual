@@ -71,6 +71,7 @@ from hexaqual.cli.statements import statements_app, statements_check, statements
 from hexaqual.cli.test import (
     test_app,
     test_archon,
+    test_bench,
     test_boundary,
     test_fuzz,
     test_impact,
@@ -134,6 +135,7 @@ __all__ = [
     "statements_fix",
     "test_app",
     "test_archon",
+    "test_bench",
     "test_boundary",
     "test_fuzz",
     "test_impact",

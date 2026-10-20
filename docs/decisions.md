@@ -15,6 +15,7 @@
 | [**ADR-003**](#adr-003-hexaflow-dag-orchestration-for-multi-stage-quality-pipelines) | Hexaflow DAG Orchestration for Multi-Stage Quality Pipelines | 2026-09-10 (`v0.2.5`) | **Accepted** | Complex multi-stage checks (`sanity`, `release`) orchestrated via acyclic dependency graphs. |
 | [**ADR-004**](#adr-004-anti-fake-pass-exercise-gates--boundary-mutation-auditing) | Anti-Fake-Pass Exercise Gates & Boundary Mutation Auditing | 2026-10-18 (`v0.9.1`) | **Accepted** | Zero test collection is a fatal failure; mutation testing audits assertion efficacy. |
 | [**ADR-005**](#adr-005-anti-drift-prose-linting--zero-token-knowledge-graph-guardrails) | Anti-Drift Prose Linting & Zero-Token Knowledge Graph Guardrails | 2026-10-19 (`v0.9.1`) | **Accepted** | Documentation metrics must match code truth via `hexaqual docs drift`; graphify tracks AST. |
+| [**ADR-006**](#adr-006-microbenchmarking--framework-overhead-regression-governance) | Microbenchmarking & Framework Overhead Regression Governance | 2026-10-19 (`v0.9.4`) | **Accepted** | Microbenchmarks execute with zero coverage overhead; skipped during normal runs; smoke mode in PRs. |
 
 ---
 
@@ -112,3 +113,27 @@
 - **Enforcement Mechanism**:
   - `hexaqual docs drift` executed in CI.
   - Pre-push hook verification and gate inventory audit.
+
+---
+
+### ADR-006: Microbenchmarking & Framework Overhead Regression Governance
+
+- **Date & Milestone**: 2026-10-19 (`v0.9.4`)
+- **Status**: Accepted
+- **Context & Problem Statement**:
+  Hexagonal frameworks and clean architectural layers introduce structural indirection (ports, adapters, dispatchers, command buses, middleware pipelines). Without rigorous, automated performance regression tracking, internal framework latency (e.g., bus dispatch, dependency injection resolution, caching adapters) can degrade silently over time. Conversely, running microbenchmarks under test coverage tools or on noisy shared CI virtualization instances yields skewed results and false alerts.
+- **Decision**:
+  Adopt `pytest-benchmark` as a first-class quality governance tier orchestrated via `hexaqual test bench`:
+  1. **Zero Coverage Instrumentation Overhead**: Whenever benchmarks are executed via `hexaqual test bench` or `--bench`, coverage tracking is explicitly deactivated (`--no-cov`). Running benchmarks under coverage AST tracing introduces 2x–5x latency penalties that invalidate microsecond measurements.
+  2. **Isolated Execution Tier**: Standard test runs (`hexaqual test run`) automatically supply `--benchmark-skip` when `pytest-benchmark` is present, ensuring microbenchmarks do not bloat unit test cycles.
+  3. **Dual Execution Modes**:
+     - *Local & Dedicated Perf Validation*: Full calibrated execution with `--save <baseline>` and `--compare` to verify performance improvements or regressions before release.
+     - *PR Verification*: A fast `--smoke` mode (`--benchmark-disable`) that executes each benchmark harness exactly once to verify syntactic, typing, and functional validity without asserting wall-clock thresholds on noisy virtualization runners.
+- **The Invariant ("The Why")**:
+  Architectural indirection must not carry invisible latency penalties. Performance benchmarks must be reproducible, completely unburdened by coverage instrumentation, and immune to noisy-neighbor CI false alarms.
+- **Alternatives Considered & Rejected**:
+  - *Ad-hoc time.perf_counter() scripts*: Rejected because they lack statistical confidence intervals, outlier detection, and standard CLI reporting.
+  - *Asserting strict wall-clock limits in standard GitHub Actions PR checks*: Rejected due to high virtualization jitter causing intermittent flakiness.
+- **Enforcement Mechanism**:
+  - `hexaqual test bench` CLI entrypoint with `--no-cov` enforcement.
+  - Optional extras grouping `bench = ["pytest-benchmark>=5.1.0"]` and `hexaqual[all]`.

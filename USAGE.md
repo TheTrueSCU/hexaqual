@@ -1828,6 +1828,8 @@ Usage: hexaqual test [OPTIONS] COMMAND [ARGS]...
 ╰──────────────────────────────────────────────────────────────────────────────╯
 ╭─ Commands ───────────────────────────────────────────────────────────────────╮
 │ run         Run pytest suite with dynamic worker allocation and coverage.    │
+│ bench       Execute microbenchmarks via pytest-benchmark with zero coverage  │
+│             instrumentation overhead.                                        │
 │ boundary    Audit test suites for branch boundary and edge-case assertions.  │
 │ impact      Selectively run tests impacted by current git diff changes.      │
 │ redundancy  Analyze test execution overlap and flag duplicate test paths.    │
@@ -1863,6 +1865,84 @@ Usage: hexaqual test archon [OPTIONS]
 │                           markdown).                                         │
 │                           [default: table]                                   │
 │ --help                    Show this message and exit.                        │
+╰──────────────────────────────────────────────────────────────────────────────╯
+```
+
+#### `hexaqual test bench`
+
+```text
+Usage: hexaqual test bench [OPTIONS]
+
+ Execute microbenchmarks via pytest-benchmark with zero coverage
+ instrumentation overhead.
+
+ Args:
+     ctx: Command execution context capturing extra CLI options.
+     package: Optional sequence of target package names.
+     example: Optional sequence of target example project names.
+     all_packages: Whether to run benchmarks across all packages
+ unconditionally.
+     affected: Whether to run only benchmarks in packages affected by git diff.
+     save: Tag name under which to persist benchmark baseline.
+     compare: Whether to compare benchmark timings against latest saved
+ baseline.
+     json_path: Optional JSON path to export benchmark results.
+     min_rounds: Minimum number of benchmark iterations per test case.
+     smoke: Whether to disable timing measurement cycles (running once as
+ correctness check).
+     cluster: Execution target cluster ('local' or 'hexaqueue').
+     cluster_url: Hexaqueue cluster REST endpoint URL.
+     cluster_token: Authentication bearer token for Hexaqueue cluster.
+     cluster_user: Submitting user identity for Hexaqueue cluster.
+     cluster_elevate: Assert administrative elevation on Hexaqueue cluster.
+     allow_empty: Whether to permit benchmark runs with 0 collected benchmarks.
+
+ Raises:
+     typer.Exit: If benchmarks fail or regression thresholds are breached.
+
+ Notes/Architectural Intent:
+     Driving adapter dispatching to pytest runner with `--bench` and
+ `--no-cov`.
+     Ensures that coverage instrumentation overhead does not distort
+ microsecond
+     architectural latency benchmarks, and supports baseline diffing and CI
+ smoke runs.
+
+╭─ Options ────────────────────────────────────────────────────────────────────╮
+│ --package          -p      <str>  Target package(s).                         │
+│ --example          -e      <str>  Target example project(s).                 │
+│ --all              -a             Run benchmarks across all workspace        │
+│                                   packages.                                  │
+│ --affected         -A             Run benchmarks only for affected packages. │
+│ --save                     <str>  Save benchmark results with given name tag │
+│                                   under .benchmarks/.                        │
+│ --compare                         Compare against latest saved benchmark     │
+│                                   baseline.                                  │
+│ --json                     <str>  Export benchmark results to JSON file      │
+│                                   path.                                      │
+│ --min-rounds               <int>  Minimum number of benchmark rounds per     │
+│                                   test.                                      │
+│ --smoke                           Smoke mode: disable measurement cycles and │
+│                                   run each benchmark once (for CI PR         │
+│                                   checks).                                   │
+│ --cluster                  <str>  Execution target cluster ('local' or       │
+│                                   'hexaqueue').                              │
+│                                   [default: local]                           │
+│ --cluster-url              <str>  Hexaqueue cluster REST endpoint URL.       │
+│                                   [env var: HEXAQUEUE_URL]                   │
+│                                   [default: http://localhost:8000]           │
+│ --cluster-token            <str>  Authentication bearer token for Hexaqueue  │
+│                                   cluster.                                   │
+│                                   [env var: HEXAQUEUE_TOKEN]                 │
+│ --cluster-user             <str>  Submitting user identity for Hexaqueue     │
+│                                   cluster.                                   │
+│                                   [env var: HEXAQUEUE_USER]                  │
+│                                   [default: default]                         │
+│ --cluster-elevate                 Assert administrative elevation on         │
+│                                   Hexaqueue cluster.                         │
+│ --allow-empty                     Permit benchmark runs with 0 collected     │
+│                                   benchmarks (exercise gate override).       │
+│ --help                            Show this message and exit.                │
 ╰──────────────────────────────────────────────────────────────────────────────╯
 ```
 
@@ -1938,6 +2018,16 @@ Usage: hexaqual test impact [OPTIONS]
 ╭─ Options ────────────────────────────────────────────────────────────────────╮
 │ --format  -f      <str>  Output presentation format. [default: table]        │
 │ --help                   Show this message and exit.                         │
+╰──────────────────────────────────────────────────────────────────────────────╯
+```
+
+#### `hexaqual test instrumentation`
+
+```text
+Usage: hexaqual test [OPTIONS] COMMAND [ARGS]...
+Try 'hexaqual test --help' for help.
+╭─ Error ──────────────────────────────────────────────────────────────────────╮
+│ No such command 'instrumentation'.                                           │
 ╰──────────────────────────────────────────────────────────────────────────────╯
 ```
 

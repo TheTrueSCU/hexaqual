@@ -97,3 +97,97 @@ def test_run_main_exercise_gate_allows_empty_override(tmp_path: Path) -> None:
     ):
         code = run_main(["--allow-empty"])
         assert code == 0
+
+
+def test_run_main_with_bench_flags(tmp_path: Path) -> None:
+    """Verify run_main applies --no-cov and benchmark options when --bench is enabled."""
+    pkg_dir = tmp_path / "packages" / "hexastack_cqrs"
+    (pkg_dir / "src" / "hexastack_cqrs").mkdir(parents=True)
+    (pkg_dir / "tests" / "benchmarks").mkdir(parents=True)
+
+    with (
+        patch("hexaqual.adapters.code_analysis.pytest_runner.get_repo_root", return_value=tmp_path),
+        patch("subprocess.run", return_value=MagicMock(returncode=0)) as mock_subproc,
+        patch(
+            "hexaqual.adapters.code_analysis.pytest_runner._is_pytest_benchmark_installed",
+            return_value=True,
+        ),
+    ):
+        code = run_main(
+            [
+                "-B",
+                "-p",
+                "cqrs",
+                "--benchmark-save=v1",
+                "--benchmark-compare",
+                "--benchmark-json=bench.json",
+                "--benchmark-min-rounds=20",
+            ]
+        )
+        assert code == 0
+        mock_subproc.assert_called_once()
+        cmd_args = mock_subproc.call_args[0][0]
+        assert str(pkg_dir / "tests" / "benchmarks") in cmd_args
+        assert "--no-cov" in cmd_args
+        assert "--benchmark-only" in cmd_args
+        assert "--benchmark-save=v1" in cmd_args
+        assert "--benchmark-compare" in cmd_args
+        assert "--benchmark-json=bench.json" in cmd_args
+        assert "--benchmark-min-rounds=20" in cmd_args
+
+
+def test_run_main_with_bench_smoke_mode(tmp_path: Path) -> None:
+    """Verify run_main applies --benchmark-disable in smoke mode."""
+    pkg_dir = tmp_path / "packages" / "hexastack_cqrs"
+    (pkg_dir / "src" / "hexastack_cqrs").mkdir(parents=True)
+    (pkg_dir / "tests" / "benchmarks").mkdir(parents=True)
+
+    with (
+        patch("hexaqual.adapters.code_analysis.pytest_runner.get_repo_root", return_value=tmp_path),
+        patch("subprocess.run", return_value=MagicMock(returncode=0)) as mock_subproc,
+        patch(
+            "hexaqual.adapters.code_analysis.pytest_runner._is_pytest_benchmark_installed",
+            return_value=True,
+        ),
+    ):
+        code = run_main(["--bench", "-p", "cqrs", "--smoke"])
+        assert code == 0
+        mock_subproc.assert_called_once()
+        cmd_args = mock_subproc.call_args[0][0]
+        assert "--no-cov" in cmd_args
+        assert "--benchmark-disable" in cmd_args
+
+
+def test_run_main_skips_benchmark_on_normal_run(tmp_path: Path) -> None:
+    """Verify run_main injects --benchmark-skip when pytest-benchmark is installed on normal run."""
+    pkg_dir = tmp_path / "packages" / "hexastack_core"
+    (pkg_dir / "src" / "hexastack_core").mkdir(parents=True)
+    (pkg_dir / "tests" / "unit").mkdir(parents=True)
+
+    with (
+        patch("hexaqual.adapters.code_analysis.pytest_runner.get_repo_root", return_value=tmp_path),
+        patch("subprocess.run", return_value=MagicMock(returncode=0)) as mock_subproc,
+        patch(
+            "hexaqual.adapters.code_analysis.pytest_runner._is_pytest_benchmark_installed",
+            return_value=True,
+        ),
+    ):
+        code = run_main(["-p", "core", "-U"])
+        assert code == 0
+        mock_subproc.assert_called_once()
+        cmd_args = mock_subproc.call_args[0][0]
+        assert "--benchmark-skip" in cmd_args
+
+
+def test_run_main_bench_not_installed(tmp_path: Path) -> None:
+    """Verify run_main exits with error if --bench requested but plugin missing."""
+    with (
+        patch("hexaqual.adapters.code_analysis.pytest_runner.get_repo_root", return_value=tmp_path),
+        patch(
+            "hexaqual.adapters.code_analysis.pytest_runner._is_pytest_benchmark_installed",
+            return_value=False,
+        ),
+        patch("sys.exit") as mock_exit,
+    ):
+        run_main(["--bench"])
+        mock_exit.assert_called_once_with(1)
