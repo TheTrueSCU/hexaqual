@@ -128,6 +128,8 @@ def test_run_main_with_bench_flags(tmp_path: Path) -> None:
         mock_subproc.assert_called_once()
         cmd_args = mock_subproc.call_args[0][0]
         assert str(pkg_dir / "tests" / "benchmarks") in cmd_args
+        assert "-n" in cmd_args
+        assert "0" in cmd_args
         assert "--no-cov" in cmd_args
         assert "--benchmark-only" in cmd_args
         assert "--benchmark-save=v1" in cmd_args

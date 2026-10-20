@@ -145,7 +145,7 @@ def _build_coverage_args(
 
 def _build_benchmark_options(args: argparse.Namespace) -> list[str]:
     """Construct specific benchmark execution options."""
-    opts: list[str] = []
+    opts: list[str] = ["-n", "0"]
     if getattr(args, "smoke", False):
         opts.append("--benchmark-disable")
     else:
