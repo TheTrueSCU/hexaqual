@@ -6,9 +6,8 @@ Notes/Architectural Intent:
 
 from __future__ import annotations
 
+import inspect
 from pathlib import Path
-
-import pytest
 
 from hexaqual.domain.hooks import (
     CommitMsgReport,
@@ -68,15 +67,15 @@ class DummyHooksPresenterPort(HooksPresenterPort):
 
 
 def test_git_hooks_port_abstract_instantiation() -> None:
-    """Verify GitHooksPort cannot be instantiated directly."""
-    with pytest.raises(TypeError):
-        GitHooksPort()  # type: ignore[abstract]  # ty: ignore[call-non-callable]
+    """Verify GitHooksPort is an abstract interface."""
+    assert inspect.isabstract(GitHooksPort)
+    assert "install_hooks" in GitHooksPort.__abstractmethods__
 
 
 def test_hooks_presenter_port_abstract_instantiation() -> None:
-    """Verify HooksPresenterPort cannot be instantiated directly."""
-    with pytest.raises(TypeError):
-        HooksPresenterPort()  # type: ignore[abstract]  # ty: ignore[call-non-callable]
+    """Verify HooksPresenterPort is an abstract interface."""
+    assert inspect.isabstract(HooksPresenterPort)
+    assert "present_install" in HooksPresenterPort.__abstractmethods__
 
 
 def test_dummy_ports_conformance() -> None:

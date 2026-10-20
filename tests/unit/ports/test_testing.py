@@ -7,15 +7,14 @@ Notes/Architectural Intent:
 
 from __future__ import annotations
 
-import pytest
+import inspect
 
 from hexaqual.ports.testing import TestingPresenterPort, TestingRunnerPort
 
 
 def test_testing_ports_cannot_be_instantiated_directly():
-    """Verify ABC contracts prevent direct instantiation."""
-    with pytest.raises(TypeError):
-        TestingRunnerPort()  # type: ignore[abstract]  # ty: ignore[call-non-callable]
-
-    with pytest.raises(TypeError):
-        TestingPresenterPort()  # type: ignore[abstract]  # ty: ignore[call-non-callable]
+    """Verify ABC contracts declare abstract methods."""
+    assert inspect.isabstract(TestingRunnerPort)
+    assert "execute_pytest" in TestingRunnerPort.__abstractmethods__
+    assert inspect.isabstract(TestingPresenterPort)
+    assert "present_mutation_summary" in TestingPresenterPort.__abstractmethods__

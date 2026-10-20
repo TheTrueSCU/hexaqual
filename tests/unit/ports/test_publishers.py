@@ -2,9 +2,8 @@
 
 from __future__ import annotations
 
+import inspect
 from typing import Any
-
-import pytest
 
 from hexaqual.ports.publishers import ArticlePublisherPort, PackagePublisherPort
 from hexaqual.ports.pypi import PyPiClientPort
@@ -27,9 +26,9 @@ class DummyArticlePublisher(ArticlePublisherPort):
 
 
 def test_article_publisher_port_instantiation() -> None:
-    """Verify ArticlePublisherPort cannot be instantiated directly without implementations."""
-    with pytest.raises(TypeError):
-        ArticlePublisherPort()  # type: ignore[abstract]  # ty: ignore[call-non-callable]
+    """Verify ArticlePublisherPort is an abstract interface."""
+    assert inspect.isabstract(ArticlePublisherPort)
+    assert "list_articles" in ArticlePublisherPort.__abstractmethods__
 
 
 def test_concrete_article_publisher() -> None:

@@ -5,9 +5,8 @@ Notes/Architectural Intent:
     abstract method signatures and prevent direct instantiation.
 """
 
+import inspect
 from pathlib import Path
-
-import pytest
 
 from hexaqual.domain.dependencies import (
     DeptryAuditReport,
@@ -24,12 +23,11 @@ from hexaqual.ports.dependencies import (
 
 
 def test_dependency_ports_are_abstract():
-    """Verify ports cannot be instantiated without implementations."""
-    with pytest.raises(TypeError):
-        DependencyAuditorPort()  # type: ignore[abstract]  # ty: ignore[call-non-callable]
-
-    with pytest.raises(TypeError):
-        DependencyPresenterPort()  # type: ignore[abstract]  # ty: ignore[call-non-callable]
+    """Verify ports declare abstract interfaces."""
+    assert inspect.isabstract(DependencyAuditorPort)
+    assert "audit_extras_parity" in DependencyAuditorPort.__abstractmethods__
+    assert inspect.isabstract(DependencyPresenterPort)
+    assert "present_extras_parity" in DependencyPresenterPort.__abstractmethods__
 
 
 def test_concrete_dependency_auditor_port(tmp_path: Path):

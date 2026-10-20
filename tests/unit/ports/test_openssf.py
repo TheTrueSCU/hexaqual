@@ -7,18 +7,18 @@ Notes/Architectural Intent:
 
 from __future__ import annotations
 
-import pytest
+import inspect
 
 from hexaqual.ports.openssf import OpenSsfBadgePort, OpenSsfScorecardPort
 
 
 def test_openssf_badge_port_is_abstract() -> None:
-    """Test that OpenSsfBadgePort cannot be instantiated directly without implementations."""
-    with pytest.raises(TypeError):
-        OpenSsfBadgePort()  # type: ignore[abstract]  # ty: ignore[call-non-callable]
+    """Test that OpenSsfBadgePort is an abstract interface."""
+    assert inspect.isabstract(OpenSsfBadgePort)
+    assert "build_proposal_urls" in OpenSsfBadgePort.__abstractmethods__
 
 
 def test_openssf_scorecard_port_is_abstract() -> None:
-    """Test that OpenSsfScorecardPort cannot be instantiated directly without implementations."""
-    with pytest.raises(TypeError):
-        OpenSsfScorecardPort()  # type: ignore[abstract]  # ty: ignore[call-non-callable]
+    """Test that OpenSsfScorecardPort is an abstract interface."""
+    assert inspect.isabstract(OpenSsfScorecardPort)
+    assert "fetch_scorecard" in OpenSsfScorecardPort.__abstractmethods__

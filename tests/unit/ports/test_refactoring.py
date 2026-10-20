@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-import pytest
+import inspect
 
 from hexaqual.domain.refactoring import (
     AlphabetizeCodeReport,
@@ -22,9 +22,9 @@ class DummyRefactoringPresenter(RefactoringPresenterPort):
 
 
 def test_refactoring_presenter_port_instantiation() -> None:
-    """Verify RefactoringPresenterPort cannot be instantiated directly without implementations."""
-    with pytest.raises(TypeError):
-        RefactoringPresenterPort()  # type: ignore[abstract]  # ty: ignore[call-non-callable]
+    """Verify RefactoringPresenterPort is an abstract interface."""
+    assert inspect.isabstract(RefactoringPresenterPort)
+    assert "present_alphabetize" in RefactoringPresenterPort.__abstractmethods__
 
 
 def test_concrete_refactoring_presenter() -> None:

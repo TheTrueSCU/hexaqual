@@ -5,9 +5,8 @@ Notes/Architectural Intent:
     signatures and prevent direct instantiation of abstract classes.
 """
 
+import inspect
 from pathlib import Path
-
-import pytest
 
 from hexaqual.domain.governance import (
     CheckResult,
@@ -23,15 +22,15 @@ from hexaqual.ports.governance import (
 
 
 def test_tool_runner_port_is_abstract():
-    """Verify ToolRunnerPort cannot be instantiated directly."""
-    with pytest.raises(TypeError):
-        ToolRunnerPort()  # type: ignore[abstract]  # ty: ignore[call-non-callable]
+    """Verify ToolRunnerPort is an abstract interface."""
+    assert inspect.isabstract(ToolRunnerPort)
+    assert "run_ruff" in ToolRunnerPort.__abstractmethods__
 
 
 def test_governance_presenter_port_is_abstract():
-    """Verify GovernancePresenterPort cannot be instantiated directly."""
-    with pytest.raises(TypeError):
-        GovernancePresenterPort()  # type: ignore[abstract]  # ty: ignore[call-non-callable]
+    """Verify GovernancePresenterPort is an abstract interface."""
+    assert inspect.isabstract(GovernancePresenterPort)
+    assert "present_sanity_dashboard" in GovernancePresenterPort.__abstractmethods__
 
 
 def test_concrete_tool_runner_implementation():

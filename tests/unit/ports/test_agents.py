@@ -6,9 +6,8 @@ Notes/Architectural Intent:
 
 from __future__ import annotations
 
+import inspect
 from pathlib import Path
-
-import pytest
 
 from hexaqual.domain.agents import (
     AgentAsset,
@@ -45,23 +44,23 @@ class DummyPresenterPort(AgentPresenterPort):
 
 
 def test_agent_asset_port_abstract_instantiation() -> None:
-    """Verify AgentAssetPort cannot be instantiated directly.
+    """Verify AgentAssetPort is an abstract interface.
 
     Notes/Architectural Intent:
         Guarantees abstract method invariants cannot be bypassed.
     """
-    with pytest.raises(TypeError):
-        AgentAssetPort()  # type: ignore[abstract]  # ty: ignore[call-non-callable]
+    assert inspect.isabstract(AgentAssetPort)
+    assert "sync_assets" in AgentAssetPort.__abstractmethods__
 
 
 def test_agent_presenter_port_abstract_instantiation() -> None:
-    """Verify AgentPresenterPort cannot be instantiated directly.
+    """Verify AgentPresenterPort is an abstract interface.
 
     Notes/Architectural Intent:
         Guarantees abstract method invariants cannot be bypassed.
     """
-    with pytest.raises(TypeError):
-        AgentPresenterPort()  # type: ignore[abstract]  # ty: ignore[call-non-callable]
+    assert inspect.isabstract(AgentPresenterPort)
+    assert "present_list" in AgentPresenterPort.__abstractmethods__
 
 
 def test_dummy_ports_conformance() -> None:
