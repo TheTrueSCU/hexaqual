@@ -15,7 +15,7 @@ from hexaqual.ports.testing import TestingPresenterPort, TestingRunnerPort
 def test_testing_ports_cannot_be_instantiated_directly():
     """Verify ABC contracts prevent direct instantiation."""
     with pytest.raises(TypeError):
-        TestingRunnerPort()  # type: ignore[abstract]
+        TestingRunnerPort()  # type: ignore[abstract]  # ty: ignore[call-non-callable]
 
     with pytest.raises(TypeError):
-        TestingPresenterPort()  # type: ignore[abstract]
+        TestingPresenterPort()  # type: ignore[abstract]  # ty: ignore[call-non-callable]

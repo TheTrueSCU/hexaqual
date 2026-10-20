@@ -29,7 +29,7 @@ class DummyArticlePublisher(ArticlePublisherPort):
 def test_article_publisher_port_instantiation() -> None:
     """Verify ArticlePublisherPort cannot be instantiated directly without implementations."""
     with pytest.raises(TypeError):
-        ArticlePublisherPort()  # type: ignore[abstract]
+        ArticlePublisherPort()  # type: ignore[abstract]  # ty: ignore[call-non-callable]
 
 
 def test_concrete_article_publisher() -> None:

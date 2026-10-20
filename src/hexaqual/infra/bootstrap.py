@@ -167,6 +167,9 @@ class _LazyGitHubClient(GitHubApiPort):
     def get_review_threads(self, pr_number: int) -> list[ReviewThread]:
         return self._get_client().get_review_threads(pr_number)
 
+    def resolve_review_thread(self, thread_id: str) -> bool:
+        return self._get_client().resolve_review_thread(thread_id)
+
     def get_code_scanning_alerts(
         self, ref: str | None = None, state: str = "open"
     ) -> list[SecurityAlert]:

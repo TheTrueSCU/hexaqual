@@ -30,4 +30,4 @@ def test_domain_model_immutability() -> None:
 def test_command_forbids_extra_fields() -> None:
     """Verify commands forbid extra undeclared attributes."""
     with pytest.raises(ValidationError):
-        SampleCommand(**{"action": "run", "extra_arg": "forbidden"})
+        SampleCommand(**{"action": "run", "extra_arg": "forbidden"})  # ty: ignore[unknown-argument]

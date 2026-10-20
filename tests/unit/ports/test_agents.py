@@ -51,7 +51,7 @@ def test_agent_asset_port_abstract_instantiation() -> None:
         Guarantees abstract method invariants cannot be bypassed.
     """
     with pytest.raises(TypeError):
-        AgentAssetPort()  # type: ignore[abstract]
+        AgentAssetPort()  # type: ignore[abstract]  # ty: ignore[call-non-callable]
 
 
 def test_agent_presenter_port_abstract_instantiation() -> None:
@@ -61,7 +61,7 @@ def test_agent_presenter_port_abstract_instantiation() -> None:
         Guarantees abstract method invariants cannot be bypassed.
     """
     with pytest.raises(TypeError):
-        AgentPresenterPort()  # type: ignore[abstract]
+        AgentPresenterPort()  # type: ignore[abstract]  # ty: ignore[call-non-callable]
 
 
 def test_dummy_ports_conformance() -> None:

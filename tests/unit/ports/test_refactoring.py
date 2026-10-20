@@ -24,7 +24,7 @@ class DummyRefactoringPresenter(RefactoringPresenterPort):
 def test_refactoring_presenter_port_instantiation() -> None:
     """Verify RefactoringPresenterPort cannot be instantiated directly without implementations."""
     with pytest.raises(TypeError):
-        RefactoringPresenterPort()  # type: ignore[abstract]
+        RefactoringPresenterPort()  # type: ignore[abstract]  # ty: ignore[call-non-callable]
 
 
 def test_concrete_refactoring_presenter() -> None:

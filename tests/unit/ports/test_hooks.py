@@ -70,13 +70,13 @@ class DummyHooksPresenterPort(HooksPresenterPort):
 def test_git_hooks_port_abstract_instantiation() -> None:
     """Verify GitHooksPort cannot be instantiated directly."""
     with pytest.raises(TypeError):
-        GitHooksPort()  # type: ignore[abstract]
+        GitHooksPort()  # type: ignore[abstract]  # ty: ignore[call-non-callable]
 
 
 def test_hooks_presenter_port_abstract_instantiation() -> None:
     """Verify HooksPresenterPort cannot be instantiated directly."""
     with pytest.raises(TypeError):
-        HooksPresenterPort()  # type: ignore[abstract]
+        HooksPresenterPort()  # type: ignore[abstract]  # ty: ignore[call-non-callable]
 
 
 def test_dummy_ports_conformance() -> None:
