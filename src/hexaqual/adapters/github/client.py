@@ -2,11 +2,13 @@
 
 from __future__ import annotations
 
+import json
 import logging
 import os
 import shutil
 import subprocess
 from typing import Any
+from urllib.parse import urlparse
 
 import httpx
 
@@ -58,8 +60,6 @@ def _parse_github_url(url: str) -> tuple[str, str] | None:
         return (parts[0], parts[1]) if len(parts) == 2 else None
 
     # Handle HTTP/HTTPS/SSH URLs: https://github.com/Owner/Repo, https://token@github.com/Owner/Repo
-    from urllib.parse import urlparse
-
     parsed = urlparse(cleaned)
     if parsed.hostname in ("github.com", "www.github.com", "api.github.com"):
         parts = parsed.path.strip("/").split("/")
@@ -518,8 +518,6 @@ class GitHubHttpAdapter(GitHubApiPort):
             try:
                 res = subprocess.run(cmd, capture_output=True, text=True, check=False)
                 if res.returncode == 0 and res.stdout.strip():
-                    import json
-
                     return json.loads(res.stdout.strip())
             except (subprocess.SubprocessError, OSError, json.JSONDecodeError):
                 # Fall back to GitHub REST API if local gh CLI execution fails

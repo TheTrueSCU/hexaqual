@@ -7,6 +7,7 @@ Notes/Architectural Intent:
 
 from __future__ import annotations
 
+import os
 from pathlib import Path
 
 from hexaqual.adapters.code_analysis.rope import (
@@ -107,8 +108,6 @@ class PublishMediumArticlesHandler:
             Coordinates draft uploads, publication on DEV.to, cross-link
             resolution, and documentation synchronization across the monorepo.
         """
-        import os
-
         from hexaqual.adapters.publishers.devto import (
             get_article_status_table,
             publish_or_upload_single,

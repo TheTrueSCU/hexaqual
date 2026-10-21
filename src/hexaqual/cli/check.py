@@ -7,6 +7,8 @@ Notes/Architectural Intent:
 
 from __future__ import annotations
 
+from pathlib import Path
+
 import typer
 from hexaflow import StepContext, TriggerRule, Workflow
 
@@ -135,8 +137,6 @@ def _execute_sanity_pipeline(
 
     repo_root = get_repo_root()
     if audit_gates:
-        from pathlib import Path
-
         from hexaqual.adapters.code_analysis.gate_inventory import audit_gate_inventory
 
         target_root = Path(files[0]).resolve() if (files and Path(files[0]).is_dir()) else repo_root
@@ -351,8 +351,6 @@ def complexity(
     Notes/Architectural Intent:
         Driving adapter invoking ToolRunnerPort.run_complexipy across targets.
     """
-    from pathlib import Path
-
     from hexaqual.adapters.runners.subprocess_runner import SubprocessToolRunnerAdapter
     from hexaqual.adapters.workspace import (
         get_package_directories,

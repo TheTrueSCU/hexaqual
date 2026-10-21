@@ -8,6 +8,7 @@ Notes/Architectural Intent:
 
 from __future__ import annotations
 
+import os
 import sys
 from enum import Enum, StrEnum
 from typing import Any
@@ -83,8 +84,6 @@ def is_interactive_terminal() -> bool:
         Prevents infinite polling loops in automated subagents, background jobs,
         and headless CI environments while respecting HEXAQUAL_FORCE_WATCH=1.
     """
-    import os
-
     if os.environ.get("HEXAQUAL_FORCE_WATCH", "").lower() in ("1", "true", "yes"):
         return True
 

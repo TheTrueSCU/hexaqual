@@ -7,6 +7,8 @@ Notes/Architectural Intent:
 
 from __future__ import annotations
 
+import argparse
+import sys
 from pathlib import Path
 
 import typer
@@ -110,8 +112,6 @@ def refactor_rename(
     Notes/Architectural Intent:
         Executes AST symbol renaming via Rope project engine.
     """
-    import argparse
-
     from hexaqual.adapters.code_analysis.rope import handle_rename
     from hexaqual.adapters.workspace import ensure_tool_installed, get_repo_root
 
@@ -159,8 +159,6 @@ def refactor_extract(
     Notes/Architectural Intent:
         Executes method extraction via Rope AST refactoring.
     """
-    import argparse
-
     from hexaqual.adapters.code_analysis.rope import handle_extract_method
     from hexaqual.adapters.workspace import ensure_tool_installed, get_repo_root
 
@@ -206,8 +204,6 @@ def refactor_move(
     Notes/Architectural Intent:
         Executes symbol relocation across module boundaries via Rope.
     """
-    import argparse
-
     from hexaqual.adapters.code_analysis.rope import handle_move_symbol
     from hexaqual.adapters.workspace import ensure_tool_installed, get_repo_root
 
@@ -246,8 +242,6 @@ def refactor_run(
     Notes/Architectural Intent:
         Passes CLI arguments directly to the Rope refactoring command dispatcher.
     """
-    import sys
-
     from hexaqual.adapters.code_analysis.rope import run_main
 
     orig_argv = sys.argv

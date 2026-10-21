@@ -7,6 +7,8 @@ Notes/Architectural Intent:
 
 from __future__ import annotations
 
+from pathlib import Path
+
 import typer
 
 __all__ = [
@@ -489,8 +491,6 @@ def test_snapshot(
     Notes/Architectural Intent:
         Driving adapter dispatching UpdateInlineSnapshotsCommand across packages.
     """
-    from pathlib import Path
-
     from hexaqual.adapters.presenters.analysis import create_analysis_presenter
     from hexaqual.adapters.workspace import (
         get_package_directories,

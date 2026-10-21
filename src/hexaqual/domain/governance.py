@@ -7,6 +7,7 @@ Notes/Architectural Intent:
 
 from __future__ import annotations
 
+import os
 from dataclasses import dataclass
 from enum import StrEnum
 from pathlib import Path
@@ -236,8 +237,6 @@ def resolve_default_parallelism() -> int:
         Mirrors pytest-xdist 'auto' allocation, reserving two CPU cores for OS,
         editor, and terminal responsiveness while maximizing pipeline throughput.
     """
-    import os
-
     cores = os.cpu_count() or 1
     return max(1, cores - 2)
 
@@ -276,8 +275,6 @@ def resolve_parallelism(value: str | int | None = None) -> int:
         Resolves dynamic 'auto' or explicit integer worker counts clamped between
         1 and the system's available logical CPU cores.
     """
-    import os
-
     total_cores = os.cpu_count() or 1
     if value is None:
         return max(1, total_cores - 2)

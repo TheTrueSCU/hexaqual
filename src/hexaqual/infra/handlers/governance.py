@@ -9,6 +9,7 @@ Notes/Architectural Intent:
 from __future__ import annotations
 
 import asyncio
+import concurrent.futures
 import shutil
 import time
 from typing import Any
@@ -724,8 +725,6 @@ class RunSanityCheckHandler:
             loop = None
 
         if loop and loop.is_running():
-            import concurrent.futures
-
             with concurrent.futures.ThreadPoolExecutor(max_workers=1) as pool:
                 return pool.submit(
                     lambda: asyncio.run(

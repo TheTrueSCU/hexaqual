@@ -10,7 +10,10 @@ Notes/Architectural Intent:
 from __future__ import annotations
 
 import argparse
+import importlib.util
+import shutil
 import subprocess
+import sys
 import tomllib
 from collections.abc import Sequence
 from pathlib import Path
@@ -661,9 +664,6 @@ def check_tool_availability(
     Returns:
         Tuple of (is_available: bool, status_message: str).
     """
-    import importlib.util
-    import shutil
-
     if importlib.util.find_spec(import_name) is None:
         cmd_hint = f" (CLI '{cli_command}')" if cli_command else ""
         return False, f"Python package '{import_name}'{cmd_hint} is not installed."
@@ -689,8 +689,6 @@ def ensure_tool_installed(
     Raises:
         SystemExit: If the required tool is not available in the environment.
     """
-    import sys
-
     is_ok, err = check_tool_availability(import_name, cli_command)
     if not is_ok:
         extra_hint = f" or install 'hexaqual[{extra_name}]'" if extra_name else ""
