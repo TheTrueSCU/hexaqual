@@ -1,5 +1,17 @@
 # CHANGELOG
 
+## v0.9.6 (2026-10-22)
+
+### Highlights & Features
+* **Universal Lazy Import Guardrails & AST Auditor (`hexaqual-lazy-imports`)**:
+  - Bundled universal agent rule `hexaqual-lazy-imports.md` defining strict directional hexagonal layer invariants (`domain` purity, `adapters ↛ infra`) and permissible criteria for lazy imports.
+  - Bundled AST auditor skill `hexaqual_audit_lazy_imports.py` providing sub-second static inspection of function scopes for unauthorized standard library imports, domain purity leaks, and layer bypasses.
+  - Added unit test suite `test_hexaqual_audit_lazy_imports.py` validating AST detection, exclusion rules, and CLI exit codes.
+* **Abstract Port Test Introspection (`inspect.isabstract`)**:
+  - Refactored port test suite generators and assertions to inspect `inspect.isabstract` across port verification suites for robust structural conformance.
+* **Security & Vulnerability Remediation**:
+  - Updated `certifi >= 2026.10.19` resolving the eMudhra / emSign CA security advisory (GHSA-6q48-6c7w-9gw2).
+
 ## v0.5.1 (2026-09-20)
 
 ### Fixes & Reliability
