@@ -12,8 +12,8 @@ from pathlib import Path
 from unittest.mock import patch
 
 import pytest
-from hexastack_cli.testing.narrator import CliNarrator
 
+from hexaqual.adapters.testing.narrator import CliNarrator
 from hexaqual.cli.main import app
 from hexaqual.domain.openssf import (
     OpenSsfProject,

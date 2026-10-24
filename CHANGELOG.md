@@ -1,5 +1,15 @@
 # CHANGELOG
 
+## v0.9.7 (2026-10-23)
+
+### Highlights & Features
+* **Python 3.12+ Universal Support Matrix**:
+  - Broadened `requires-python` from `>=3.13` to `>=3.12`, officially supporting Python 3.12, 3.13, 3.14, and 3.15.
+  - Updated upstream DAG workflow engine dependency to `hexaflow>=0.5.2`.
+* **Native CLI Testing & Demo Narration Engine (`hexaqual.adapters.testing`)**:
+  - Migrated `CliNarrator`, `TerminalEvent`, and `render_cli_demo_video` directly into `hexaqual.adapters.testing`, eliminating all downstream dependencies on `hexastack-cli` across the toolchain.
+  - Decoupled e2e narrative test recording and terminal video rendering into standalone adapter components.
+
 ## v0.9.6 (2026-10-22)
 
 ### Highlights & Features
