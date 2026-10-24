@@ -5,7 +5,7 @@
 [![CI](https://github.com/TheTrueSCU/hexaqual/actions/workflows/ci.yml/badge.svg)](https://github.com/TheTrueSCU/hexaqual/actions/workflows/ci.yml)
 [![Coverage](https://codecov.io/github/TheTrueSCU/hexaqual/graph/badge.svg)](https://codecov.io/github/TheTrueSCU/hexaqual)
 [![PyPI: hexaqual](https://img.shields.io/pypi/v/hexaqual.svg)](https://pypi.org/project/hexaqual/)
-[![Python 3.13+](https://img.shields.io/badge/python-3.13+-blue.svg)](https://www.python.org/downloads/)
+[![Python 3.12+](https://img.shields.io/badge/python-3.12+-blue.svg)](https://www.python.org/downloads/)
 [![License: Apache 2.0](https://img.shields.io/badge/license-Apache%202.0-blue.svg)](LICENSE)
 
 [![Governs Hexastack](https://img.shields.io/badge/governs-hexastack-blueviolet.svg)](https://dopplereffect.us/hexastack/)
@@ -244,7 +244,7 @@ It implements a **Two-Tier Architecture**:
 | **Rule** | `hexaqual-hermetic-testing.md` | Hermetically sealed test fixtures, `tmp_path`, zero global state or socket pollution. |
 | **Rule** | `hexaqual-docstrings.md` | Mandatory Google docstrings with `Args:`, `Returns:`, `Raises:`, and `Notes/Architectural Intent:`. |
 | **Rule** | `hexaqual-workspace.md` | Monorepo hierarchy, subpackage import boundaries, casefold-sorted `__all__` exports. |
-| **Rule** | `hexaqual-typing.md` | Python 3.13 generic syntax (`class C[T]:`), zero bare `Any` across domain boundaries. |
+| **Rule** | `hexaqual-typing.md` | Python 3.12+ generic syntax (`class C[T]:`), zero bare `Any` across domain boundaries. |
 | **Rule** | `hexaqual-property-testing.md`| Hypothesis stateful fuzzing (`RuleBasedStateMachine`) for state machines and schedulers. |
 | **Rule** | `hexaqual-security.md` | Prohibition of `shell=True`, path traversal guards, secret scanning, least-privilege defaults. |
 | **Rule** | `hexaqual-sync.md` | Guardrail invariant to execute `hexaqual agents sync` upon dependency upgrades. |
