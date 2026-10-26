@@ -1,7 +1,7 @@
 - id: hexaqual-sanity
   name: hexaqual sanity check
   description: Fast scoped sanity check runner (Ruff, Ty, Complexipy, __all__, test parity, deptry)
-  entry: uv run hexaqual sanity -a --skip-tests
+  entry: uv run hexaqual sanity -a --skip-tests --skip-diagrams
   language: system
   pass_filenames: false
 
@@ -94,7 +94,16 @@
 - id: hexaqual-pre-push
   name: hexaqual pre-push sanity gate
   description: Fast repository sanity validation before pushing commits to remote
-  entry: uv run hexaqual sanity -a --skip-tests
+  entry: uv run hexaqual sanity -a --skip-tests --skip-diagrams
+  language: system
+  stages: [pre-push]
+  always_run: true
+  pass_filenames: false
+
+- id: hexaqual-pre-push-tests
+  name: hexaqual pre-push affected unit tests
+  description: Multi-core parallel execution of affected unit tests before pushing to remote
+  entry: uv run hexaqual test run -A -U -n auto
   language: system
   stages: [pre-push]
   always_run: true

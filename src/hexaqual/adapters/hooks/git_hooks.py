@@ -44,7 +44,7 @@ NATIVE_HOOK_TEMPLATES: dict[HookStage, str] = {
 set -e
 
 echo "[hexaqual] Running pre-commit quality sanity checks..."
-uv run hexaqual sanity -a --skip-tests
+uv run hexaqual sanity -a --skip-tests --skip-diagrams
 """,
     HookStage.COMMIT_MSG: f"""#!/usr/bin/env bash
 {HEXAQUAL_HOOK_HEADER}
@@ -56,8 +56,9 @@ uv run hexaqual hooks commit-msg "$1"
 {HEXAQUAL_HOOK_HEADER}
 set -e
 
-echo "[hexaqual] Running pre-push verification..."
-uv run hexaqual sanity -a --skip-tests
+echo "[hexaqual] Running pre-push multi-core verification..."
+uv run hexaqual sanity -a --skip-tests --skip-diagrams
+uv run hexaqual test run -A -U -n auto
 """,
     HookStage.POST_MERGE: f"""#!/usr/bin/env bash
 {HEXAQUAL_HOOK_HEADER}
