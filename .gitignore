@@ -29,6 +29,8 @@ ENV/
 .cache/
 .coverage
 .coverage.*
+.benchmarks/
+benchmark_results*.json
 htmlcov/
 coverage.xml
 junit.xml
