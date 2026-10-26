@@ -15,6 +15,7 @@ __all__ = [
     "test_app",
     "test_archon",
     "test_bench",
+    "test_benchmark_report",
     "test_boundary",
     "test_fuzz",
     "test_impact",
@@ -555,3 +556,92 @@ def test_archon(
     exit_code = presenter.present_archon(report)
     if exit_code != 0:
         raise typer.Exit(code=exit_code)
+
+
+@test_app.command("benchmark-report")
+def test_benchmark_report(
+    results_file: str = typer.Option(
+        "benchmark_results.json",
+        "-r",
+        "--results",
+        help="Path to pytest-benchmark JSON output.",
+    ),
+    history_file: str = typer.Option(
+        ".benchmarks_history/history.json",
+        "-H",
+        "--history",
+        help="Path to JSON history tracking file.",
+    ),
+    summary: bool = typer.Option(
+        False, "-s", "--summary", help="Append report directly to $GITHUB_STEP_SUMMARY."
+    ),
+    max_history: int = typer.Option(
+        10, "--max-history", help="Maximum historical benchmark runs to retain."
+    ),
+    commit_sha: str | None = typer.Option(None, "--commit", help="Explicit Git commit hash label."),
+    run_id: str | None = typer.Option(None, "--run-id", help="Explicit CI run identifier."),
+) -> None:
+    """Transform pytest-benchmark JSON into Markdown summary and historical Mermaid line charts.
+
+    Args:
+        results_file: Path to pytest-benchmark JSON output file.
+        history_file: Path to persistent history JSON file.
+        summary: Whether to append markdown report to $GITHUB_STEP_SUMMARY.
+        max_history: Maximum historical records to retain.
+        commit_sha: Optional Git commit hash.
+        run_id: Optional CI run identifier.
+
+    Raises:
+        typer.Exit: If results file cannot be read or parsed.
+
+    Notes/Architectural Intent:
+        Driving adapter evaluating benchmark shift against historical baselines,
+        generating rich Markdown tables and Mermaid `xychart-beta` line charts for CI step summaries.
+    """
+    import os
+
+    from rich.console import Console
+
+    from hexaqual.adapters.code_analysis.benchmark_report import (
+        generate_benchmark_markdown,
+        load_benchmark_results,
+        load_or_update_history,
+    )
+
+    console = Console()
+    res_path = Path(results_file)
+    if not res_path.exists():
+        console.print(f"[bold red]❌ Benchmark results file not found:[/bold red] {results_file}")
+        raise typer.Exit(code=1)
+
+    try:
+        metrics = load_benchmark_results(res_path)
+    except Exception as exc:
+        console.print(f"[bold red]❌ Failed to parse benchmark results:[/bold red] {exc}")
+        raise typer.Exit(code=1) from exc
+
+    if not metrics:
+        console.print("[yellow]⚠ No benchmark records found in results file.[/yellow]")
+        return
+
+    hist_path = Path(history_file)
+    hist_data, comparisons = load_or_update_history(
+        history_path=hist_path,
+        current_metrics=metrics,
+        commit_sha=commit_sha or os.environ.get("GITHUB_SHA"),
+        run_id=run_id or os.environ.get("GITHUB_RUN_ID"),
+        max_history=max_history,
+    )
+
+    markdown = generate_benchmark_markdown(
+        comparisons=comparisons,
+        history_runs=hist_data.get("runs", []),
+    )
+    console.print(markdown)
+
+    if summary:
+        summary_path = os.environ.get("GITHUB_STEP_SUMMARY")
+        if summary_path:
+            with open(summary_path, "a", encoding="utf-8") as f:
+                f.write(f"\n{markdown}\n")
+            console.print(f"[green]✓ Benchmark report appended to {summary_path}[/green]")

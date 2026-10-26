@@ -15,6 +15,7 @@ import typer
 __all__ = [
     "gh_app",
     "gh_checks",
+    "gh_ci_duration",
     "gh_code_scanning",
     "gh_codeql",
     "gh_pr",
@@ -356,3 +357,56 @@ def gh_resolve(
         console.print(
             f"[bold green]✨ Resolved {resolved_count}/{len(target_threads)} review threads on PR #{pr_number}.[/bold green]"
         )
+
+
+@gh_app.command("ci-duration")
+def gh_ci_duration(
+    workflow: str = typer.Option("CI", "-w", "--workflow", help="Workflow name or filename."),
+    branch: str = typer.Option("main", "-b", "--branch", help="Git branch name."),
+    limit: int = typer.Option(10, "-l", "--limit", help="Number of historical runs to query."),
+    summary: bool = typer.Option(
+        False, "-s", "--summary", help="Append report directly to $GITHUB_STEP_SUMMARY."
+    ),
+    run_id: str | None = typer.Option(
+        None, "--run-id", help="Explicit GitHub Actions run databaseId."
+    ),
+) -> None:
+    """Analyze CI pipeline execution durations and render historical Mermaid trend charts.
+
+    Args:
+        workflow: Target workflow name or filename.
+        branch: Target Git branch.
+        limit: Number of historical runs for trend charting.
+        summary: Whether to append report to $GITHUB_STEP_SUMMARY.
+        run_id: Optional explicit run databaseId.
+
+    Raises:
+        typer.Exit: If GitHub CLI invocation encounters critical errors.
+
+    Notes/Architectural Intent:
+        Driving adapter querying GitHub CLI for real-time and historical workflow
+        performance metrics, formatting rich Markdown and Mermaid `xychart-beta` charts.
+    """
+    import os
+
+    from rich.console import Console
+
+    from hexaqual.adapters.github.ci_duration import (
+        fetch_ci_history,
+        fetch_current_run_jobs,
+        generate_ci_duration_markdown,
+    )
+
+    console = Console()
+    current_run = fetch_current_run_jobs(run_id=run_id)
+    history_runs = fetch_ci_history(workflow=workflow, branch=branch, limit=limit)
+
+    markdown = generate_ci_duration_markdown(current_run, history_runs)
+    console.print(markdown)
+
+    if summary:
+        summary_path = os.environ.get("GITHUB_STEP_SUMMARY")
+        if summary_path:
+            with open(summary_path, "a", encoding="utf-8") as f:
+                f.write(f"\n{markdown}\n")
+            console.print(f"[green]✓ CI duration report appended to {summary_path}[/green]")

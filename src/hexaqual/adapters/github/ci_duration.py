@@ -1,0 +1,273 @@
+"""GitHub Actions CI run duration analyzer and Mermaid trend visualizer.
+
+Notes/Architectural Intent:
+    Queries GitHub CLI (`gh`) for real-time workflow job durations and historical
+    wall-clock run times on the primary branch. Generates Markdown summary tables
+    and Mermaid `xychart-beta` line charts for CI step summaries and regression alerts.
+"""
+
+from __future__ import annotations
+
+import json
+import os
+import shutil
+import subprocess
+from dataclasses import dataclass
+from datetime import datetime
+from typing import Any
+
+__all__ = [
+    "CiJobMetric",
+    "CiRunMetric",
+    "fetch_ci_history",
+    "fetch_current_run_jobs",
+    "format_duration",
+    "generate_ci_duration_markdown",
+]
+
+
+@dataclass(frozen=True)
+class CiJobMetric:
+    """Parsed GitHub Actions job execution record."""
+
+    name: str
+    duration_seconds: int
+    status: str
+    conclusion: str
+
+
+@dataclass(frozen=True)
+class CiRunMetric:
+    """Historical CI workflow run execution record."""
+
+    run_id: str
+    label: str
+    duration_seconds: int
+    conclusion: str
+    created_at: str
+
+
+def format_duration(seconds: float) -> str:
+    """Format duration in seconds into human-readable minutes and seconds.
+
+    Args:
+        seconds: Duration in seconds.
+
+    Returns:
+        Formatted duration string (e.g. '45s', '3m 12s').
+    """
+    total_secs = max(0, int(seconds))
+    mins = total_secs // 60
+    secs = total_secs % 60
+    if mins > 0:
+        return f"{mins}m {secs:02d}s"
+    return f"{secs}s"
+
+
+def _parse_iso(timestamp_str: str) -> datetime:
+    """Parse ISO 8601 UTC timestamp string."""
+    return datetime.fromisoformat(timestamp_str.replace("Z", "+00:00"))
+
+
+def fetch_current_run_jobs(run_id: str | None = None) -> dict[str, Any] | None:
+    """Query GitHub CLI for current workflow execution details.
+
+    Args:
+        run_id: Optional GitHub Actions run databaseId. Defaults to GITHUB_RUN_ID env var.
+
+    Returns:
+        Dictionary containing run status, createdAt, updatedAt, and job details, or None on failure.
+    """
+    if not shutil.which("gh"):
+        return None
+
+    target_id = run_id or os.environ.get("GITHUB_RUN_ID")
+    if not target_id:
+        return None
+
+    cmd = [
+        "gh",
+        "run",
+        "view",
+        str(target_id),
+        "--json",
+        "jobs,createdAt,updatedAt,status,conclusion",
+    ]
+    try:
+        res = subprocess.run(cmd, capture_output=True, text=True, check=True)
+        data = json.loads(res.stdout)
+        return data if isinstance(data, dict) else None
+    except Exception:
+        return None
+
+
+def fetch_ci_history(
+    workflow: str = "CI",
+    branch: str = "main",
+    limit: int = 10,
+) -> list[CiRunMetric]:
+    """Query GitHub CLI for recent completed CI runs on target branch.
+
+    Args:
+        workflow: Workflow name or filename.
+        branch: Git branch name.
+        limit: Maximum number of recent runs to query.
+
+    Returns:
+        List of CiRunMetric instances ordered chronologically (oldest to newest).
+    """
+    if not shutil.which("gh"):
+        return []
+
+    cmd = [
+        "gh",
+        "run",
+        "list",
+        f"--workflow={workflow}",
+        f"--branch={branch}",
+        f"--limit={limit}",
+        "--json",
+        "databaseId,createdAt,updatedAt,conclusion",
+    ]
+    try:
+        res = subprocess.run(cmd, capture_output=True, text=True, check=True)
+        raw_runs = json.loads(res.stdout)
+        if not isinstance(raw_runs, list):
+            return []
+
+        runs: list[CiRunMetric] = []
+        for r in raw_runs:
+            created = r.get("createdAt")
+            updated = r.get("updatedAt")
+            db_id = str(r.get("databaseId", ""))
+            concl = r.get("conclusion") or "unknown"
+            if created and updated and db_id:
+                try:
+                    c_dt = _parse_iso(created)
+                    u_dt = _parse_iso(updated)
+                    sec = max(0, int((u_dt - c_dt).total_seconds()))
+                    runs.append(
+                        CiRunMetric(
+                            run_id=db_id,
+                            label=f"#{db_id[-5:]}",
+                            duration_seconds=sec,
+                            conclusion=concl,
+                            created_at=created,
+                        )
+                    )
+                except Exception:
+                    continue
+
+        # gh run list returns newest first; reverse for chronological order
+        runs.reverse()
+        return runs
+    except Exception:
+        return []
+
+
+def _format_job_status_badge(conclusion: str, status: str) -> str:
+    """Format job status badge icon and label."""
+    if conclusion == "success":
+        return "✅ Passed"
+    if conclusion in ("failure", "timed_out"):
+        return "❌ Failed"
+    if conclusion == "skipped":
+        return "⏭️ Skipped"
+    if conclusion == "cancelled":
+        return "🛑 Cancelled"
+    return f"⏳ {status.capitalize()}"
+
+
+def _format_job_duration(started_at: str | None, completed_at: str | None) -> str:
+    """Calculate formatted duration string between two ISO timestamps."""
+    if not started_at or not completed_at:
+        return "—"
+    try:
+        j_sec = (_parse_iso(completed_at) - _parse_iso(started_at)).total_seconds()
+        return format_duration(j_sec)
+    except Exception:
+        return "—"
+
+
+def _calculate_wall_clock(current_run_data: dict[str, Any] | None) -> str | None:
+    """Extract total pipeline wall-clock time from workflow run timestamps."""
+    if not current_run_data:
+        return None
+    c_at = current_run_data.get("createdAt")
+    u_at = current_run_data.get("updatedAt")
+    if not c_at or not u_at:
+        return None
+    try:
+        sec = (_parse_iso(u_at) - _parse_iso(c_at)).total_seconds()
+        return format_duration(sec)
+    except Exception:
+        return None
+
+
+def _render_duration_chart(history_runs: list[CiRunMetric] | None) -> list[str]:
+    """Generate Mermaid line chart block for historical CI runs."""
+    if not history_runs:
+        return []
+    successful_runs = [r for r in history_runs if r.conclusion == "success"]
+    if len(successful_runs) < 2:
+        return []
+
+    x_labels = [r.label for r in successful_runs]
+    y_durations = [r.duration_seconds for r in successful_runs]
+
+    min_y = max(0, int(min(y_durations) * 0.8))
+    max_y = int(max(y_durations) * 1.2) + 1
+
+    return [
+        "#### 📈 CI Duration Trend Over Time (Main Branch)",
+        "",
+        "```mermaid",
+        "xychart-beta",
+        '    title "CI Wall-Clock Duration Trend (Seconds)"',
+        f"    x-axis {json.dumps(x_labels)}",
+        f'    y-axis "Duration (seconds)" {min_y} --> {max_y}',
+        f"    line {y_durations}",
+        "```",
+        "",
+    ]
+
+
+def generate_ci_duration_markdown(
+    current_run_data: dict[str, Any] | None,
+    history_runs: list[CiRunMetric] | None = None,
+) -> str:
+    """Generate GitHub Flavored Markdown summary report for CI durations.
+
+    Args:
+        current_run_data: Execution data for the current run.
+        history_runs: List of historical CI runs for trend line charting.
+
+    Returns:
+        Markdown string suitable for $GITHUB_STEP_SUMMARY.
+    """
+    lines: list[str] = [
+        "### ⏱️ CI Pipeline Execution & Duration Breakdown",
+        "",
+    ]
+
+    jobs = current_run_data.get("jobs", []) if current_run_data else []
+    if jobs:
+        lines.extend(["| Job / Stage | Duration | Status |", "|---|---|---|"])
+        for j in jobs:
+            j_name = j.get("name", "Unknown Job")
+            j_status = j.get("status", "unknown")
+            j_concl = j.get("conclusion") or j_status
+            dur_str = _format_job_duration(j.get("startedAt"), j.get("completedAt"))
+            icon = _format_job_status_badge(j_concl, j_status)
+            lines.append(f"| `{j_name}` | {dur_str} | {icon} |")
+        lines.append("")
+
+    total_wall_clock = _calculate_wall_clock(current_run_data)
+    if total_wall_clock:
+        lines.extend([f"**Total Pipeline Wall-Clock Duration:** `{total_wall_clock}`", ""])
+
+    chart_lines = _render_duration_chart(history_runs)
+    if chart_lines:
+        lines.extend(chart_lines)
+
+    return "\n".join(lines)

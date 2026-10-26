@@ -2,8 +2,10 @@
 
 from __future__ import annotations
 
+from pathlib import Path
 from unittest.mock import MagicMock, patch
 
+import pytest
 from typer.testing import CliRunner
 
 from hexaqual.cli.gh import gh_app
@@ -238,3 +240,27 @@ def test_gh_resolve() -> None:
         assert res.exit_code == 0
         assert mock_client.resolve_review_thread.called
         assert "Resolved 1/1" in res.stdout
+
+
+def test_gh_ci_duration(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """Test gh ci-duration CLI subcommand and step summary export."""
+    summary_file = tmp_path / "step_summary.md"
+    monkeypatch.setenv("GITHUB_STEP_SUMMARY", str(summary_file))
+
+    with (
+        patch("hexaqual.adapters.github.ci_duration.fetch_current_run_jobs") as mock_curr,
+        patch("hexaqual.adapters.github.ci_duration.fetch_ci_history") as mock_hist,
+    ):
+        mock_curr.return_value = {
+            "createdAt": "2026-10-26T12:00:00Z",
+            "updatedAt": "2026-10-26T12:02:00Z",
+            "jobs": [{"name": "Test Job", "status": "completed", "conclusion": "success"}],
+        }
+        mock_hist.return_value = []
+
+        res = runner.invoke(gh_app, ["ci-duration", "--summary"])
+        assert res.exit_code == 0
+        assert "CI Pipeline Execution & Duration Breakdown" in res.stdout
+        assert summary_file.exists()
+        content = summary_file.read_text(encoding="utf-8")
+        assert "CI Pipeline Execution & Duration Breakdown" in content

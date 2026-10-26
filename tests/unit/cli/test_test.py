@@ -2,8 +2,10 @@
 
 from __future__ import annotations
 
+from pathlib import Path
 from unittest.mock import MagicMock, patch
 
+import pytest
 from typer.testing import CliRunner
 
 from hexaqual.cli.test import test_app as cli_test_app
@@ -321,3 +323,56 @@ def test_test_bench_failure() -> None:
     with patch("hexaqual.adapters.code_analysis.pytest_runner.run_main", return_value=2):
         res = runner.invoke(cli_test_app, ["bench", "-p", "core"])
         assert res.exit_code == 2
+
+
+def test_test_benchmark_report_missing_file() -> None:
+    """Test benchmark-report CLI fails when results file does not exist."""
+    res = runner.invoke(cli_test_app, ["benchmark-report", "-r", "/tmp/non_existent_results.json"])
+    assert res.exit_code == 1
+    assert "Benchmark results file not found" in res.stdout
+
+
+def test_test_benchmark_report_success(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """Test benchmark-report CLI generates markdown and exports to GITHUB_STEP_SUMMARY."""
+    import json
+
+    results_file = tmp_path / "results.json"
+    history_file = tmp_path / "history.json"
+    summary_file = tmp_path / "step_summary.md"
+    monkeypatch.setenv("GITHUB_STEP_SUMMARY", str(summary_file))
+
+    sample_json = {
+        "benchmarks": [
+            {
+                "name": "test_perf_fast",
+                "stats": {
+                    "median": 0.00010,
+                    "mean": 0.00011,
+                    "min": 0.00009,
+                    "max": 0.00015,
+                    "stddev": 0.00001,
+                    "ops": 10000.0,
+                    "rounds": 100,
+                },
+            }
+        ]
+    }
+    results_file.write_text(json.dumps(sample_json), encoding="utf-8")
+
+    res = runner.invoke(
+        cli_test_app,
+        [
+            "benchmark-report",
+            "-r",
+            str(results_file),
+            "-H",
+            str(history_file),
+            "--summary",
+        ],
+    )
+    assert res.exit_code == 0
+    assert "Performance Microbenchmark Report" in res.stdout
+    assert summary_file.exists()
+    content = summary_file.read_text(encoding="utf-8")
+    assert "Performance Microbenchmark Report" in content
+    assert "`test_perf_fast`" in content
