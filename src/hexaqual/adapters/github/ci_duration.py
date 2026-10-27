@@ -10,10 +10,11 @@ from __future__ import annotations
 
 import json
 import os
+import re
 import shutil
 import subprocess
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import UTC, datetime
 from typing import Any
 
 __all__ = [
@@ -179,12 +180,23 @@ def _format_job_status_badge(conclusion: str, status: str) -> str:
 
 
 def _format_job_duration(started_at: str | None, completed_at: str | None) -> str:
-    """Calculate formatted duration string between two ISO timestamps."""
-    if not started_at or not completed_at:
+    """Calculate formatted duration string between two ISO timestamps.
+
+    If completed_at is missing or identical to started_at for an in-progress job,
+    computes elapsed duration against current UTC timestamp.
+    """
+    if not started_at:
         return "—"
     try:
-        j_sec = (_parse_iso(completed_at) - _parse_iso(started_at)).total_seconds()
-        return format_duration(j_sec)
+        s_dt = _parse_iso(started_at)
+        if completed_at:
+            c_dt = _parse_iso(completed_at)
+            sec = (c_dt - s_dt).total_seconds()
+            if sec > 0:
+                return format_duration(sec)
+        now_dt = datetime.now(UTC)
+        elapsed = max(1, int((now_dt - s_dt).total_seconds()))
+        return format_duration(elapsed)
     except Exception:
         return "—"
 
@@ -195,13 +207,151 @@ def _calculate_wall_clock(current_run_data: dict[str, Any] | None) -> str | None
         return None
     c_at = current_run_data.get("createdAt")
     u_at = current_run_data.get("updatedAt")
-    if not c_at or not u_at:
+    if not c_at:
         return None
     try:
+        status = current_run_data.get("status")
+        if status == "in_progress" or not u_at:
+            now_dt = datetime.now(UTC)
+            sec = max(0, int((now_dt - _parse_iso(c_at)).total_seconds()))
+            return format_duration(sec)
         sec = (_parse_iso(u_at) - _parse_iso(c_at)).total_seconds()
         return format_duration(sec)
     except Exception:
         return None
+
+
+def _extract_workflow_jobs(workflow_path: str) -> dict[str, Any]:
+    """Parse workflow YAML definition to retrieve job dependency specifications."""
+    if not os.path.isfile(workflow_path):
+        return {}
+    try:
+        import yaml
+
+        with open(workflow_path, encoding="utf-8") as f:
+            data = yaml.safe_load(f)
+        if isinstance(data, dict):
+            raw_jobs = data.get("jobs", {})
+            return raw_jobs if isinstance(raw_jobs, dict) else {}
+        return {}
+    except Exception:
+        return {}
+
+
+def _resolve_job_node_class(conclusion: str, status: str) -> str:
+    """Determine Mermaid style class based on job execution outcome."""
+    if conclusion == "success":
+        return "passed"
+    if conclusion in ("failure", "timed_out"):
+        return "failed"
+    if conclusion == "skipped":
+        return "skipped"
+    if conclusion == "cancelled":
+        return "cancelled"
+    return "running"
+
+
+def _normalize_name(name: str) -> str:
+    """Normalize workflow job name for case and matrix key lookups."""
+    return re.sub(r"\s+", " ", name.split("(")[0].strip().lower())
+
+
+def _build_job_key_mapping(jobs_def: dict[str, Any]) -> dict[str, str]:
+    """Map normalized job names and IDs to their workflow definition keys."""
+    key_by_norm: dict[str, str] = {}
+    for k, v in jobs_def.items():
+        if isinstance(v, dict):
+            key_by_norm[_normalize_name(v.get("name", k))] = k
+            key_by_norm[k.lower()] = k
+    return key_by_norm
+
+
+def _render_graph_nodes(
+    processed_jobs: list[dict[str, str]],
+) -> tuple[list[str], dict[str, str]]:
+    """Render Mermaid nodes and record node IDs by job name."""
+    node_lines: list[str] = []
+    job_node_ids: dict[str, str] = {}
+    for j in processed_jobs:
+        name = j["name"]
+        nid = re.sub(r"[^a-zA-Z0-9_]", "_", name).strip("_").lower()
+        job_node_ids[name] = nid
+        cls_name = _resolve_job_node_class(j.get("conclusion", ""), j.get("status", ""))
+        dur = j.get("duration", "—")
+        node_lines.append(f'    {nid}["{name}<br/><b>{dur}</b>"]:::{cls_name}')
+    return node_lines, job_node_ids
+
+
+def _render_job_edges(
+    child_job: dict[str, str],
+    processed_jobs: list[dict[str, str]],
+    jobs_def: dict[str, Any],
+    key_by_norm: dict[str, str],
+    job_node_ids: dict[str, str],
+    rendered_edges: set[str],
+) -> list[str]:
+    """Render incoming dependency edges for a specific child job."""
+    child_name = child_job["name"]
+    child_id = job_node_ids.get(child_name)
+    j_key = key_by_norm.get(_normalize_name(child_name))
+    if not child_id or not j_key or j_key not in jobs_def:
+        return []
+
+    needs = jobs_def[j_key].get("needs", [])
+    needs_list = [needs] if isinstance(needs, str) else (needs if isinstance(needs, list) else [])
+    edge_lines: list[str] = []
+    for p_key in needs_list:
+        for pj in processed_jobs:
+            if key_by_norm.get(_normalize_name(pj["name"])) == p_key:
+                p_id = job_node_ids.get(pj["name"])
+                edge_str = f"    {p_id} --> {child_id}"
+                if edge_str not in rendered_edges:
+                    rendered_edges.add(edge_str)
+                    edge_lines.append(edge_str)
+    return edge_lines
+
+
+def _render_execution_graph(
+    processed_jobs: list[dict[str, str]],
+    workflow_path: str = ".github/workflows/ci.yml",
+) -> list[str]:
+    """Generate Mermaid flowchart visualizing actual execution outcomes and durations."""
+    if not processed_jobs:
+        return []
+
+    jobs_def = _extract_workflow_jobs(workflow_path)
+    key_by_norm = _build_job_key_mapping(jobs_def)
+    node_lines, job_node_ids = _render_graph_nodes(processed_jobs)
+
+    lines = [
+        "#### 🗺️ Executed CI Workflow Graph",
+        "",
+        "```mermaid",
+        "flowchart TD",
+        *node_lines,
+        "",
+    ]
+
+    rendered_edges: set[str] = set()
+    for j in processed_jobs:
+        edges = _render_job_edges(
+            j, processed_jobs, jobs_def, key_by_norm, job_node_ids, rendered_edges
+        )
+        lines.extend(edges)
+
+    lines.extend(
+        [
+            "",
+            "    classDef passed fill:#d4edda,stroke:#28a745,stroke-width:2px,color:#155724;",
+            "    classDef failed fill:#f8d7da,stroke:#dc3545,stroke-width:2px,color:#721c24;",
+            "    classDef skipped fill:#e2e3e5,stroke:#6c757d,stroke-width:1px,color:#383d41;",
+            "    classDef running fill:#fff3cd,stroke:#ffc107,stroke-width:2px,color:#856404;",
+            "    classDef cancelled fill:#f8d7da,stroke:#6c757d,stroke-width:2px,color:#721c24;",
+            "```",
+            "",
+        ]
+    )
+    return lines
 
 
 def _render_duration_chart(history_runs: list[CiRunMetric] | None) -> list[str]:
@@ -235,12 +385,14 @@ def _render_duration_chart(history_runs: list[CiRunMetric] | None) -> list[str]:
 def generate_ci_duration_markdown(
     current_run_data: dict[str, Any] | None,
     history_runs: list[CiRunMetric] | None = None,
+    workflow_path: str = ".github/workflows/ci.yml",
 ) -> str:
     """Generate GitHub Flavored Markdown summary report for CI durations.
 
     Args:
         current_run_data: Execution data for the current run.
         history_runs: List of historical CI runs for trend line charting.
+        workflow_path: Optional path to the workflow YAML file.
 
     Returns:
         Markdown string suitable for $GITHUB_STEP_SUMMARY.
@@ -251,20 +403,36 @@ def generate_ci_duration_markdown(
     ]
 
     jobs = current_run_data.get("jobs", []) if current_run_data else []
+    processed_jobs: list[dict[str, str]] = []
     if jobs:
         lines.extend(["| Job / Stage | Duration | Status |", "|---|---|---|"])
         for j in jobs:
             j_name = j.get("name", "Unknown Job")
             j_status = j.get("status", "unknown")
             j_concl = j.get("conclusion") or j_status
+            if j_status == "in_progress" and ("CI Success" in j_name or not j.get("conclusion")):
+                j_concl = "success"
+                j_status = "completed"
             dur_str = _format_job_duration(j.get("startedAt"), j.get("completedAt"))
             icon = _format_job_status_badge(j_concl, j_status)
             lines.append(f"| `{j_name}` | {dur_str} | {icon} |")
+            processed_jobs.append(
+                {
+                    "name": j_name,
+                    "duration": dur_str,
+                    "status": j_status,
+                    "conclusion": j_concl,
+                }
+            )
         lines.append("")
 
     total_wall_clock = _calculate_wall_clock(current_run_data)
     if total_wall_clock:
         lines.extend([f"**Total Pipeline Wall-Clock Duration:** `{total_wall_clock}`", ""])
+
+    graph_lines = _render_execution_graph(processed_jobs, workflow_path=workflow_path)
+    if graph_lines:
+        lines.extend(graph_lines)
 
     chart_lines = _render_duration_chart(history_runs)
     if chart_lines:

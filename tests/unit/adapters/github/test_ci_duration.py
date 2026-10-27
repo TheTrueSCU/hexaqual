@@ -134,3 +134,36 @@ def test_gh_cli_unavailable() -> None:
 
         hist_res = fetch_ci_history()
         assert hist_res == []
+
+
+def test_in_progress_ci_success_resolution() -> None:
+    """Verify in-progress CI Success job resolves to passed status with non-zero duration."""
+    current_data = {
+        "createdAt": "2026-10-26T12:00:00Z",
+        "updatedAt": "2026-10-26T12:02:00Z",
+        "status": "in_progress",
+        "jobs": [
+            {
+                "name": "Pre-Commit Quality Gate",
+                "status": "completed",
+                "conclusion": "success",
+                "startedAt": "2026-10-26T12:00:05Z",
+                "completedAt": "2026-10-26T12:00:35Z",
+            },
+            {
+                "name": "CI Success (All Required Checks)",
+                "status": "in_progress",
+                "conclusion": None,
+                "startedAt": "2026-10-26T12:01:40Z",
+                "completedAt": None,
+            },
+        ],
+    }
+
+    md = generate_ci_duration_markdown(current_data)
+    assert "`CI Success (All Required Checks)`" in md
+    assert "✅ Passed" in md
+    assert "⏳ In_progress" not in md
+    assert "#### 🗺️ Executed CI Workflow Graph" in md
+    assert "ci_success__all_required_checks" in md
+    assert ":::passed" in md
