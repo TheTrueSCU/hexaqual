@@ -20,11 +20,15 @@ from typing import Any
 __all__ = [
     "CiJobMetric",
     "CiRunMetric",
+    "DASHBOARD_MARKER",
     "fetch_ci_history",
     "fetch_current_run_jobs",
     "format_duration",
     "generate_ci_duration_markdown",
+    "post_or_update_pr_comment",
 ]
+
+DASHBOARD_MARKER = "<!-- hexaqual-ci-dashboard -->"
 
 
 @dataclass(frozen=True)
@@ -382,6 +386,121 @@ def _render_duration_chart(history_runs: list[CiRunMetric] | None) -> list[str]:
     ]
 
 
+def _resolve_repo(repo: str | None = None) -> str | None:
+    """Resolve GitHub owner/repo identifier."""
+    if repo:
+        return repo
+    env_repo = os.environ.get("GITHUB_REPOSITORY")
+    if env_repo:
+        return env_repo
+    try:
+        res = subprocess.run(
+            ["gh", "repo", "view", "--json", "nameWithOwner", "--jq", ".nameWithOwner"],
+            capture_output=True,
+            text=True,
+            check=True,
+        )
+        return res.stdout.strip() or None
+    except Exception:
+        return None
+
+
+def post_or_update_pr_comment(
+    pr_number: int | str,
+    markdown_content: str,
+    repo: str | None = None,
+) -> bool:
+    """Post or update an in-place PR status dashboard comment.
+
+    Args:
+        pr_number: Pull request number.
+        markdown_content: Dashboard markdown body to publish.
+        repo: Optional 'owner/repo' identifier. Defaults to GITHUB_REPOSITORY env var.
+
+    Returns:
+        True if comment was created or updated successfully, False otherwise.
+    """
+    if not shutil.which("gh"):
+        return False
+
+    target_repo = _resolve_repo(repo)
+    if not target_repo:
+        return False
+
+    body = f"{DASHBOARD_MARKER}\n{markdown_content}"
+    try:
+        list_cmd = [
+            "gh",
+            "api",
+            f"repos/{target_repo}/issues/{pr_number}/comments",
+            "--jq",
+            f'.[] | select(.body | contains("{DASHBOARD_MARKER}")) | .id',
+        ]
+        res = subprocess.run(list_cmd, capture_output=True, text=True, check=True)
+        comment_ids = [cid.strip() for cid in res.stdout.strip().splitlines() if cid.strip()]
+        if comment_ids:
+            patch_cmd = [
+                "gh",
+                "api",
+                "--method",
+                "PATCH",
+                f"repos/{target_repo}/issues/comments/{comment_ids[0]}",
+                "-f",
+                f"body={body}",
+            ]
+            subprocess.run(patch_cmd, capture_output=True, text=True, check=True)
+        else:
+            post_cmd = [
+                "gh",
+                "api",
+                "--method",
+                "POST",
+                f"repos/{target_repo}/issues/{pr_number}/comments",
+                "-f",
+                f"body={body}",
+            ]
+            subprocess.run(post_cmd, capture_output=True, text=True, check=True)
+        return True
+    except Exception:
+        return False
+
+
+def _process_single_job(j: dict[str, Any], any_failed: bool) -> tuple[str, dict[str, str]]:
+    """Format table row and processed metadata for a single workflow job."""
+    j_name = j.get("name", "Unknown Job")
+    j_status = j.get("status", "unknown")
+    j_concl = j.get("conclusion") or j_status
+    if j_status == "in_progress" and ("CI Success" in j_name or not j.get("conclusion")):
+        j_concl = "failure" if any_failed else "success"
+        j_status = "completed"
+    dur_str = _format_job_duration(j.get("startedAt"), j.get("completedAt"))
+    icon = _format_job_status_badge(j_concl, j_status)
+    row = f"| `{j_name}` | {dur_str} | {icon} |"
+    info = {
+        "name": j_name,
+        "duration": dur_str,
+        "status": j_status,
+        "conclusion": j_concl,
+    }
+    return row, info
+
+
+def _render_jobs_table(
+    jobs: list[dict[str, Any]], any_failed: bool
+) -> tuple[list[str], list[dict[str, str]]]:
+    """Generate Markdown duration table rows and processed jobs list."""
+    if not jobs:
+        return [], []
+    table_lines: list[str] = ["| Job / Stage | Duration | Status |", "|---|---|---|"]
+    processed: list[dict[str, str]] = []
+    for j in jobs:
+        row, info = _process_single_job(j, any_failed)
+        table_lines.append(row)
+        processed.append(info)
+    table_lines.append("")
+    return table_lines, processed
+
+
 def generate_ci_duration_markdown(
     current_run_data: dict[str, Any] | None,
     history_runs: list[CiRunMetric] | None = None,
@@ -395,36 +514,19 @@ def generate_ci_duration_markdown(
         workflow_path: Optional path to the workflow YAML file.
 
     Returns:
-        Markdown string suitable for $GITHUB_STEP_SUMMARY.
+        Markdown string suitable for $GITHUB_STEP_SUMMARY and PR comments.
     """
-    lines: list[str] = [
-        "### ⏱️ CI Pipeline Execution & Duration Breakdown",
-        "",
-    ]
-
     jobs = current_run_data.get("jobs", []) if current_run_data else []
-    processed_jobs: list[dict[str, str]] = []
-    if jobs:
-        lines.extend(["| Job / Stage | Duration | Status |", "|---|---|---|"])
-        for j in jobs:
-            j_name = j.get("name", "Unknown Job")
-            j_status = j.get("status", "unknown")
-            j_concl = j.get("conclusion") or j_status
-            if j_status == "in_progress" and ("CI Success" in j_name or not j.get("conclusion")):
-                j_concl = "success"
-                j_status = "completed"
-            dur_str = _format_job_duration(j.get("startedAt"), j.get("completedAt"))
-            icon = _format_job_status_badge(j_concl, j_status)
-            lines.append(f"| `{j_name}` | {dur_str} | {icon} |")
-            processed_jobs.append(
-                {
-                    "name": j_name,
-                    "duration": dur_str,
-                    "status": j_status,
-                    "conclusion": j_concl,
-                }
-            )
-        lines.append("")
+    any_failed = any(j.get("conclusion") in ("failure", "timed_out", "cancelled") for j in jobs)
+    header = (
+        "### ❌ CI Pipeline Execution & Duration Breakdown (Failed)"
+        if any_failed
+        else "### ⏱️ CI Pipeline Execution & Duration Breakdown"
+    )
+    lines: list[str] = [header, ""]
+
+    table_lines, processed_jobs = _render_jobs_table(jobs, any_failed)
+    lines.extend(table_lines)
 
     total_wall_clock = _calculate_wall_clock(current_run_data)
     if total_wall_clock:

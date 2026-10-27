@@ -370,6 +370,9 @@ def gh_ci_duration(
     run_id: str | None = typer.Option(
         None, "--run-id", help="Explicit GitHub Actions run databaseId."
     ),
+    pr: str | None = typer.Option(
+        None, "--pr", help="Optional pull request number to post/update in-place status comment."
+    ),
 ) -> None:
     """Analyze CI pipeline execution durations and render historical Mermaid trend charts.
 
@@ -379,6 +382,7 @@ def gh_ci_duration(
         limit: Number of historical runs for trend charting.
         summary: Whether to append report to $GITHUB_STEP_SUMMARY.
         run_id: Optional explicit run databaseId.
+        pr: Optional pull request number to post/update in-place status comment.
 
     Raises:
         typer.Exit: If GitHub CLI invocation encounters critical errors.
@@ -395,6 +399,7 @@ def gh_ci_duration(
         fetch_ci_history,
         fetch_current_run_jobs,
         generate_ci_duration_markdown,
+        post_or_update_pr_comment,
     )
 
     console = Console()
@@ -410,3 +415,14 @@ def gh_ci_duration(
             with open(summary_path, "a", encoding="utf-8") as f:
                 f.write(f"\n{markdown}\n")
             console.print(f"[green]✓ CI duration report appended to {summary_path}[/green]")
+
+    if pr:
+        clean_pr = "".join(filter(str.isdigit, str(pr)))
+        if clean_pr:
+            ok = post_or_update_pr_comment(clean_pr, markdown)
+            if ok:
+                console.print(
+                    f"[green]✓ PR status dashboard comment updated on PR #{clean_pr}[/green]"
+                )
+            else:
+                console.print(f"[yellow]⚠ Could not update PR comment on PR #{clean_pr}[/yellow]")

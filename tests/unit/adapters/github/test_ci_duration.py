@@ -167,3 +167,73 @@ def test_in_progress_ci_success_resolution() -> None:
     assert "#### 🗺️ Executed CI Workflow Graph" in md
     assert "ci_success__all_required_checks" in md
     assert ":::passed" in md
+
+
+def test_failed_ci_resolution() -> None:
+    """Verify failing upstream stages render failure header and failed CI Success status."""
+    current_data = {
+        "createdAt": "2026-10-26T12:00:00Z",
+        "jobs": [
+            {
+                "name": "Pre-Commit Quality Gate",
+                "status": "completed",
+                "conclusion": "failure",
+                "startedAt": "2026-10-26T12:00:05Z",
+                "completedAt": "2026-10-26T12:00:35Z",
+            },
+            {
+                "name": "CI Success (All Required Checks)",
+                "status": "in_progress",
+                "conclusion": None,
+                "startedAt": "2026-10-26T12:00:40Z",
+                "completedAt": None,
+            },
+        ],
+    }
+
+    md = generate_ci_duration_markdown(current_data)
+    assert "### ❌ CI Pipeline Execution & Duration Breakdown (Failed)" in md
+    assert "❌ Failed" in md
+    assert ":::failed" in md
+
+
+def test_post_or_update_pr_comment_create() -> None:
+    """Verify creating a new PR comment when none exists with the dashboard marker."""
+    from hexaqual.adapters.github.ci_duration import post_or_update_pr_comment
+
+    with patch("shutil.which", return_value="/usr/bin/gh"), patch("subprocess.run") as mock_run:
+        # First call (list comments) returns empty string (no matching comments)
+        # Second call (create comment) succeeds
+        mock_run.side_effect = [
+            MagicMock(stdout=""),
+            MagicMock(stdout="created"),
+        ]
+        res = post_or_update_pr_comment(
+            pr_number="42", markdown_content="Test dashboard", repo="org/repo"
+        )
+        assert res is True
+        assert mock_run.call_count == 2
+        post_args = mock_run.call_args_list[1][0][0]
+        assert "POST" in post_args
+        assert "repos/org/repo/issues/42/comments" in post_args
+
+
+def test_post_or_update_pr_comment_patch() -> None:
+    """Verify updating existing PR comment in place when marker is found."""
+    from hexaqual.adapters.github.ci_duration import post_or_update_pr_comment
+
+    with patch("shutil.which", return_value="/usr/bin/gh"), patch("subprocess.run") as mock_run:
+        # First call returns existing comment id 98765
+        # Second call (patch comment) succeeds
+        mock_run.side_effect = [
+            MagicMock(stdout="98765\n"),
+            MagicMock(stdout="patched"),
+        ]
+        res = post_or_update_pr_comment(
+            pr_number="42", markdown_content="Updated dashboard", repo="org/repo"
+        )
+        assert res is True
+        assert mock_run.call_count == 2
+        patch_args = mock_run.call_args_list[1][0][0]
+        assert "PATCH" in patch_args
+        assert "repos/org/repo/issues/comments/98765" in patch_args

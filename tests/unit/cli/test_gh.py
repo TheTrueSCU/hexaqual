@@ -264,3 +264,11 @@ def test_gh_ci_duration(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None
         assert summary_file.exists()
         content = summary_file.read_text(encoding="utf-8")
         assert "CI Pipeline Execution & Duration Breakdown" in content
+
+        with patch(
+            "hexaqual.adapters.github.ci_duration.post_or_update_pr_comment", return_value=True
+        ) as mock_pr:
+            res_pr = runner.invoke(gh_app, ["ci-duration", "--pr", "123"])
+            assert res_pr.exit_code == 0
+            assert mock_pr.called
+            assert "PR status dashboard comment updated on PR #123" in res_pr.stdout
