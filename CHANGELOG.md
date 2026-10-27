@@ -1,5 +1,38 @@
 # CHANGELOG
 
+## v0.9.10 (2026-10-26)
+
+### Highlights & Features
+* **In-Place PR Status Dashboard Comments (`--pr`)**:
+  - Implemented single-comment PR status reporting in `hexaqual gh ci-duration --pr <number>`, updating via idempotent HTML marker `<!-- hexaqual-ci-dashboard -->`.
+  - Dispatches `PATCH` (or initial `POST`) via GitHub CLI REST API, avoiding notification spam across review threads.
+  - Supports dual-outcome failure reporting: updates PR status comments on both success and failure before final upstream failure exit.
+
+## v0.9.9 (2026-10-26)
+
+### Highlights & Features
+* **Topological Executed Workflow Graph**:
+  - Generates color-coded Mermaid flowcharts (`flowchart TD`) in `$GITHUB_STEP_SUMMARY` and PR comments depicting actual executed pipeline topology with `:::passed` (green), `:::failed` (red), `:::skipped` (gray), and `:::running` (yellow).
+  - Annotates job nodes with real elapsed execution durations (e.g. `Pre-Commit Quality Gate<br/><b>31s</b>`).
+  - Implemented dynamic duration calculation for running jobs (e.g. `ci-success` accurately calculates elapsed execution time instead of reporting 0s / Pending).
+  - Normalized job names to cleanly split multi-version runtime matrices into distinct execution nodes.
+
+## v0.9.8 (2026-10-26)
+
+### Highlights & Features
+* **CI Execution Duration Breakdown & Historical Trend Charts (`hexaqual gh ci-duration`)**:
+  - Implemented `gh ci-duration` driving adapter querying GitHub Actions API for per-job runtimes and historical execution trends.
+  - Generates rich Markdown tables and Mermaid line charts (`xychart-beta`) visualizing workflow runtime evolution across runs.
+* **Benchmark Trend Reporting (`hexaqual test benchmark-report`)**:
+  - Added CLI reporter transforming `pytest-benchmark` JSON outputs into historical performance line charts.
+* **Scheduled Deep Governance Workflows**:
+  - Configured weekly scheduled full-workspace mutation audits (`mutation_scheduled.yml`) via pytest-gremlins.
+  - Configured weekly automated benchmark tracking (`benchmark_scheduled.yml`).
+  - Added coverage-guided security fuzzing (`fuzz.yml`) with Atheris.
+* **Shift-Left Pre-Commit Latency Optimization**:
+  - Added `--skip-diagrams` option to `hexaqual-pre-push` git hook and relocated heavy network audits to pre-push.
+  - Added multi-core parallel unit test gate (`hexaqual test run -A -U -n auto`).
+
 ## v0.9.7 (2026-10-23)
 
 ### Highlights & Features

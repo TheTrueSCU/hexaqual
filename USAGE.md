@@ -661,6 +661,8 @@ Usage: hexaqual gh [OPTIONS] COMMAND [ARGS]...
 │                auto-detection.                                               │
 │ resolve        Resolve open review discussion threads on a Pull Request via  │
 │                GitHub GraphQL.                                               │
+│ ci-duration    Analyze CI pipeline execution durations and render historical │
+│                Mermaid trend charts.                                         │
 ╰──────────────────────────────────────────────────────────────────────────────╯
 ```
 
@@ -671,6 +673,16 @@ Usage: hexaqual gh [OPTIONS] COMMAND [ARGS]...
 Try 'hexaqual gh --help' for help.
 ╭─ Error ──────────────────────────────────────────────────────────────────────╮
 │ No such command 'GitHub'.                                                    │
+╰──────────────────────────────────────────────────────────────────────────────╯
+```
+
+#### `hexaqual gh Mermaid`
+
+```text
+Usage: hexaqual gh [OPTIONS] COMMAND [ARGS]...
+Try 'hexaqual gh --help' for help.
+╭─ Error ──────────────────────────────────────────────────────────────────────╮
+│ No such command 'Mermaid'.                                                   │
 ╰──────────────────────────────────────────────────────────────────────────────╯
 ```
 
@@ -698,6 +710,42 @@ Usage: hexaqual gh checks [OPTIONS] {ref_or_pr}
 ╭─ Options ────────────────────────────────────────────────────────────────────╮
 │ --format  -f      <str>  Output format. [default: auto]                      │
 │ --help                   Show this message and exit.                         │
+╰──────────────────────────────────────────────────────────────────────────────╯
+```
+
+#### `hexaqual gh ci-duration`
+
+```text
+Usage: hexaqual gh ci-duration [OPTIONS]
+
+ Analyze CI pipeline execution durations and render historical Mermaid trend
+ charts.
+
+ Args:
+     workflow: Target workflow name or filename.
+     branch: Target Git branch.
+     limit: Number of historical runs for trend charting.
+     summary: Whether to append report to $GITHUB_STEP_SUMMARY.
+     run_id: Optional explicit run databaseId.
+     pr: Optional pull request number to post/update in-place status comment.
+
+ Raises:
+     typer.Exit: If GitHub CLI invocation encounters critical errors.
+
+ Notes/Architectural Intent:
+     Driving adapter querying GitHub CLI for real-time and historical workflow
+     performance metrics, formatting rich Markdown and Mermaid `xychart-beta`
+ charts.
+
+╭─ Options ────────────────────────────────────────────────────────────────────╮
+│ --workflow  -w      <str>  Workflow name or filename. [default: CI]          │
+│ --branch    -b      <str>  Git branch name. [default: main]                  │
+│ --limit     -l      <int>  Number of historical runs to query. [default: 10] │
+│ --summary   -s             Append report directly to $GITHUB_STEP_SUMMARY.   │
+│ --run-id            <str>  Explicit GitHub Actions run databaseId.           │
+│ --pr                <str>  Optional pull request number to post/update       │
+│                            in-place status comment.                          │
+│ --help                     Show this message and exit.                       │
 ╰──────────────────────────────────────────────────────────────────────────────╯
 ```
 
@@ -1827,15 +1875,22 @@ Usage: hexaqual test [OPTIONS] COMMAND [ARGS]...
 │ --help          Show this message and exit.                                  │
 ╰──────────────────────────────────────────────────────────────────────────────╯
 ╭─ Commands ───────────────────────────────────────────────────────────────────╮
-│ run         Run pytest suite with dynamic worker allocation and coverage.    │
-│ bench       Execute microbenchmarks via pytest-benchmark with zero coverage  │
-│             instrumentation overhead.                                        │
-│ boundary    Audit test suites for branch boundary and edge-case assertions.  │
-│ impact      Selectively run tests impacted by current git diff changes.      │
-│ redundancy  Analyze test execution overlap and flag duplicate test paths.    │
-│ fuzz        Run coverage-guided and adversarial security fuzz harnesses.     │
-│ snapshot    Update or review inline snapshots across test suites.            │
-│ archon      Generate pytest-archon boundary tests for packages.              │
+│ run               Run pytest suite with dynamic worker allocation and        │
+│                   coverage.                                                  │
+│ bench             Execute microbenchmarks via pytest-benchmark with zero     │
+│                   coverage instrumentation overhead.                         │
+│ boundary          Audit test suites for branch boundary and edge-case        │
+│                   assertions.                                                │
+│ impact            Selectively run tests impacted by current git diff         │
+│                   changes.                                                   │
+│ redundancy        Analyze test execution overlap and flag duplicate test     │
+│                   paths.                                                     │
+│ fuzz              Run coverage-guided and adversarial security fuzz          │
+│                   harnesses.                                                 │
+│ snapshot          Update or review inline snapshots across test suites.      │
+│ archon            Generate pytest-archon boundary tests for packages.        │
+│ benchmark-report  Transform pytest-benchmark JSON into Markdown summary and  │
+│                   historical Mermaid line charts.                            │
 ╰──────────────────────────────────────────────────────────────────────────────╯
 ```
 
@@ -1946,6 +2001,45 @@ Usage: hexaqual test bench [OPTIONS]
 ╰──────────────────────────────────────────────────────────────────────────────╯
 ```
 
+#### `hexaqual test benchmark-report`
+
+```text
+Usage: hexaqual test benchmark-report [OPTIONS]
+
+ Transform pytest-benchmark JSON into Markdown summary and historical Mermaid
+ line charts.
+
+ Args:
+     results_file: Path to pytest-benchmark JSON output file.
+     history_file: Path to persistent history JSON file.
+     summary: Whether to append markdown report to $GITHUB_STEP_SUMMARY.
+     max_history: Maximum historical records to retain.
+     commit_sha: Optional Git commit hash.
+     run_id: Optional CI run identifier.
+
+ Raises:
+     typer.Exit: If results file cannot be read or parsed.
+
+ Notes/Architectural Intent:
+     Driving adapter evaluating benchmark shift against historical baselines,
+     generating rich Markdown tables and Mermaid `xychart-beta` line charts for
+ CI step summaries.
+
+╭─ Options ────────────────────────────────────────────────────────────────────╮
+│ --results      -r      <str>  Path to pytest-benchmark JSON output.          │
+│                               [default: benchmark_results.json]              │
+│ --history      -H      <str>  Path to JSON history tracking file.            │
+│                               [default: .benchmarks_history/history.json]    │
+│ --summary      -s             Append report directly to                      │
+│                               $GITHUB_STEP_SUMMARY.                          │
+│ --max-history          <int>  Maximum historical benchmark runs to retain.   │
+│                               [default: 10]                                  │
+│ --commit               <str>  Explicit Git commit hash label.                │
+│ --run-id               <str>  Explicit CI run identifier.                    │
+│ --help                        Show this message and exit.                    │
+╰──────────────────────────────────────────────────────────────────────────────╯
+```
+
 #### `hexaqual test boundary`
 
 ```text
@@ -1965,6 +2059,16 @@ Usage: hexaqual test boundary [OPTIONS]
 ╭─ Options ────────────────────────────────────────────────────────────────────╮
 │ --format  -f      <str>  Output presentation format. [default: table]        │
 │ --help                   Show this message and exit.                         │
+╰──────────────────────────────────────────────────────────────────────────────╯
+```
+
+#### `hexaqual test coverage`
+
+```text
+Usage: hexaqual test [OPTIONS] COMMAND [ARGS]...
+Try 'hexaqual test --help' for help.
+╭─ Error ──────────────────────────────────────────────────────────────────────╮
+│ No such command 'coverage'.                                                  │
 ╰──────────────────────────────────────────────────────────────────────────────╯
 ```
 
@@ -1999,6 +2103,16 @@ Usage: hexaqual test fuzz [OPTIONS]
 ╰──────────────────────────────────────────────────────────────────────────────╯
 ```
 
+#### `hexaqual test historical`
+
+```text
+Usage: hexaqual test [OPTIONS] COMMAND [ARGS]...
+Try 'hexaqual test --help' for help.
+╭─ Error ──────────────────────────────────────────────────────────────────────╮
+│ No such command 'historical'.                                                │
+╰──────────────────────────────────────────────────────────────────────────────╯
+```
+
 #### `hexaqual test impact`
 
 ```text
@@ -2018,16 +2132,6 @@ Usage: hexaqual test impact [OPTIONS]
 ╭─ Options ────────────────────────────────────────────────────────────────────╮
 │ --format  -f      <str>  Output presentation format. [default: table]        │
 │ --help                   Show this message and exit.                         │
-╰──────────────────────────────────────────────────────────────────────────────╯
-```
-
-#### `hexaqual test instrumentation`
-
-```text
-Usage: hexaqual test [OPTIONS] COMMAND [ARGS]...
-Try 'hexaqual test --help' for help.
-╭─ Error ──────────────────────────────────────────────────────────────────────╮
-│ No such command 'instrumentation'.                                           │
 ╰──────────────────────────────────────────────────────────────────────────────╯
 ```
 
