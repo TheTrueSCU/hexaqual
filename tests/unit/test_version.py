@@ -8,6 +8,6 @@ import hexaqual
 def test_version_string() -> None:
     """Ensure version string is well-formed semver."""
     version = hexaqual.__version__
-    assert version == "0.9.10"
+    assert version == "0.10.0"
     parts = version.split(".")
     assert len(parts) == 3

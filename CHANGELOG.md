@@ -1,5 +1,13 @@
 # CHANGELOG
 
+## v0.10.0 (2026-11-01)
+
+### Highlights & Features
+* **Profile-Driven Distributed Test Slicing (`hexaqual test run --profile <name>`)**:
+  - Added single-option `--profile` (with `--hq-profile` alias) to `hexaqual test run` CLI and `pytest_runner` adapter.
+  - Seamlessly integrates with `pytest-hexaqueue` and `pyproject.toml [tool.hexaqueue.profiles.<name>]`, delegating test partitioning, remote slice dispatch, and coverage aggregation across cloud-agnostic worker nodes or Multi-CSP Free-Tier meshes.
+  - Adheres to Zero-Spend Default ($0.00 ceiling) guardrails unless explicitly overridden in named profile definitions.
+
 ## v0.9.10 (2026-10-26)
 
 ### Highlights & Features
