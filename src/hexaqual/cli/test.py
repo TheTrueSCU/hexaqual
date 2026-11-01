@@ -141,6 +141,13 @@ def test_run(
         "--cluster-elevate",
         help="Assert administrative elevation on Hexaqueue cluster.",
     ),
+    profile: str | None = typer.Option(
+        None,
+        "--profile",
+        "--hq-profile",
+        envvar="HEXAQUEUE_PROFILE",
+        help="Named execution profile (reads [tool.hexaqueue] for defaults/fallback).",
+    ),
     allow_empty: bool = typer.Option(
         False,
         "--allow-empty",
@@ -163,6 +170,7 @@ def test_run(
         cluster_token: Authentication bearer token for Hexaqueue cluster.
         cluster_user: Submitting user identity for Hexaqueue cluster.
         cluster_elevate: Assert administrative elevation on Hexaqueue cluster.
+        profile: Named execution profile (reads [tool.hexaqueue] for defaults/fallback).
         allow_empty: Whether to permit test runs with 0 collected tests.
 
     Raises:
@@ -194,6 +202,8 @@ def test_run(
         argv.append("--with-context")
     if allow_empty:
         argv.append("--allow-empty")
+    if profile:
+        argv.extend(["--profile", profile])
     _append_cluster_args(
         argv=argv,
         cluster=cluster,

@@ -193,3 +193,28 @@ def test_run_main_bench_not_installed(tmp_path: Path) -> None:
     ):
         run_main(["--bench"])
         mock_exit.assert_called_once_with(1)
+
+
+def test_run_main_with_named_profile(tmp_path: Path) -> None:
+    """Verify run_main forwards --hq-profile when --profile is provided."""
+    pkg_dir = tmp_path / "packages" / "hexastack_core"
+    (pkg_dir / "src" / "hexastack_core").mkdir(parents=True)
+    (pkg_dir / "tests" / "unit").mkdir(parents=True)
+
+    with (
+        patch("hexaqual.adapters.code_analysis.pytest_runner.get_repo_root", return_value=tmp_path),
+        patch("subprocess.run", return_value=MagicMock(returncode=0)) as mock_subproc,
+        patch(
+            "hexaqual.adapters.code_analysis.pytest_runner._is_pytest_benchmark_installed",
+            return_value=False,
+        ),
+    ):
+        code = run_main(["-p", "core", "--profile", "ci"])
+        is_zero = code == 0
+        assert is_zero is True
+        mock_subproc.assert_called_once()
+        cmd_args = mock_subproc.call_args[0][0]
+        has_flag = "--hq-profile" in cmd_args
+        has_prof = "ci" in cmd_args
+        assert has_flag is True
+        assert has_prof is True

@@ -2178,6 +2178,7 @@ Usage: hexaqual test run [OPTIONS]
      cluster_token: Authentication bearer token for Hexaqueue cluster.
      cluster_user: Submitting user identity for Hexaqueue cluster.
      cluster_elevate: Assert administrative elevation on Hexaqueue cluster.
+     profile: Named execution profile (reads  for defaults/fallback).
      allow_empty: Whether to permit test runs with 0 collected tests.
 
  Raises:
@@ -2189,31 +2190,34 @@ Usage: hexaqual test run [OPTIONS]
      Supports distributing test execution to a remote Hexaqueue cluster.
 
 ╭─ Options ────────────────────────────────────────────────────────────────────╮
-│ --package          -p      <str>  Target package(s).                         │
-│ --example          -e      <str>  Target example project(s).                 │
-│ --all              -a             Run across all workspace packages.         │
-│ --affected         -A             Run only affected packages.                │
-│ --unit             -U             Run only unit tests.                       │
-│ --properties       -P             Run only property tests.                   │
-│ --with-context                    Capture test context in coverage.          │
-│ --cluster                  <str>  Execution target cluster ('local' or       │
-│                                   'hexaqueue').                              │
-│                                   [default: local]                           │
-│ --cluster-url              <str>  Hexaqueue cluster REST endpoint URL.       │
-│                                   [env var: HEXAQUEUE_URL]                   │
-│                                   [default: http://localhost:8000]           │
-│ --cluster-token            <str>  Authentication bearer token for Hexaqueue  │
-│                                   cluster.                                   │
-│                                   [env var: HEXAQUEUE_TOKEN]                 │
-│ --cluster-user             <str>  Submitting user identity for Hexaqueue     │
-│                                   cluster.                                   │
-│                                   [env var: HEXAQUEUE_USER]                  │
-│                                   [default: default]                         │
-│ --cluster-elevate                 Assert administrative elevation on         │
-│                                   Hexaqueue cluster.                         │
-│ --allow-empty                     Permit test runs with 0 collected tests    │
-│                                   (exercise gate override).                  │
-│ --help                            Show this message and exit.                │
+│ --package               -p      <str>  Target package(s).                    │
+│ --example               -e      <str>  Target example project(s).            │
+│ --all                   -a             Run across all workspace packages.    │
+│ --affected              -A             Run only affected packages.           │
+│ --unit                  -U             Run only unit tests.                  │
+│ --properties            -P             Run only property tests.              │
+│ --with-context                         Capture test context in coverage.     │
+│ --cluster                       <str>  Execution target cluster ('local' or  │
+│                                        'hexaqueue').                         │
+│                                        [default: local]                      │
+│ --cluster-url                   <str>  Hexaqueue cluster REST endpoint URL.  │
+│                                        [env var: HEXAQUEUE_URL]              │
+│                                        [default: http://localhost:8000]      │
+│ --cluster-token                 <str>  Authentication bearer token for       │
+│                                        Hexaqueue cluster.                    │
+│                                        [env var: HEXAQUEUE_TOKEN]            │
+│ --cluster-user                  <str>  Submitting user identity for          │
+│                                        Hexaqueue cluster.                    │
+│                                        [env var: HEXAQUEUE_USER]             │
+│                                        [default: default]                    │
+│ --cluster-elevate                      Assert administrative elevation on    │
+│                                        Hexaqueue cluster.                    │
+│ --profile,--hq-profile          <str>  Named execution profile (reads  for   │
+│                                        defaults/fallback).                   │
+│                                        [env var: HEXAQUEUE_PROFILE]          │
+│ --allow-empty                          Permit test runs with 0 collected     │
+│                                        tests (exercise gate override).       │
+│ --help                                 Show this message and exit.           │
 ╰──────────────────────────────────────────────────────────────────────────────╯
 ```
 

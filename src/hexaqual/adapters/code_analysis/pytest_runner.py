@@ -234,6 +234,13 @@ def run_main(argv: list[str] | None = None) -> int:
         help="Permit test runs where zero tests are collected or executed (exercise gate override).",
     )
     parser.add_argument(
+        "--profile",
+        "--hq-profile",
+        dest="profile",
+        default=os.environ.get("HEXAQUEUE_PROFILE"),
+        help="Named execution profile (reads [tool.hexaqueue] for defaults/fallback).",
+    )
+    parser.add_argument(
         "-B",
         "--bench",
         "--benchmark",
@@ -283,7 +290,10 @@ def run_main(argv: list[str] | None = None) -> int:
 
     cov_args = _build_coverage_args(args=args, active_pkgs=active_pkgs, root=root)
     bench_args = _build_benchmark_args(args=args, unknown=unknown or [])
-    call_args = test_paths + cov_args + bench_args + (unknown or [])
+    profile_args: list[str] = []
+    if getattr(args, "profile", None):
+        profile_args = ["--hq-profile", args.profile]
+    call_args = test_paths + cov_args + bench_args + profile_args + (unknown or [])
 
     if getattr(args, "cluster", "local").lower() == "hexaqueue":
         from hexaqual.adapters.runners.hexaqueue_cluster import HexaqueueClusterRunnerAdapter

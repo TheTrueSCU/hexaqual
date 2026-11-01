@@ -69,6 +69,22 @@ def test_test_run_allow_empty() -> None:
         assert "--allow-empty" in call_argv
 
 
+def test_test_run_profile() -> None:
+    """Test test run command forwards --profile option."""
+    with patch(
+        "hexaqual.adapters.code_analysis.pytest_runner.run_main", return_value=0
+    ) as mock_run:
+        res = runner.invoke(cli_test_app, ["run", "--profile", "ci"])
+        is_ok = res.exit_code == 0
+        assert is_ok is True
+        assert mock_run.called
+        call_argv = mock_run.call_args[0][0]
+        has_flag = "--profile" in call_argv
+        has_val = "ci" in call_argv
+        assert has_flag is True
+        assert has_val is True
+
+
 def test_test_boundary() -> None:
     """Test test boundary audit command."""
     mock_bus = MagicMock()
