@@ -13,6 +13,7 @@ from __future__ import annotations
 import contextlib
 import json
 import logging
+import os
 import subprocess
 import sys
 import time
@@ -51,7 +52,7 @@ class HexaqueueClusterRunnerAdapter(TestingRunnerPort):
         elevate: bool = False,
         token: str | None = None,
         poll_interval: float = 0.5,
-        timeout: float = 300.0,
+        timeout: float | None = None,
         base_runner: TestingRunnerPort | None = None,
         console: Console | None = None,
         http_client: httpx.Client | None = None,
@@ -64,7 +65,7 @@ class HexaqueueClusterRunnerAdapter(TestingRunnerPort):
             elevate: Whether to request administrative elevation.
             token: Optional bearer token for authenticated cluster access.
             poll_interval: Interval in seconds between SSE pulses or polling checks.
-            timeout: Maximum overall timeout in seconds for remote job execution.
+            timeout: Maximum overall timeout in seconds for remote job execution (defaults to env HEXAQUEUE_TIMEOUT or 1800.0s).
             base_runner: Optional local delegate for static inspection and git diffs.
             console: Optional Rich Console for progress reporting.
             http_client: Optional preconfigured httpx.Client (e.g. for testing with MockTransport).
@@ -79,7 +80,11 @@ class HexaqueueClusterRunnerAdapter(TestingRunnerPort):
         self._elevate = elevate
         self._token = token
         self._poll_interval = poll_interval
-        self._timeout = timeout
+        if timeout is not None:
+            self._timeout = timeout
+        else:
+            env_timeout = os.environ.get("HEXAQUEUE_TIMEOUT")
+            self._timeout = float(env_timeout) if env_timeout else 1800.0
         self._base_runner = base_runner or SubprocessTestingRunnerAdapter()
         self._console = console or Console()
         self._err_console = console if console is not None else Console(stderr=True)
