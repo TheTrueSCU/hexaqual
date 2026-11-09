@@ -490,7 +490,7 @@ wheels = [
 
 [[package]]
 name = "hexaqual"
-version = "0.10.0"
+version = "0.10.1"
 source = { editable = "." }
 dependencies = [
     { name = "complexipy" },
