@@ -229,7 +229,8 @@ def test_stream_fallback_to_polling(tmp_path: Path) -> None:
     )
 
     code = adapter.execute_pytest(test_nodes=["tests/test_foo.py"], cwd=tmp_path)
-    assert code == 0
+    is_zero = code == 0
+    assert is_zero is True
     assert poll_calls >= 2
 
 
@@ -489,4 +490,39 @@ def test_stream_run_progress_read_timeout_fallback(tmp_path: Path) -> None:
         console=Console(quiet=True),
     )
     code = adapter.execute_pytest(test_nodes=["tests/test_foo.py"], cwd=tmp_path)
-    assert code == 0
+    is_zero = code == 0
+    assert is_zero is True
+
+
+def test_execute_pytest_delegates_to_pytest_hexaqueue_plugin(tmp_path: Path) -> None:
+    """Verify execute_pytest delegates to pytest-hexaqueue when plugin is installed."""
+    from unittest.mock import patch
+
+    adapter = HexaqueueClusterRunnerAdapter(
+        cluster_url="https://cluster.local:8000",
+        token="test-token",
+        console=Console(quiet=True),
+    )
+    with (
+        patch(
+            "hexaqual.adapters.runners.hexaqueue_cluster._is_pytest_hexaqueue_installed",
+            return_value=True,
+        ),
+        patch("subprocess.run", return_value=MagicMock(returncode=0)) as mock_run,
+    ):
+        code = adapter.execute_pytest(test_nodes=["tests/unit"], cwd=tmp_path)
+        is_zero = code == 0
+        assert is_zero is True
+        mock_run.assert_called_once()
+        args = mock_run.call_args[0][0]
+        has_flag = "--hexaqueue" in args
+        assert has_flag is True
+        has_server = "--hq-server" in args
+        assert has_server is True
+        server_idx = args.index("--hq-server")
+        server_arg = args[server_idx + 1]
+        assert server_arg == "https://cluster.local:8000"
+        has_token = "--hq-token" in args
+        assert has_token is True
+        has_secret = "test-token" in args
+        assert has_secret is True

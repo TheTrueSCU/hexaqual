@@ -218,3 +218,16 @@ def test_run_main_with_named_profile(tmp_path: Path) -> None:
         has_prof = "ci" in cmd_args
         assert has_flag is True
         assert has_prof is True
+
+
+def test_run_main_skips_cleanly_when_no_properties_tests_exist(tmp_path: Path) -> None:
+    """Verify run_main exits 0 when targeted scope (e.g. -P) has no matching test directory."""
+    with patch(
+        "hexaqual.adapters.code_analysis.pytest_runner.get_repo_root", return_value=tmp_path
+    ):
+        pkg_dir = tmp_path / "packages" / "hexastack_core"
+        (pkg_dir / "src" / "hexastack_core").mkdir(parents=True)
+        (pkg_dir / "tests" / "unit").mkdir(parents=True)
+        code = run_main(["-p", "hexastack_core", "-P"])
+        is_zero = code == 0
+        assert is_zero is True

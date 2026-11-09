@@ -16,6 +16,7 @@ from hexaqual.adapters.workspace import (
     get_repo_root,
     resolve_affected_packages,
 )
+from hexaqual.domain.imports import optional_dependency
 
 
 def _get_git_changed_files(base_ref: str = "origin/main") -> list[str]:
@@ -46,21 +47,22 @@ def _setup_example_target(example_name: str, sub_dir: str, root: Path) -> str:
 
 def _is_pytest_benchmark_installed() -> bool:
     """Check if pytest-benchmark plugin is installed in current Python environment."""
-    try:
-        import pytest_benchmark  # noqa: F401
-
-        return True
-    except ImportError:
-        return False
+    return optional_dependency("pytest_benchmark") is not None
 
 
-def _pkg_test_path(pkg_dir: Path, sub_dir: str) -> str:
-    """Resolve sub-directory path for package tests, falling back to tests if needed."""
-    if (pkg_dir / sub_dir).is_dir():
-        return str(pkg_dir / sub_dir)
+def _pkg_test_path(pkg_dir: Path, sub_dir: str) -> str | None:
+    """Resolve sub-directory path for package tests, falling back to tests if needed.
+
+    Returns None if neither the requested sub-directory nor an acceptable fallback exists.
+    """
+    target = pkg_dir / sub_dir
+    if target.is_dir():
+        return str(target)
     if sub_dir == "tests/benchmarks" and (pkg_dir / "tests").is_dir():
         return str(pkg_dir / "tests")
-    return str(pkg_dir / sub_dir)
+    if sub_dir == "tests" and (pkg_dir / "tests").is_dir():
+        return str(pkg_dir / "tests")
+    return None
 
 
 def _resolve_package_targets(
@@ -71,20 +73,28 @@ def _resolve_package_targets(
 ) -> tuple[list[str], set[str] | None]:
     """Resolve target test directory paths for workspace packages."""
     if packages:
-        paths = [_pkg_test_path(get_package_directory(p, root), sub_dir) for p in packages]
+        paths = [
+            path
+            for p in packages
+            if (path := _pkg_test_path(get_package_directory(p, root), sub_dir)) is not None
+        ]
         return paths, set(packages)
 
     if affected:
         changed = _get_git_changed_files()
         affected_pkgs = resolve_affected_packages(changed, root)
         if affected_pkgs is not None:
-            paths = [_pkg_test_path(get_package_directory(p, root), sub_dir) for p in affected_pkgs]
+            paths = [
+                path
+                for p in affected_pkgs
+                if (path := _pkg_test_path(get_package_directory(p, root), sub_dir)) is not None
+            ]
             return paths, affected_pkgs
 
     paths = [
-        _pkg_test_path(pkg_dir, sub_dir)
+        path
         for pkg_dir in get_package_directories(root)
-        if (pkg_dir / "tests").is_dir()
+        if (pkg_dir / "tests").is_dir() and (path := _pkg_test_path(pkg_dir, sub_dir)) is not None
     ]
     return paths, None
 
@@ -288,8 +298,24 @@ def run_main(argv: list[str] | None = None) -> int:
         root=root,
     )
 
-    cov_args = _build_coverage_args(args=args, active_pkgs=active_pkgs, root=root)
     bench_args = _build_benchmark_args(args=args, unknown=unknown or [])
+
+    if not test_paths and (
+        args.unit or args.properties or args.benchmark or args.affected or args.packages
+    ):
+        scope_name = (
+            "properties"
+            if args.properties
+            else "benchmarks"
+            if args.benchmark
+            else "unit"
+            if args.unit
+            else "targeted"
+        )
+        print(f"[Test Runner] No {scope_name} test suites found for the specified scope; skipping.")
+        return 0
+
+    cov_args = _build_coverage_args(args=args, active_pkgs=active_pkgs, root=root)
     profile_args: list[str] = []
     if getattr(args, "profile", None):
         profile_args = ["--hq-profile", args.profile]
