@@ -519,8 +519,9 @@ def test_execute_pytest_delegates_to_pytest_hexaqueue_plugin(tmp_path: Path) -> 
         assert has_flag is True
         has_server = "--hq-server" in args
         assert has_server is True
-        has_url = "https://cluster.local:8000" in args
-        assert has_url is True
+        server_idx = args.index("--hq-server")
+        server_arg = args[server_idx + 1]
+        assert server_arg == "https://cluster.local:8000"
         has_token = "--hq-token" in args
         assert has_token is True
         has_secret = "test-token" in args
