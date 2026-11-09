@@ -96,6 +96,9 @@ from hexaqual.domain.hooks import (
     HookStatusInfo,
     HooksUninstallReport,
 )
+from hexaqual.domain.imports import (
+    optional_dependency,
+)
 from hexaqual.domain.openssf import (
     CRITERIA_CATALOG,
     CriterionProposal,
@@ -224,6 +227,7 @@ __all__ = [
     "OpenSsfCriterionDefinition",
     "OpenSsfProject",
     "OpenSsfTier",
+    "optional_dependency",
     "OutputFormat",
     "PackageBuildResult",
     "PackageMetadata",

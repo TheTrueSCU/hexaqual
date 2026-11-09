@@ -13,6 +13,8 @@ from __future__ import annotations
 import contextlib
 import json
 import logging
+import subprocess
+import sys
 import time
 import urllib.parse
 from pathlib import Path
@@ -23,6 +25,7 @@ import httpx
 from rich.console import Console
 
 from hexaqual.adapters.runners.testing_runner import SubprocessTestingRunnerAdapter
+from hexaqual.domain.imports import optional_dependency
 from hexaqual.domain.testing import MutationEngine
 from hexaqual.ports.testing import TestingRunnerPort
 
@@ -31,6 +34,11 @@ logger = logging.getLogger(__name__)
 __all__ = [
     "HexaqueueClusterRunnerAdapter",
 ]
+
+
+def _is_pytest_hexaqueue_installed() -> bool:
+    """Check if pytest-hexaqueue plugin is installed in current Python environment."""
+    return optional_dependency("pytest_hexaqueue") is not None
 
 
 class HexaqueueClusterRunnerAdapter(TestingRunnerPort):
@@ -219,6 +227,21 @@ class HexaqueueClusterRunnerAdapter(TestingRunnerPort):
         all_args = list(test_nodes)
         if extra_args:
             all_args.extend(extra_args)
+
+        if self._client is None and _is_pytest_hexaqueue_installed():
+            cmd = [
+                sys.executable,
+                "-m",
+                "pytest",
+                *all_args,
+                "--hexaqueue",
+                "--hq-server",
+                self._cluster_url,
+            ]
+            if self._token:
+                cmd.extend(["--hq-token", self._token])
+            res = subprocess.run(cmd, cwd=cwd)
+            return res.returncode
 
         effective_cwd = cwd.resolve() if cwd else Path.cwd().resolve()
         job_spec = {
