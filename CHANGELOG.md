@@ -1,5 +1,16 @@
 # CHANGELOG
 
+## v0.10.1 (2026-11-09)
+
+### Highlights & Features
+* **Standardized Optional Dependency Verification (`hexaqual.domain.imports`)**:
+  - Introduced `optional_dependency` module helper providing clean, progressive feature degradation without static package import dependencies.
+  - Replaced ad-hoc `try ... except ImportError` blocks with standardized optional dependency inspection.
+* **Cluster Runner Pytest-Hexaqueue Auto-Delegation (`hexaqual.adapters.runners.hexaqueue_cluster`)**:
+  - `HexaqueueClusterRunnerAdapter.execute_pytest` now detects `optional_dependency("pytest_hexaqueue")` and delegates to `--hexaqueue --hq-server` transparently.
+* **Graceful Target Scope Resolution (`hexaqual.adapters.code_analysis.pytest_runner`)**:
+  - Resolves non-existent package test subdirectories cleanly (returning `None`) and skips execution with exit code 0 when targeted scopes (e.g. `-P` for property tests) have no matching test directory.
+
 ## v0.10.0 (2026-11-01)
 
 ### Highlights & Features
