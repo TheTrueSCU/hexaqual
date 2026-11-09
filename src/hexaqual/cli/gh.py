@@ -7,6 +7,7 @@ Notes/Architectural Intent:
 
 from __future__ import annotations
 
+import os
 import time
 from pathlib import Path
 
@@ -391,8 +392,6 @@ def gh_ci_duration(
         Driving adapter querying GitHub CLI for real-time and historical workflow
         performance metrics, formatting rich Markdown and Mermaid `xychart-beta` charts.
     """
-    import os
-
     from rich.console import Console
 
     from hexaqual.adapters.github.ci_duration import (

@@ -73,6 +73,48 @@ def format_option(
     return typer.Option(default, "-f", "--format", help=help_text)
 
 
+def summary_option(
+    help_text: str = "Append report directly to $GITHUB_STEP_SUMMARY.",
+) -> Any:
+    """Construct a standardized Typer option for appending step summaries.
+
+    Args:
+        help_text: Help string to render in CLI usage catalogs.
+
+    Returns:
+        Configured Typer Option specification.
+
+    Notes/Architectural Intent:
+        Standardizes '-s' / '--summary' (or '--step-summary') flag for GitHub Actions
+        markdown job summaries across all Hexaqual CLI commands.
+    """
+    return typer.Option(False, "-s", "--summary", help=help_text)
+
+
+def append_step_summary(content: str) -> bool:
+    """Append Markdown content to the file specified in $GITHUB_STEP_SUMMARY if set.
+
+    Args:
+        content: The Markdown string to append.
+
+    Returns:
+        True if content was written to $GITHUB_STEP_SUMMARY, False otherwise.
+
+    Notes/Architectural Intent:
+        Encapsulates safe step summary generation in CI environments without
+        crashing or raising errors when running locally outside of GitHub Actions.
+    """
+    summary_path = os.environ.get("GITHUB_STEP_SUMMARY")
+    if not summary_path:
+        return False
+    try:
+        with open(summary_path, "a", encoding="utf-8") as f:
+            f.write(f"\n{content.strip()}\n")
+        return True
+    except OSError:
+        return False
+
+
 def is_interactive_terminal() -> bool:
     """Determine whether standard output is connected to an interactive TTY.
 
@@ -94,8 +136,10 @@ def is_interactive_terminal() -> bool:
 
 
 __all__ = [
+    "append_step_summary",
     "format_option",
     "is_interactive_terminal",
     "OutputFormat",
     "resolve_format",
+    "summary_option",
 ]

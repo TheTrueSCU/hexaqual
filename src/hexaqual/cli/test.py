@@ -7,6 +7,7 @@ Notes/Architectural Intent:
 
 from __future__ import annotations
 
+import os
 from pathlib import Path
 
 import typer
@@ -608,8 +609,6 @@ def test_benchmark_report(
         Driving adapter evaluating benchmark shift against historical baselines,
         generating rich Markdown tables and Mermaid `xychart-beta` line charts for CI step summaries.
     """
-    import os
-
     from rich.console import Console
 
     from hexaqual.adapters.code_analysis.benchmark_report import (

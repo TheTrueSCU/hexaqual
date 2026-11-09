@@ -1109,17 +1109,19 @@ Usage: hexaqual mutate inspect [OPTIONS]
  CQRS bus.
 
 ╭─ Options ────────────────────────────────────────────────────────────────────╮
-│ --package      -p        <str>  Filter by package.                           │
-│ --all          -a               Inspect all mutants.                         │
-│ --actionable   -act             Show actionable critical mutants.            │
-│ --correlated   -c               Correlate with .coverage.                    │
-│ --summary      -s               Triage summary.                              │
-│ --format       -f        <str>  Output format. [default: rich]               │
-│ --engine       -e        <str>  Mutation engine to inspect ('gremlins' or    │
-│                                 'mutmut').                                   │
-│                                 [default: gremlins]                          │
-│ --report-file            <str>  Explicit path to gremlins JSON report file.  │
-│ --help                          Show this message and exit.                  │
+│ --package       -p        <str>  Filter by package.                          │
+│ --all           -a               Inspect all mutants.                        │
+│ --actionable    -act             Show actionable critical mutants.           │
+│ --correlated    -c               Correlate with .coverage.                   │
+│ --summary       -s               Triage summary.                             │
+│ --format        -f        <str>  Output format. [default: rich]              │
+│ --engine        -e        <str>  Mutation engine to inspect ('gremlins' or   │
+│                                  'mutmut').                                  │
+│                                  [default: gremlins]                         │
+│ --report-file             <str>  Explicit path to gremlins JSON report file. │
+│ --step-summary                   Append Markdown summary to                  │
+│                                  $GITHUB_STEP_SUMMARY.                       │
+│ --help                           Show this message and exit.                 │
 ╰──────────────────────────────────────────────────────────────────────────────╯
 ```
 

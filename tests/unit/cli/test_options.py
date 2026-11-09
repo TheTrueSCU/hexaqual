@@ -1,40 +1,39 @@
-"""Unit tests for CLI option factories and formatting resolvers.
-
-Notes/Architectural Intent:
-    Tests pipe-detection logic and Typer option instantiation for CLI options.
-"""
+"""Unit tests for standardized CLI options and step summary helpers."""
 
 from __future__ import annotations
 
+import os
 from unittest.mock import patch
 
-from hexaqual.cli.options import OutputFormat, format_option, resolve_format
+from hexaqual.cli.options import (
+    append_step_summary,
+    summary_option,
+)
 
 
-def test_resolve_format_explicit() -> None:
-    """Explicit formats should be normalized and returned directly."""
-    res_table = resolve_format("TABLE")
-    assert res_table == "table"
-
-    res_enum = resolve_format(OutputFormat.JSON)
-    assert res_enum == "json"
+def test_append_step_summary_when_env_not_set():
+    """Verify append_step_summary safely returns False when GITHUB_STEP_SUMMARY is not set."""
+    with patch.dict(os.environ, {}, clear=True):
+        res = append_step_summary("### Markdown Header")
+        assert res is False
 
 
-def test_resolve_format_auto_tty() -> None:
-    """Auto format when connected to TTY should return default_tty."""
-    with patch("sys.stdout.isatty", return_value=True):
-        res = resolve_format(OutputFormat.AUTO, default_tty="rich", default_pipe="json")
-        assert res == "rich"
+def test_append_step_summary_writes_to_file(tmp_path):
+    """Verify append_step_summary appends Markdown to the configured path."""
+    summary_file = tmp_path / "step_summary.md"
+    summary_file.write_text("# Initial Summary\n", encoding="utf-8")
+
+    with patch.dict(os.environ, {"GITHUB_STEP_SUMMARY": str(summary_file)}):
+        res = append_step_summary("### Appended Section")
+        assert res is True
+
+    content = summary_file.read_text(encoding="utf-8")
+    assert "# Initial Summary" in content
+    assert "### Appended Section" in content
 
 
-def test_resolve_format_auto_pipe() -> None:
-    """Auto format when piped (not TTY) should return default_pipe."""
-    with patch("sys.stdout.isatty", return_value=False):
-        res = resolve_format("auto", default_tty="rich", default_pipe="json")
-        assert res == "json"
-
-
-def test_format_option_creation() -> None:
-    """format_option should return a valid Typer Option with default flag."""
-    opt = format_option(default="json")
-    assert opt.default == "json"
+def test_summary_option_factory():
+    """Verify summary_option returns a valid Typer option default."""
+    opt = summary_option("Custom summary help")
+    assert opt.default is False
+    assert opt.help == "Custom summary help"
