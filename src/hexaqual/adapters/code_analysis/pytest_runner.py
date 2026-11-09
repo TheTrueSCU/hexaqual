@@ -239,6 +239,12 @@ def run_main(argv: list[str] | None = None) -> int:
         help="Assert administrative elevation on Hexaqueue cluster.",
     )
     parser.add_argument(
+        "--cluster-timeout",
+        type=float,
+        default=None,
+        help="Maximum execution timeout in seconds for remote Hexaqueue workload (defaults to HEXAQUEUE_TIMEOUT or 1800.0s).",
+    )
+    parser.add_argument(
         "--allow-empty",
         action="store_true",
         help="Permit test runs where zero tests are collected or executed (exercise gate override).",
@@ -329,6 +335,7 @@ def run_main(argv: list[str] | None = None) -> int:
             user_id=args.cluster_user,
             elevate=args.cluster_elevate,
             token=args.cluster_token,
+            timeout=getattr(args, "cluster_timeout", None),
         )
         returncode = cluster_runner.execute_pytest(test_nodes=call_args, cwd=root)
         if argv is None:

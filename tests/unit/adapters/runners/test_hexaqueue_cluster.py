@@ -526,3 +526,20 @@ def test_execute_pytest_delegates_to_pytest_hexaqueue_plugin(tmp_path: Path) -> 
         assert has_token is True
         has_secret = "test-token" in args
         assert has_secret is True
+
+
+def test_cluster_timeout_configuration(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Verify cluster timeout honors explicit timeout, env HEXAQUEUE_TIMEOUT, and default."""
+    # 1. Explicit timeout
+    adapter = HexaqueueClusterRunnerAdapter(timeout=60.0)
+    assert adapter._timeout == 60.0
+
+    # 2. Environment variable fallback
+    monkeypatch.setenv("HEXAQUEUE_TIMEOUT", "900.5")
+    adapter_env = HexaqueueClusterRunnerAdapter()
+    assert adapter_env._timeout == 900.5
+
+    # 3. Default fallback (1800.0)
+    monkeypatch.delenv("HEXAQUEUE_TIMEOUT", raising=False)
+    adapter_default = HexaqueueClusterRunnerAdapter()
+    assert adapter_default._timeout == 1800.0

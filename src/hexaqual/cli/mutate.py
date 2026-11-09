@@ -99,6 +99,12 @@ def mutate_run(
         "--cluster-elevate",
         help="Assert administrative elevation on Hexaqueue cluster.",
     ),
+    cluster_timeout: float | None = typer.Option(
+        None,
+        "--cluster-timeout",
+        envvar="HEXAQUEUE_TIMEOUT",
+        help="Maximum execution timeout in seconds for remote Hexaqueue workload (defaults to 1800.0s).",
+    ),
 ) -> None:
     """Run mutation testing scoped to package or workspace.
 
@@ -116,6 +122,7 @@ def mutate_run(
         cluster_token: Authentication bearer token for Hexaqueue cluster.
         cluster_user: Submitting user identity for Hexaqueue cluster.
         cluster_elevate: Assert administrative elevation on Hexaqueue cluster.
+        cluster_timeout: Maximum execution timeout in seconds for remote Hexaqueue workload.
 
     Raises:
         typer.Exit: If mutation testing fails.
@@ -151,6 +158,7 @@ def mutate_run(
             user_id=cluster_user,
             elevate=cluster_elevate,
             token=cluster_token,
+            timeout=cluster_timeout,
         )
 
     bus = create_governance_bus(repo_root=root, testing_runner=testing_runner)
