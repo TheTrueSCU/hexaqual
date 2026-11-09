@@ -1,5 +1,12 @@
 # CHANGELOG
 
+## v0.10.2 (2026-11-09)
+
+### Highlights & Features
+* **Configurable Cluster Workload Timeout (`HEXAQUEUE_TIMEOUT` & `--cluster-timeout`)**:
+  - `HexaqueueClusterRunnerAdapter` now reads `HEXAQUEUE_TIMEOUT` from the environment with a 1800.0s (30m) default (replacing the hardcoded 300s limit).
+  - Exposes `--cluster-timeout` across `hexaqual mutate run` and `hexaqual test run`.
+
 ## v0.10.1 (2026-11-09)
 
 ### Highlights & Features
