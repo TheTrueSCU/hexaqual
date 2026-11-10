@@ -914,3 +914,10 @@ def test_run_mutation_testing_multi_package_dag(tmp_path: Path) -> None:
     assert jobs[0]["id"] != jobs[1]["id"]
     assert any(j["name"] == "mutation-pkg1-batch-0" for j in jobs)
     assert any(j["name"] == "mutation-pkg2-batch-0" for j in jobs)
+
+
+def test_run_mutation_testing_empty_package_list() -> None:
+    """Verify run_mutation_testing returns 0 immediately when given an empty sequence."""
+    adapter = HexaqueueClusterRunnerAdapter(cluster_url="http://localhost:8000")
+    res = adapter.run_mutation_testing(package_dir=[])
+    assert res == 0
