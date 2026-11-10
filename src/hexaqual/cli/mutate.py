@@ -11,11 +11,15 @@ from pathlib import Path
 
 import typer
 
-from hexaqual.adapters.presenters.testing import create_testing_presenter
+from hexaqual.adapters.presenters.testing import (
+    MarkdownTestingPresenterAdapter,
+    create_testing_presenter,
+)
 from hexaqual.adapters.workspace import (
     ensure_tool_installed,
     get_repo_root,
 )
+from hexaqual.cli.options import append_step_summary
 from hexaqual.domain.testing import (
     InspectMutationCacheCommand,
     MutationEngine,
@@ -199,6 +203,9 @@ def mutate_inspect(
     report_file: str | None = typer.Option(
         None, "--report-file", help="Explicit path to gremlins JSON report file."
     ),
+    step_summary: bool = typer.Option(
+        False, "--step-summary", help="Append Markdown summary to $GITHUB_STEP_SUMMARY."
+    ),
 ) -> None:
     """Triage and inspect mutation testing results cache or report.
 
@@ -247,5 +254,14 @@ def mutate_inspect(
         if actionable
         else presenter.present_mutation_summary(report)
     )
+    if step_summary:
+        md_presenter = MarkdownTestingPresenterAdapter()
+        md_text = (
+            md_presenter.render_actionable_mutants_markdown(report)
+            if actionable
+            else md_presenter.render_mutation_summary_markdown(report)
+        )
+        append_step_summary(md_text)
+
     if code != 0:
         raise typer.Exit(code=code)

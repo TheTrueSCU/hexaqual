@@ -435,14 +435,14 @@ class MarkdownGovernancePresenterAdapter(GovernancePresenterPort):
         """
         self._console = console or Console()
 
-    def present_sanity_dashboard(self, report: SanityCheckReport) -> int:
-        """Render sanity check results as a GitHub Markdown table with error details.
+    def render_sanity_dashboard_markdown(self, report: SanityCheckReport) -> str:
+        """Format sanity check results as a GitHub Markdown table string.
 
         Args:
             report: Aggregated SanityCheckReport object.
 
         Returns:
-            Process exit code.
+            Rendered Markdown text.
         """
         lines: list[str] = [
             "# Hexastack Scoped Sanity Check Dashboard",
@@ -483,8 +483,51 @@ class MarkdownGovernancePresenterAdapter(GovernancePresenterPort):
                     lines.append("```")
                     lines.append("</details>\n")
 
-        self._console.print("\n".join(lines))
+        return "\n".join(lines)
+
+    def present_sanity_dashboard(self, report: SanityCheckReport) -> int:
+        """Render sanity check results as a GitHub Markdown table with error details.
+
+        Args:
+            report: Aggregated SanityCheckReport object.
+
+        Returns:
+            Process exit code.
+        """
+        markdown = self.render_sanity_dashboard_markdown(report)
+        self._console.print(markdown)
         return report.exit_code
+
+    def render_all_statements_markdown(
+        self,
+        errors: list[str],
+        modified_count: int | None = None,
+    ) -> str:
+        """Format __all__ outcomes as Markdown string.
+
+        Args:
+            errors: List of detected errors.
+            modified_count: Optional count of modified files.
+
+        Returns:
+            Rendered Markdown text.
+        """
+        lines: list[str] = []
+        if modified_count is not None:
+            lines.append(
+                f"> ✨ **Formatted and alphabetized `__all__` statements in {modified_count} file(s).**"
+            )
+            return "\n".join(lines)
+
+        if errors:
+            lines.append("### ❌ `__all__` Integrity Violations")
+            lines.append("")
+            for err in errors:
+                lines.append(f"- {err}")
+            return "\n".join(lines)
+
+        lines.append("> ✅ **All `__all__` statements deduplicated and sorted.**")
+        return "\n".join(lines)
 
     def present_all_statements(
         self,
@@ -500,25 +543,40 @@ class MarkdownGovernancePresenterAdapter(GovernancePresenterPort):
         Returns:
             0 if clean/success, 1 if errors detected.
         """
-        lines: list[str] = []
-        if modified_count is not None:
-            lines.append(
-                f"> ✨ **Formatted and alphabetized `__all__` statements in {modified_count} file(s).**"
-            )
-            self._console.print("\n".join(lines))
-            return 0
+        markdown = self.render_all_statements_markdown(errors, modified_count)
+        self._console.print(markdown)
+        return 1 if (errors and modified_count is None) else 0
 
-        if errors:
-            lines.append("### ❌ `__all__` Integrity Violations")
-            lines.append("")
-            for err in errors:
-                lines.append(f"- {err}")
-            self._console.print("\n".join(lines))
-            return 1
+    def render_test_parity_markdown(
+        self,
+        init_errors: list[str],
+        symmetry_errors: list[str],
+    ) -> str:
+        """Format test parity results as Markdown string.
 
-        lines.append("> ✅ **All `__all__` statements deduplicated and sorted.**")
-        self._console.print("\n".join(lines))
-        return 0
+        Args:
+            init_errors: Errors regarding missing __init__.py files.
+            symmetry_errors: Errors regarding missing/orphaned test files.
+
+        Returns:
+            Rendered Markdown text.
+        """
+        all_errors = init_errors + symmetry_errors
+        if not all_errors:
+            return "> ✅ **All source modules mirror unit tests 1:1 and all test directories contain `__init__.py`.**"
+
+        lines: list[str] = [
+            "### ❌ Test Parity & Directory Integrity Violations",
+            "",
+            "| Violation Type | Details |",
+            "| :--- | :--- |",
+        ]
+        for err in init_errors:
+            lines.append(f"| Missing `__init__.py` | `{err}` |")
+        for err in symmetry_errors:
+            lines.append(f"| Asymmetry / Missing Test | `{err}` |")
+
+        return "\n".join(lines)
 
     def present_test_parity(
         self,
@@ -534,26 +592,32 @@ class MarkdownGovernancePresenterAdapter(GovernancePresenterPort):
         Returns:
             0 if clean, 1 if errors detected.
         """
-        all_errors = init_errors + symmetry_errors
-        if not all_errors:
-            self._console.print(
-                "> ✅ **All source modules mirror unit tests 1:1 and all test directories contain `__init__.py`.**"
-            )
-            return 0
+        markdown = self.render_test_parity_markdown(init_errors, symmetry_errors)
+        self._console.print(markdown)
+        return 1 if (init_errors or symmetry_errors) else 0
 
-        lines: list[str] = [
-            "### ❌ Test Parity & Directory Integrity Violations",
-            "",
-            "| Violation Type | Details |",
-            "| :--- | :--- |",
-        ]
-        for err in init_errors:
-            lines.append(f"| Missing `__init__.py` | `{err}` |")
-        for err in symmetry_errors:
-            lines.append(f"| Asymmetry / Missing Test | `{err}` |")
+    def render_architecture_parity_markdown(
+        self,
+        errors: list[str],
+    ) -> str:
+        """Format architecture test parity outcomes as Markdown string.
 
-        self._console.print("\n".join(lines))
-        return 1
+        Args:
+            errors: List of detected architecture parity errors.
+
+        Returns:
+            Rendered Markdown text.
+        """
+        lines: list[str] = []
+        if errors:
+            lines.append("### ❌ Architecture Test Parity Violations")
+            lines.append("")
+            for err in errors:
+                lines.append(f"- {err}")
+        else:
+            lines.append("> ✅ **All packages satisfy architecture test parity.**")
+
+        return "\n".join(lines)
 
     def present_architecture_parity(
         self,
@@ -567,16 +631,8 @@ class MarkdownGovernancePresenterAdapter(GovernancePresenterPort):
         Returns:
             0 if clean/success, 1 if errors detected.
         """
-        lines: list[str] = []
-        if errors:
-            lines.append("### ❌ Architecture Test Parity Violations")
-            lines.append("")
-            for err in errors:
-                lines.append(f"- {err}")
-        else:
-            lines.append("> ✅ **All packages satisfy architecture test parity.**")
-
-        self._console.print("\n".join(lines))
+        markdown = self.render_architecture_parity_markdown(errors)
+        self._console.print(markdown)
         return 1 if errors else 0
 
     def present_gate_inventory(

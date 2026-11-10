@@ -133,3 +133,35 @@ def test_mutate_inspect_failure() -> None:
     ):
         res = runner.invoke(mutate_app, ["inspect", "-s"])
         assert res.exit_code == 1
+
+
+def test_mutate_inspect_step_summary_summary() -> None:
+    """Verify mutate inspect with --step-summary appends summary markdown."""
+    mock_bus = MagicMock()
+    mock_bus.dispatch.return_value = MutationAuditReport(summaries=(), actionable_mutants=())
+    with (
+        patch("hexaqual.cli.mutate.ensure_tool_installed"),
+        patch("hexaqual.cli.mutate.create_governance_bus", return_value=mock_bus),
+        patch("hexaqual.cli.mutate.append_step_summary") as mock_append,
+    ):
+        res = runner.invoke(mutate_app, ["inspect", "-s", "--step-summary"])
+        assert res.exit_code == 0
+        mock_append.assert_called_once()
+        args = mock_append.call_args[0]
+        assert "Mutation Testing Triage Summary" in args[0]
+
+
+def test_mutate_inspect_step_summary_actionable() -> None:
+    """Verify mutate inspect with --step-summary and -act appends actionable markdown."""
+    mock_bus = MagicMock()
+    mock_bus.dispatch.return_value = MutationAuditReport(summaries=(), actionable_mutants=())
+    with (
+        patch("hexaqual.cli.mutate.ensure_tool_installed"),
+        patch("hexaqual.cli.mutate.create_governance_bus", return_value=mock_bus),
+        patch("hexaqual.cli.mutate.append_step_summary") as mock_append,
+    ):
+        res = runner.invoke(mutate_app, ["inspect", "-act", "--step-summary"])
+        assert res.exit_code == 0
+        mock_append.assert_called_once()
+        args = mock_append.call_args[0]
+        assert "Actionable Surviving Mutants" in args[0]

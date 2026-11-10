@@ -272,8 +272,15 @@ class MarkdownTestingPresenterAdapter(TestingPresenterPort):
         """
         self._console = console or Console()
 
-    def present_mutation_summary(self, report: MutationAuditReport) -> int:
-        """Render mutation summary as Markdown table."""
+    def render_mutation_summary_markdown(self, report: MutationAuditReport) -> str:
+        """Format mutation summary as Markdown table string.
+
+        Args:
+            report: MutationAuditReport domain model.
+
+        Returns:
+            Rendered Markdown text.
+        """
         lines = [
             "### Mutation Testing Triage Summary",
             "",
@@ -286,11 +293,23 @@ class MarkdownTestingPresenterAdapter(TestingPresenterPort):
             )
 
         lines.append(f"\n**Total Critical Mutants:** {report.total_critical}")
-        self._console.print("\n".join(lines))
+        return "\n".join(lines)
+
+    def present_mutation_summary(self, report: MutationAuditReport) -> int:
+        """Render mutation summary as Markdown table."""
+        markdown = self.render_mutation_summary_markdown(report)
+        self._console.print(markdown)
         return 1 if report.total_critical > 0 else 0
 
-    def present_actionable_mutants(self, report: MutationAuditReport) -> int:
-        """Render actionable mutants as Markdown table."""
+    def render_actionable_mutants_markdown(self, report: MutationAuditReport) -> str:
+        """Format actionable mutants as Markdown table string.
+
+        Args:
+            report: MutationAuditReport domain model.
+
+        Returns:
+            Rendered Markdown text.
+        """
         lines = [
             "### Actionable Surviving Mutants (Critical)",
             "",
@@ -304,7 +323,12 @@ class MarkdownTestingPresenterAdapter(TestingPresenterPort):
             )
 
         lines.append(f"\n**Total Actionable Mutants:** {len(report.actionable_mutants)}")
-        self._console.print("\n".join(lines))
+        return "\n".join(lines)
+
+    def present_actionable_mutants(self, report: MutationAuditReport) -> int:
+        """Render actionable mutants as Markdown table."""
+        markdown = self.render_actionable_mutants_markdown(report)
+        self._console.print(markdown)
         return 1 if report.actionable_mutants else 0
 
     def present_boundary_audit(self, report: BoundaryAuditReport) -> int:

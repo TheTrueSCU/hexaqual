@@ -166,12 +166,30 @@ def test_markdown_presenter_all_methods():
     assert code_all == 1
     assert "Integrity Violations" in buf.getvalue()
 
+    buf.truncate(0)
+    buf.seek(0)
+    code_fix = presenter.present_all_statements([], modified_count=5)
+    assert code_fix == 0
+    assert "Formatted and alphabetized" in buf.getvalue()
+
+    buf.truncate(0)
+    buf.seek(0)
+    code_clean = presenter.present_all_statements([])
+    assert code_clean == 0
+    assert "deduplicated and sorted" in buf.getvalue()
+
     # Parity
     buf.truncate(0)
     buf.seek(0)
     code_par = presenter.present_test_parity(["missing init"], ["missing test"])
     assert code_par == 1
     assert "| Violation Type | Details |" in buf.getvalue()
+
+    buf.truncate(0)
+    buf.seek(0)
+    code_par_clean = presenter.present_test_parity([], [])
+    assert code_par_clean == 0
+    assert "mirror unit tests 1:1" in buf.getvalue()
 
 
 def test_create_governance_presenter_factory():
