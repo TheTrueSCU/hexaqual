@@ -1,5 +1,15 @@
 # CHANGELOG
 
+## v0.10.3 (2026-11-09)
+
+### Highlights & Features
+* **Standardized GitHub Step Summaries (`$GITHUB_STEP_SUMMARY`)**:
+  - Implemented `append_step_summary` and `summary_option` in `hexaqual.cli.options` to append Markdown summaries directly to `$GITHUB_STEP_SUMMARY`.
+  - Added `--step-summary` option to `hexaqual mutate inspect` to output triage tables and surviving mutant summaries directly to GitHub job summaries.
+  - Decoupled terminal output from Markdown rendering with explicit `render_*_markdown` methods on `MarkdownGovernancePresenterAdapter` and `MarkdownTestingPresenterAdapter`.
+* **Standard Library Lazy Import Elimination**:
+  - Eliminated in-function stdlib lazy imports (`import os`) in `hexaqual.cli.gh` and `hexaqual.cli.test` in compliance with hexagonal import guardrails.
+
 ## v0.10.2 (2026-11-09)
 
 ### Highlights & Features
