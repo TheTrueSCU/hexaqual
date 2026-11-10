@@ -132,6 +132,196 @@ class HexaqueueClusterRunnerAdapter(TestingRunnerPort):
             timeout=self._timeout,
         )
 
+    def _find_repo_root(self, start_dir: Path) -> Path:
+        """Find the enclosing git repository root directory."""
+        current = start_dir.resolve()
+        while current != current.parent:
+            if (current / ".git").exists():
+                return current
+            current = current.parent
+        return start_dir.resolve()
+
+    def _stage_workspace_collateral(self, client: httpx.Client, workspace_dir: Path) -> str | None:
+        """Stage repository workspace into cluster CAS and return registered collateral ID.
+
+        Args:
+            client: HTTP client connected to Hexaqueue server.
+            workspace_dir: Package or repository directory to package.
+
+        Returns:
+            Registered CAS collateral bundle ID, or None if archiver is unavailable.
+        """
+        archiver_mod = optional_dependency("pytest_hexaqueue.adapters.git_archiver")
+        if archiver_mod is None:
+            return None
+
+        repo_root = self._find_repo_root(workspace_dir)
+        try:
+            archiver = archiver_mod.GitWorkspaceArchiver()
+            archive_bytes, sha256 = archiver.archive_workspace(repo_root)
+        except Exception as exc:
+            logger.debug("Failed to package workspace archive: %s", exc)
+            return None
+
+        clean_sha = sha256.strip().lower()
+        try:
+            resp = client.get(
+                f"{self._cluster_url}/api/v1/collateral/checksum/{clean_sha}",
+                headers=self._get_headers(),
+            )
+            if resp.status_code == 200:
+                data = resp.json()
+                if isinstance(data, dict):
+                    cid = data.get("id") or (data.get("bundle", {}) or {}).get("id")
+                    if cid:
+                        return str(cid)
+        except Exception as exc:
+            logger.debug("CAS cache check failed (%s), proceeding to stage", exc)
+
+        stage_headers = dict(self._get_headers())
+        stage_headers["Content-Type"] = "application/octet-stream"
+        stage_headers["X-Collateral-Name"] = f"{repo_root.name}.tar.gz"
+        stage_headers["X-Collateral-SHA256"] = clean_sha
+
+        try:
+            resp = client.post(
+                f"{self._cluster_url}/api/v1/collateral/stage",
+                content=archive_bytes,
+                headers=stage_headers,
+            )
+            if resp.status_code in (200, 201):
+                data = resp.json()
+                if isinstance(data, dict):
+                    cid = data.get("id") or (data.get("bundle", {}) or {}).get("id")
+                    if cid:
+                        return str(cid)
+        except Exception as exc:
+            logger.warning("Failed to stage workspace collateral to cluster: %s", exc)
+
+        return None
+
+    def _collect_mutation_targets(self, package_dir: Path) -> list[str]:
+        """Discover candidate Python source files within package directory.
+
+        Args:
+            package_dir: Base package directory.
+
+        Returns:
+            List of relative source file paths.
+        """
+        src_dir = package_dir / "src"
+        search_root = src_dir if src_dir.is_dir() else package_dir
+        targets: list[str] = []
+        for py_file in sorted(search_root.rglob("*.py")):
+            if "__pycache__" in py_file.parts or py_file.name == "__init__.py":
+                continue
+            try:
+                rel = py_file.relative_to(package_dir)
+                targets.append(str(rel))
+            except ValueError:
+                targets.append(py_file.name)
+        return targets
+
+    def _partition_targets(self, targets: list[str], slice_count: int) -> list[list[str]]:
+        """Partition target file list into balanced slice groups.
+
+        Args:
+            targets: List of relative file paths.
+            slice_count: Maximum number of slice groups.
+
+        Returns:
+            List of partitioned file lists.
+        """
+        if not targets or slice_count <= 1:
+            return [targets] if targets else [[]]
+        slices: list[list[str]] = [[] for _ in range(min(slice_count, len(targets)))]
+        for idx, target in enumerate(targets):
+            slices[idx % len(slices)].append(target)
+        return slices
+
+    def _build_mutation_job_specs(
+        self,
+        run_id: str,
+        package_dir: Path,
+        repo_root: Path,
+        collateral_id: str | None,
+        engine: MutationEngine,
+        reset_cache: bool,
+        workers: int | str | None,
+        numprocesses: int | str | None,
+        batch_size: int | None,
+        report_file: Path | None,
+    ) -> list[dict[str, Any]]:
+        """Construct constituent JobSpecs for mutation testing across worker slots.
+
+        Args:
+            run_id: Parent run identifier.
+            package_dir: Directory path of package to mutate.
+            repo_root: Enclosing repository root.
+            collateral_id: Optional CAS collateral bundle ID.
+            engine: Mutation engine to use.
+            reset_cache: Whether to clear incremental analysis cache.
+            workers: Number of mutation workers.
+            numprocesses: Baseline test worker count.
+            batch_size: Gremlins per worker batch.
+            report_file: Path to write the JSON report.
+
+        Returns:
+            List of JobSpec dictionaries.
+        """
+        try:
+            rel_cwd = package_dir.relative_to(repo_root)
+        except ValueError:
+            rel_cwd = package_dir.resolve()
+
+        targets: list[str] = []
+        slice_count = 1
+        if engine == MutationEngine.GREMLINS or str(engine).lower() == "gremlins":
+            targets = self._collect_mutation_targets(package_dir)
+            if isinstance(workers, int) and workers > 1:
+                slice_count = workers
+            elif workers == "auto" or workers is None:
+                slice_count = 4
+
+        target_groups = self._partition_targets(targets, slice_count)
+        job_specs: list[dict[str, Any]] = []
+
+        for idx, group in enumerate(target_groups):
+            cmd, args = self._build_mutation_command(
+                package_dir=package_dir,
+                engine=engine,
+                reset_cache=reset_cache and idx == 0,
+                workers=workers,
+                numprocesses=numprocesses,
+                batch_size=batch_size,
+                report_file=report_file,
+                target_files=group if group else None,
+            )
+
+            job_spec: dict[str, Any] = {
+                "id": f"job-{run_id}-{idx}",
+                "run_id": run_id,
+                "name": f"mutation-{package_dir.name}-batch-{idx}",
+                "command": cmd,
+                "args": args,
+                "env": {
+                    "PYTHONUNBUFFERED": "1",
+                    "HEXAQUEUE_CWD": str(rel_cwd),
+                },
+                "resources": {"cpus": 2, "ram_mb": 2048},
+                "tags": [
+                    f"package:{package_dir.name}",
+                    f"owner:{self._user_id}",
+                    "type:mutation",
+                ],
+                "user": self._user_id,
+            }
+            if collateral_id:
+                job_spec["collateral_ids"] = [collateral_id]
+            job_specs.append(job_spec)
+
+        return job_specs
+
     def run_mutation_testing(
         self,
         package_dir: Path,
@@ -164,9 +354,16 @@ class HexaqueueClusterRunnerAdapter(TestingRunnerPort):
             POST /v1/runs, streams progress via SSE (or polling fallback), and maps
             cluster RunOutcome to process returncode.
         """
+        client = self._build_client()
+        repo_root = self._find_repo_root(package_dir)
+        collateral_id = self._stage_workspace_collateral(client, package_dir)
+
         run_id = f"mut-{package_dir.name}-{uuid4().hex[:8]}"
-        cmd, args = self._build_mutation_command(
+        job_specs = self._build_mutation_job_specs(
+            run_id=run_id,
             package_dir=package_dir,
+            repo_root=repo_root,
+            collateral_id=collateral_id,
             engine=engine,
             reset_cache=reset_cache,
             workers=workers,
@@ -175,28 +372,13 @@ class HexaqueueClusterRunnerAdapter(TestingRunnerPort):
             report_file=report_file,
         )
 
-        job_spec = {
-            "id": f"job-{run_id}-0",
-            "run_id": run_id,
-            "name": f"mutation-{package_dir.name}",
-            "command": cmd,
-            "args": args,
-            "env": {
-                "PYTHONUNBUFFERED": "1",
-                "HEXAQUEUE_CWD": str(package_dir.resolve()),
-            },
-            "resources": {"cpus": 2, "ram_mb": 2048},
-            "tags": [f"package:{package_dir.name}", f"owner:{self._user_id}", "type:mutation"],
-            "user": self._user_id,
-        }
-
         submission_payload = {
             "run_spec": {
                 "id": run_id,
                 "name": f"Mutation Testing [{package_dir.name}]",
                 "tags": [f"package:{package_dir.name}", "type:mutation"],
             },
-            "jobs": [job_spec],
+            "jobs": job_specs,
             "dependencies": {},
             "user_id": self._user_id,
             "elevate": self._elevate,
@@ -248,8 +430,16 @@ class HexaqueueClusterRunnerAdapter(TestingRunnerPort):
             res = subprocess.run(cmd, cwd=cwd)
             return res.returncode
 
-        effective_cwd = cwd.resolve() if cwd else Path.cwd().resolve()
-        job_spec = {
+        client = self._build_client()
+        target_dir = cwd.resolve() if cwd else Path.cwd().resolve()
+        repo_root = self._find_repo_root(target_dir)
+        collateral_id = self._stage_workspace_collateral(client, target_dir)
+        try:
+            rel_cwd = target_dir.relative_to(repo_root)
+        except ValueError:
+            rel_cwd = target_dir
+
+        job_spec: dict[str, Any] = {
             "id": f"job-{run_id}-0",
             "run_id": run_id,
             "name": f"pytest-{pkg_name}",
@@ -257,12 +447,14 @@ class HexaqueueClusterRunnerAdapter(TestingRunnerPort):
             "args": all_args,
             "env": {
                 "PYTHONUNBUFFERED": "1",
-                "HEXAQUEUE_CWD": str(effective_cwd),
+                "HEXAQUEUE_CWD": str(rel_cwd),
             },
             "resources": {"cpus": 2, "ram_mb": 2048},
             "tags": [f"package:{pkg_name}", f"owner:{self._user_id}", "type:test"],
             "user": self._user_id,
         }
+        if collateral_id:
+            job_spec["collateral_ids"] = [collateral_id]
 
         submission_payload = {
             "run_spec": {
@@ -287,6 +479,7 @@ class HexaqueueClusterRunnerAdapter(TestingRunnerPort):
         numprocesses: int | str | None,
         batch_size: int | None,
         report_file: Path | None,
+        target_files: list[str] | None = None,
     ) -> tuple[str, list[str]]:
         """Construct executable command and arguments for mutation testing."""
         if engine == MutationEngine.GREMLINS or str(engine).lower() == "gremlins":
@@ -299,6 +492,8 @@ class HexaqueueClusterRunnerAdapter(TestingRunnerPort):
                 "--cov-fail-under=0",
                 "--gremlins",
             ]
+            if target_files:
+                args.append(f"--gremlin-targets={','.join(target_files)}")
             if reset_cache:
                 args.append("--gremlin-clear-cache")
             eff_workers = workers if workers is not None else "auto"
