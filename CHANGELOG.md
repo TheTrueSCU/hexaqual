@@ -1,5 +1,14 @@
 # CHANGELOG
 
+## v0.10.5 (2026-11-10)
+
+### Highlights & Features
+* **Multi-Package Mutation Run DAG & Direct-Only Scoping**:
+  - Upgraded `TestingRunnerPort.run_mutation_testing` and `TestingRunnerAdapter` to accept `Sequence[Path]` for unified multi-package testing.
+  - Implemented single unified `RunSpec` DAG submission across all affected packages in `HexaqueueClusterRunnerAdapter`, staging CAS workspace collateral once and packing constituent package jobs concurrently into worker pools.
+  - Added `--direct` / `--direct-only` flag to `hexaqual mutate run` and `direct_only: bool` in `WorkspaceAdapter.resolve_affected_packages` to restrict mutation testing impact strictly to directly changed packages, bypassing transitive package sweeps during PR CI workflows.
+  - Fortified test suites and verified $\le 25$ cognitive complexity.
+
 ## v0.10.4 (2026-11-10)
 
 ### Highlights & Features
