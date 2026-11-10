@@ -738,3 +738,116 @@ def test_run_mutation_testing_sliced_batches(tmp_path: Path) -> None:
     has_target1 = any("--gremlin-targets=" in arg for arg in j1["args"])
     assert has_target1 is True
     assert j1["collateral_ids"] == ["col-bundle-123"]
+
+
+def test_find_repo_root_traversal(tmp_path: Path) -> None:
+    """Verify _find_repo_root traverses parent directories until finding .git."""
+    root = tmp_path / "my_repo"
+    git_dir = root / ".git"
+    git_dir.mkdir(parents=True)
+    nested = root / "packages" / "pkg_x" / "src"
+    nested.mkdir(parents=True)
+
+    adapter = HexaqueueClusterRunnerAdapter()
+    found = adapter._find_repo_root(nested)
+    assert found == root.resolve()
+
+
+def test_stage_workspace_collateral_exceptions_and_resilience(tmp_path: Path) -> None:
+    """Verify _stage_workspace_collateral handles archive errors, network timeouts, and recovers."""
+    from unittest.mock import patch
+
+    # 1. Archiving throws exception
+    mock_archiver_err = MagicMock()
+    mock_archiver_err.archive_workspace.side_effect = RuntimeError("tarfile error")
+    mock_mod_err = MagicMock(GitWorkspaceArchiver=MagicMock(return_value=mock_archiver_err))
+
+    client = httpx.Client(base_url="http://cluster.local:8000")
+    adapter = HexaqueueClusterRunnerAdapter(cluster_url="http://cluster.local:8000")
+
+    with patch(
+        "hexaqual.adapters.runners.hexaqueue_cluster.optional_dependency",
+        return_value=mock_mod_err,
+    ):
+        res = adapter._stage_workspace_collateral(client, tmp_path)
+        assert res is None
+
+    # 2. CAS cache check throws network error, falls through to upload
+    mock_archiver_ok = MagicMock()
+    mock_archiver_ok.archive_workspace.return_value = (b"bytes", "sha999")
+    mock_mod_ok = MagicMock(GitWorkspaceArchiver=MagicMock(return_value=mock_archiver_ok))
+
+    def mock_cache_err_handler(request: httpx.Request) -> httpx.Response:
+        if "/api/v1/collateral/checksum/" in request.url.path:
+            raise httpx.ConnectError("Network blip on cache check")
+        if "/api/v1/collateral/stage" in request.url.path:
+            return httpx.Response(status_code=200, json={"bundle": {"id": "col-from-fallback"}})
+        return httpx.Response(status_code=404)
+
+    client_resilient = httpx.Client(
+        transport=httpx.MockTransport(mock_cache_err_handler), base_url="http://cluster.local:8000"
+    )
+    with patch(
+        "hexaqual.adapters.runners.hexaqueue_cluster.optional_dependency",
+        return_value=mock_mod_ok,
+    ):
+        col_res = adapter._stage_workspace_collateral(client_resilient, tmp_path)
+        assert col_res == "col-from-fallback"
+
+    # 3. Upload throws network error
+    def mock_upload_err_handler(request: httpx.Request) -> httpx.Response:
+        if "/api/v1/collateral/checksum/" in request.url.path:
+            return httpx.Response(status_code=404)
+        if "/api/v1/collateral/stage" in request.url.path:
+            raise httpx.ConnectError("Upload connection dropped")
+        return httpx.Response(status_code=404)
+
+    client_upload_err = httpx.Client(
+        transport=httpx.MockTransport(mock_upload_err_handler),
+        base_url="http://cluster.local:8000",
+    )
+    with patch(
+        "hexaqual.adapters.runners.hexaqueue_cluster.optional_dependency",
+        return_value=mock_mod_ok,
+    ):
+        fail_res = adapter._stage_workspace_collateral(client_upload_err, tmp_path)
+        assert fail_res is None
+
+
+def test_execute_pytest_fallback_attaches_collateral(tmp_path: Path) -> None:
+    """Verify execute_pytest attaches collateral_ids when collateral is staged."""
+    from unittest.mock import patch
+
+    submitted_payloads: list[dict] = []
+
+    def mock_handler(request: httpx.Request) -> httpx.Response:
+        if request.url.path == "/v1/runs" and request.method == "POST":
+            payload = json.loads(request.content.decode("utf-8"))
+            submitted_payloads.append(payload)
+            return httpx.Response(
+                status_code=201,
+                json={"run_id": payload["run_spec"]["id"], "state": "PENDING"},
+            )
+        if "/stream" in request.url.path:
+            return httpx.Response(
+                status_code=200,
+                text='data: {"state": "DONE", "outcome": "COMPLETED"}\n\n',
+            )
+        return httpx.Response(status_code=404)
+
+    client = httpx.Client(
+        transport=httpx.MockTransport(mock_handler), base_url="http://cluster.local:8000"
+    )
+    adapter = HexaqueueClusterRunnerAdapter(
+        cluster_url="http://cluster.local:8000",
+        http_client=client,
+        console=Console(quiet=True),
+    )
+
+    with patch.object(adapter, "_stage_workspace_collateral", return_value="col-pytest-456"):
+        code = adapter.execute_pytest(test_nodes=["tests/unit"], cwd=tmp_path)
+        assert code == 0
+
+    assert len(submitted_payloads) == 1
+    job = submitted_payloads[0]["jobs"][0]
+    assert job["collateral_ids"] == ["col-pytest-456"]
