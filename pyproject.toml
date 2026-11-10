@@ -38,6 +38,12 @@ classifiers = [
 ]
 
 [project.optional-dependencies]
+bench = [
+    "pytest-benchmark>=5.1.0",
+]
+cluster = [
+    "pytest-hexaqueue>=0.9.1",
+]
 diagrams = [
     "pydeps>=3.0.7",
 ]
@@ -51,11 +57,8 @@ mutmut = [
 rope = [
     "rope>=1.14.0",
 ]
-bench = [
-    "pytest-benchmark>=5.1.0",
-]
 all = [
-    "hexaqual[bench,diagrams,gremlins,mutmut,rope]",
+    "hexaqual[bench,cluster,diagrams,gremlins,mutmut,rope]",
 ]
 
 [project.urls]

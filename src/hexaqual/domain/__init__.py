@@ -98,6 +98,7 @@ from hexaqual.domain.hooks import (
 )
 from hexaqual.domain.imports import (
     optional_dependency,
+    require_dependency,
 )
 from hexaqual.domain.openssf import (
     CRITERIA_CATALOG,
@@ -246,6 +247,7 @@ __all__ = [
     "RepoStatus",
     "ReproducibleArtifactResult",
     "ReproducibleBuildReport",
+    "require_dependency",
     "resolve_default_parallelism",
     "resolve_parallelism",
     "ReviewComment",
