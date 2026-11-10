@@ -1,5 +1,15 @@
 # CHANGELOG
 
+## v0.10.4 (2026-11-10)
+
+### Highlights & Features
+* **Hexaqueue Cluster Extra, Workspace Collateral Staging & Targeted Mutation Slicing**:
+  - Added `cluster` optional extra (`pytest-hexaqueue>=0.9.1`) and bundled into `hexaqual[all]`.
+  - Added `require_dependency` in `hexaqual.domain.imports` with actionable installation hints (`uv add 'hexaqual[cluster]'`).
+  - Integrated `GitWorkspaceArchiver` from `pytest-hexaqueue` via optional dependency to eliminate duplicate workspace archiving logic.
+  - Implemented automatic Content-Addressable Storage (CAS) workspace collateral staging via Hexaqueue's `/api/v1/collateral/checksum/{sha256}` and `/api/v1/collateral/stage` endpoints.
+  - Implemented multi-slice mutation batch partitioning across cluster workers using `pytest-gremlins --gremlin-targets` attached to individual slice `JobSpec`s.
+
 ## v0.10.3 (2026-11-09)
 
 ### Highlights & Features
