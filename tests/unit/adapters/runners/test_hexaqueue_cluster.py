@@ -851,3 +851,66 @@ def test_execute_pytest_fallback_attaches_collateral(tmp_path: Path) -> None:
     assert len(submitted_payloads) == 1
     job = submitted_payloads[0]["jobs"][0]
     assert job["collateral_ids"] == ["col-pytest-456"]
+
+
+def test_run_mutation_testing_multi_package_dag(tmp_path: Path) -> None:
+    """Verify run_mutation_testing consolidates multiple packages into a single unified Run DAG."""
+    from unittest.mock import patch
+
+    pkg1 = tmp_path / "pkg1"
+    src1 = pkg1 / "src" / "pkg1"
+    src1.mkdir(parents=True)
+    (src1 / "a.py").write_text("x = 1")
+
+    pkg2 = tmp_path / "pkg2"
+    src2 = pkg2 / "src" / "pkg2"
+    src2.mkdir(parents=True)
+    (src2 / "b.py").write_text("y = 2")
+
+    submitted_payloads: list[dict] = []
+
+    def mock_handler(request: httpx.Request) -> httpx.Response:
+        url_path = request.url.path
+        if url_path == "/v1/runs" and request.method == "POST":
+            payload = json.loads(request.content.decode("utf-8"))
+            submitted_payloads.append(payload)
+            return httpx.Response(
+                status_code=201,
+                json={"run_id": payload["run_spec"]["id"], "state": "PENDING"},
+            )
+        if "/stream" in url_path:
+            sse_content = (
+                "event: run_done\n"
+                'data: {"state": "DONE", "outcome": "COMPLETED", "completed_jobs": 2, "total_jobs": 2}\n\n'
+            )
+            return httpx.Response(status_code=200, text=sse_content)
+        return httpx.Response(status_code=404)
+
+    client = httpx.Client(
+        transport=httpx.MockTransport(mock_handler), base_url="http://cluster.local:8000"
+    )
+    adapter = HexaqueueClusterRunnerAdapter(
+        cluster_url="http://cluster.local:8000",
+        http_client=client,
+        console=Console(quiet=True),
+    )
+
+    with patch.object(adapter, "_stage_workspace_collateral", return_value="col-bundle-unified"):
+        exit_code = adapter.run_mutation_testing(
+            package_dir=[pkg1, pkg2],
+            engine=MutationEngine.GREMLINS,
+            workers=1,
+            batch_size=10,
+        )
+
+    assert exit_code == 0
+    assert len(submitted_payloads) == 1
+    payload = submitted_payloads[0]
+    assert payload["run_spec"]["name"] == "Mutation Testing [2 packages]"
+    assert "package:pkg1" in payload["run_spec"]["tags"]
+    assert "package:pkg2" in payload["run_spec"]["tags"]
+    jobs = payload["jobs"]
+    assert len(jobs) == 2
+    assert jobs[0]["id"] != jobs[1]["id"]
+    assert any(j["name"] == "mutation-pkg1-batch-0" for j in jobs)
+    assert any(j["name"] == "mutation-pkg2-batch-0" for j in jobs)

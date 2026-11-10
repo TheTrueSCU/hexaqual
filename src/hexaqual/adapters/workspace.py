@@ -539,10 +539,37 @@ def get_downstream_dependents(
     return visited
 
 
+def _resolve_package_file_impact(
+    parts: tuple[str, ...],
+    reverse_graph: dict[str, set[str]],
+    direct_only: bool,
+) -> tuple[bool, set[str]]:
+    """Determine impact of a file change within packages/ subdirectory."""
+    if len(parts) <= 1:
+        return False, set()
+    raw_pkg = parts[1]
+    clean_pkg = "hexastack" if raw_pkg == "hexastack" else raw_pkg.removeprefix("hexastack_")
+
+    if len(parts) == 2 and parts[1] == "pyproject.toml":
+        dependents = set() if direct_only else get_downstream_dependents(clean_pkg, reverse_graph)
+        return False, {clean_pkg, *dependents}
+    if len(parts) > 2:
+        sub_dir = parts[2]
+        if sub_dir in ("src", "pyproject.toml"):
+            dependents = (
+                set() if direct_only else get_downstream_dependents(clean_pkg, reverse_graph)
+            )
+            return False, {clean_pkg, *dependents}
+        if sub_dir == "tests":
+            return False, {clean_pkg}
+    return False, set()
+
+
 def _resolve_file_impact(
     file_str: str,
     root: Path,
     reverse_graph: dict[str, set[str]],
+    direct_only: bool = False,
 ) -> tuple[bool, set[str]]:
     """Determine if a file impacts all packages, or return impacted package set."""
     path = Path(file_str)
@@ -554,30 +581,14 @@ def _resolve_file_impact(
     parts = rel_to_root.parts
     if len(parts) == 1:
         if parts[0] in ("pyproject.toml", "uv.lock", "conftest.py"):
-            return True, set()
+            return (False, set()) if direct_only else (True, set())
         return False, set()
 
     if parts[0] in (".github",):
-        return True, set()
+        return (False, set()) if direct_only else (True, set())
 
-    if parts[0] == "packages" and len(parts) > 1:
-        raw_pkg = parts[1]
-        clean_pkg = "hexastack" if raw_pkg == "hexastack" else raw_pkg.removeprefix("hexastack_")
-
-        if len(parts) == 2 and parts[1] == "pyproject.toml":
-            return False, {
-                clean_pkg,
-                *get_downstream_dependents(clean_pkg, reverse_graph),
-            }
-        if len(parts) > 2:
-            sub_dir = parts[2]
-            if sub_dir in ("src", "pyproject.toml"):
-                return False, {
-                    clean_pkg,
-                    *get_downstream_dependents(clean_pkg, reverse_graph),
-                }
-            if sub_dir == "tests":
-                return False, {clean_pkg}
+    if parts[0] == "packages":
+        return _resolve_package_file_impact(parts, reverse_graph, direct_only)
 
     return False, set()
 
@@ -585,8 +596,19 @@ def _resolve_file_impact(
 def resolve_affected_packages(
     changed_files: list[str],
     repo_root: Path | None = None,
+    direct_only: bool = False,
 ) -> set[str] | None:
-    """Determine the set of affected packages given a list of modified file paths."""
+    """Determine the set of affected packages given a list of modified file paths.
+
+    Args:
+        changed_files: List of modified file paths.
+        repo_root: Optional repository root path.
+        direct_only: Whether to restrict resolution to directly modified package directories,
+            skipping root-level project files and transitive dependents.
+
+    Returns:
+        Set of affected package names, or None if the change impacts the entire workspace.
+    """
     root = repo_root or get_repo_root()
     _, reverse_graph = get_workspace_dependency_graph(root)
 
@@ -595,7 +617,9 @@ def resolve_affected_packages(
 
     affected: set[str] = set()
     for file_str in changed_files:
-        impacts_all, pkgs = _resolve_file_impact(file_str, root, reverse_graph)
+        impacts_all, pkgs = _resolve_file_impact(
+            file_str, root, reverse_graph, direct_only=direct_only
+        )
         if impacts_all:
             return None
         affected.update(pkgs)

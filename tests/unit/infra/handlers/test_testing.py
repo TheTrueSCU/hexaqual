@@ -172,8 +172,15 @@ def test_run_mutation_tests_handler_affected_impacts_all(tmp_path: Path):
     ):
         code = handler.handle(RunMutationTestsCommand(affected=True))
         assert code == 0
-        call_count = runner.run_mutation_testing.call_count
-        assert call_count == 2
+        runner.run_mutation_testing.assert_called_once_with(
+            package_dir=[pkg1, pkg2],
+            engine=MutationEngine.MUTMUT,
+            reset_cache=False,
+            workers=None,
+            numprocesses=None,
+            batch_size=None,
+            report_file=None,
+        )
 
 
 def test_inspect_mutation_cache_handler_gremlins(tmp_path: Path):
@@ -227,8 +234,15 @@ def test_run_mutation_tests_handler_all_packages(tmp_path: Path):
             RunMutationTestsCommand(all_packages=True, engine=MutationEngine.GREMLINS)
         )
         assert code == 0
-        call_count = runner.run_mutation_testing.call_count
-        assert call_count == 2
+        runner.run_mutation_testing.assert_called_once_with(
+            package_dir=[pkg1, pkg2],
+            engine=MutationEngine.GREMLINS,
+            reset_cache=False,
+            workers=None,
+            numprocesses=None,
+            batch_size=None,
+            report_file=None,
+        )
 
 
 def test_inspect_mutation_cache_handler_gremlins_package_path(tmp_path: Path):

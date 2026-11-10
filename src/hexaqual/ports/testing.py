@@ -8,6 +8,7 @@ Notes/Architectural Intent:
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
+from collections.abc import Sequence
 from pathlib import Path
 from typing import Any
 
@@ -31,7 +32,7 @@ class TestingRunnerPort(ABC):
     @abstractmethod
     def run_mutation_testing(
         self,
-        package_dir: Path,
+        package_dir: Path | Sequence[Path],
         engine: MutationEngine = MutationEngine.GREMLINS,
         reset_cache: bool = False,
         workers: int | str | None = None,
@@ -39,10 +40,10 @@ class TestingRunnerPort(ABC):
         batch_size: int | None = None,
         report_file: Path | None = None,
     ) -> int:
-        """Run mutation testing on a specific package directory.
+        """Run mutation testing on a specific package directory or set of directories.
 
         Args:
-            package_dir: Directory path of package to mutate.
+            package_dir: Directory path or sequence of package directory paths to mutate.
             engine: Mutation engine to use (e.g. GREMLINS or MUTMUT).
             reset_cache: Whether to clear incremental analysis cache.
             workers: Number of mutation workers (or 'auto') during mutation phase.
@@ -56,6 +57,8 @@ class TestingRunnerPort(ABC):
         Notes/Architectural Intent:
             Engine-agnostic port interface for executing mutation testing. Decouples
             execution orchestration from specific tool CLI flags or subprocess invocations.
+            Accepts either a single package or sequence of package directories for unified
+            cluster DAG scheduling.
         """
 
     @abstractmethod

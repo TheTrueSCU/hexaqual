@@ -1136,6 +1136,8 @@ Usage: hexaqual mutate run [OPTIONS]
      package: Target package name.
      all_packages: Whether to run across all workspace packages.
      affected: Whether to run only packages affected by git diff.
+     direct_only: Whether to restrict affected analysis to directly modified
+ package directories.
      reset: Clear cache and re-run.
      engine: Runner engine ('gremlins' or 'mutmut').
      workers: Parallel workers during mutation phase.
@@ -1159,43 +1161,48 @@ Usage: hexaqual mutate run [OPTIONS]
      Supports distributing mutation workloads to a remote Hexaqueue cluster.
 
 ╭─ Options ────────────────────────────────────────────────────────────────────╮
-│ --package          -p      <str>    Target package name (e.g. core).         │
-│ --all              -a               Run across all workspace packages        │
-│                                     sequentially.                            │
-│ --affected         -A               Run only on packages affected by git     │
-│                                     diff.                                    │
-│ --reset            -r               Clear cache and re-run.                  │
-│ --engine           -e      <str>    Mutation engine to use ('gremlins' or    │
-│                                     'mutmut').                               │
-│                                     [default: gremlins]                      │
-│ --workers          -w      <str>    Number of parallel mutation workers      │
-│                                     (defaults to 'auto' across available     │
-│                                     cores).                                  │
-│ --numprocesses     -n      <str>    Pytest-xdist worker count for baseline   │
-│                                     test execution (defaults to 'auto' when  │
-│                                     xdist is installed).                     │
-│ --batch-size               <int>    Number of gremlins per worker batch      │
-│                                     (defaults to 10).                        │
-│ --cluster                  <str>    Execution target cluster ('local' or     │
-│                                     'hexaqueue').                            │
-│                                     [default: local]                         │
-│ --cluster-url              <str>    Hexaqueue cluster REST endpoint URL.     │
-│                                     [env var: HEXAQUEUE_URL]                 │
-│                                     [default: http://localhost:8000]         │
-│ --cluster-token            <str>    Authentication bearer token for          │
-│                                     Hexaqueue cluster.                       │
-│                                     [env var: HEXAQUEUE_TOKEN]               │
-│ --cluster-user             <str>    Submitting user identity for Hexaqueue   │
-│                                     cluster.                                 │
-│                                     [env var: HEXAQUEUE_USER]                │
-│                                     [default: default]                       │
-│ --cluster-elevate                   Assert administrative elevation on       │
-│                                     Hexaqueue cluster.                       │
-│ --cluster-timeout          <float>  Maximum execution timeout in seconds for │
-│                                     remote Hexaqueue workload (defaults to   │
-│                                     1800.0s).                                │
-│                                     [env var: HEXAQUEUE_TIMEOUT]             │
-│ --help                              Show this message and exit.              │
+│ --package               -p      <str>    Target package name (e.g. core).    │
+│ --all                   -a               Run across all workspace packages   │
+│                                          sequentially.                       │
+│ --affected              -A               Run only on packages affected by    │
+│                                          git diff.                           │
+│ --direct,--direct-only                   Restrict affected analysis to       │
+│                                          directly modified package           │
+│                                          directories, skipping transitive    │
+│                                          dependents and root infra changes.  │
+│ --reset                 -r               Clear cache and re-run.             │
+│ --engine                -e      <str>    Mutation engine to use ('gremlins'  │
+│                                          or 'mutmut').                       │
+│                                          [default: gremlins]                 │
+│ --workers               -w      <str>    Number of parallel mutation workers │
+│                                          (defaults to 'auto' across          │
+│                                          available cores).                   │
+│ --numprocesses          -n      <str>    Pytest-xdist worker count for       │
+│                                          baseline test execution (defaults   │
+│                                          to 'auto' when xdist is installed). │
+│ --batch-size                    <int>    Number of gremlins per worker batch │
+│                                          (defaults to 10).                   │
+│ --cluster                       <str>    Execution target cluster ('local'   │
+│                                          or 'hexaqueue').                    │
+│                                          [default: local]                    │
+│ --cluster-url                   <str>    Hexaqueue cluster REST endpoint     │
+│                                          URL.                                │
+│                                          [env var: HEXAQUEUE_URL]            │
+│                                          [default: http://localhost:8000]    │
+│ --cluster-token                 <str>    Authentication bearer token for     │
+│                                          Hexaqueue cluster.                  │
+│                                          [env var: HEXAQUEUE_TOKEN]          │
+│ --cluster-user                  <str>    Submitting user identity for        │
+│                                          Hexaqueue cluster.                  │
+│                                          [env var: HEXAQUEUE_USER]           │
+│                                          [default: default]                  │
+│ --cluster-elevate                        Assert administrative elevation on  │
+│                                          Hexaqueue cluster.                  │
+│ --cluster-timeout               <float>  Maximum execution timeout in        │
+│                                          seconds for remote Hexaqueue        │
+│                                          workload (defaults to 1800.0s).     │
+│                                          [env var: HEXAQUEUE_TIMEOUT]        │
+│ --help                                   Show this message and exit.         │
 ╰──────────────────────────────────────────────────────────────────────────────╯
 ```
 

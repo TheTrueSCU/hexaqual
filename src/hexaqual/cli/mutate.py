@@ -15,6 +15,7 @@ from hexaqual.adapters.presenters.testing import (
     MarkdownTestingPresenterAdapter,
     create_testing_presenter,
 )
+from hexaqual.adapters.runners.hexaqueue_cluster import HexaqueueClusterRunnerAdapter
 from hexaqual.adapters.workspace import (
     ensure_tool_installed,
     get_repo_root,
@@ -50,6 +51,12 @@ def mutate_run(
     ),
     affected: bool = typer.Option(
         False, "-A", "--affected", help="Run only on packages affected by git diff."
+    ),
+    direct_only: bool = typer.Option(
+        False,
+        "--direct",
+        "--direct-only",
+        help="Restrict affected analysis to directly modified package directories, skipping transitive dependents and root infra changes.",
     ),
     reset: bool = typer.Option(False, "-r", "--reset", help="Clear cache and re-run."),
     engine: str = typer.Option(
@@ -116,6 +123,7 @@ def mutate_run(
         package: Target package name.
         all_packages: Whether to run across all workspace packages.
         affected: Whether to run only packages affected by git diff.
+        direct_only: Whether to restrict affected analysis to directly modified package directories.
         reset: Clear cache and re-run.
         engine: Runner engine ('gremlins' or 'mutmut').
         workers: Parallel workers during mutation phase.
@@ -155,8 +163,6 @@ def mutate_run(
     root = get_repo_root()
     testing_runner = None
     if cluster_norm == "hexaqueue":
-        from hexaqual.adapters.runners.hexaqueue_cluster import HexaqueueClusterRunnerAdapter
-
         testing_runner = HexaqueueClusterRunnerAdapter(
             cluster_url=cluster_url,
             user_id=cluster_user,
@@ -172,6 +178,7 @@ def mutate_run(
             package=package,
             all_packages=all_packages or (not package and not affected),
             affected=affected,
+            direct_only=direct_only,
             reset_cache=reset,
             engine=eng,
             workers=workers,
