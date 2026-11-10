@@ -82,7 +82,10 @@ class RunMutationTestsHandler:
 
         if command.affected:
             changed = get_git_changed_files()
-            affected_pkgs = resolve_affected_packages(changed)
+            affected_pkgs = resolve_affected_packages(
+                changed,
+                direct_only=command.direct_only,
+            )
             if affected_pkgs is None:
                 targets = get_package_directories()
             elif not affected_pkgs:
@@ -90,20 +93,29 @@ class RunMutationTestsHandler:
             else:
                 targets = [get_package_directory(p) for p in sorted(affected_pkgs)]
 
-            exit_code = 0
-            for pkg_dir in targets:
-                code = _run_single(pkg_dir)
-                if code != 0:
-                    exit_code = code
-            return exit_code
+            target_arg: Path | list[Path] = targets[0] if len(targets) == 1 else targets
+            return self._runner.run_mutation_testing(
+                package_dir=target_arg,
+                engine=command.engine,
+                reset_cache=command.reset_cache,
+                workers=command.workers,
+                numprocesses=command.numprocesses,
+                batch_size=command.batch_size,
+                report_file=command.report_file,
+            )
 
         if command.all_packages:
-            exit_code = 0
-            for pkg_dir in get_package_directories():
-                code = _run_single(pkg_dir)
-                if code != 0:
-                    exit_code = code
-            return exit_code
+            targets = get_package_directories()
+            target_arg = targets[0] if len(targets) == 1 else targets
+            return self._runner.run_mutation_testing(
+                package_dir=target_arg,
+                engine=command.engine,
+                reset_cache=command.reset_cache,
+                workers=command.workers,
+                numprocesses=command.numprocesses,
+                batch_size=command.batch_size,
+                report_file=command.report_file,
+            )
 
         return 0
 

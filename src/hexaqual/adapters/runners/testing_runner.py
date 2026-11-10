@@ -10,6 +10,7 @@ from __future__ import annotations
 import json
 import sqlite3
 import subprocess
+from collections.abc import Sequence
 from pathlib import Path
 from typing import Any
 
@@ -30,7 +31,7 @@ class SubprocessTestingRunnerAdapter(TestingRunnerPort):
 
     def run_mutation_testing(
         self,
-        package_dir: Path,
+        package_dir: Path | Sequence[Path],
         engine: MutationEngine = MutationEngine.GREMLINS,
         reset_cache: bool = False,
         workers: int | str | None = None,
@@ -41,7 +42,7 @@ class SubprocessTestingRunnerAdapter(TestingRunnerPort):
         """Run mutation testing on a specific package directory using the specified engine.
 
         Args:
-            package_dir: Package directory path.
+            package_dir: Package directory path or sequence of paths.
             engine: Mutation engine to use.
             reset_cache: Whether to clear incremental analysis cache.
             workers: Number of mutation workers (or 'auto') during mutation phase.
@@ -54,8 +55,24 @@ class SubprocessTestingRunnerAdapter(TestingRunnerPort):
 
         Notes/Architectural Intent:
             Dispatches to engine-specific runners while presenting a uniform mutation
-            execution port contract.
+            execution port contract. Handles sequences of package paths sequentially.
         """
+        if not isinstance(package_dir, Path):
+            exit_code = 0
+            for pkg in package_dir:
+                code = self.run_mutation_testing(
+                    package_dir=pkg,
+                    engine=engine,
+                    reset_cache=reset_cache,
+                    workers=workers,
+                    numprocesses=numprocesses,
+                    batch_size=batch_size,
+                    report_file=report_file,
+                )
+                if code != 0:
+                    exit_code = code
+            return exit_code
+
         if engine == MutationEngine.GREMLINS or str(engine).lower() == "gremlins":
             return self._run_gremlins(
                 package_dir=package_dir,

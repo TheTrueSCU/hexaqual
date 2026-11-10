@@ -18,6 +18,7 @@ import subprocess
 import sys
 import time
 import urllib.parse
+from collections.abc import Sequence
 from pathlib import Path
 from typing import Any
 from uuid import uuid4
@@ -299,7 +300,7 @@ class HexaqueueClusterRunnerAdapter(TestingRunnerPort):
             )
 
             job_spec: dict[str, Any] = {
-                "id": f"job-{run_id}-{idx}",
+                "id": f"job-{run_id}-{package_dir.name}-{idx}",
                 "run_id": run_id,
                 "name": f"mutation-{package_dir.name}-batch-{idx}",
                 "command": cmd,
@@ -324,7 +325,7 @@ class HexaqueueClusterRunnerAdapter(TestingRunnerPort):
 
     def run_mutation_testing(
         self,
-        package_dir: Path,
+        package_dir: Path | Sequence[Path],
         engine: MutationEngine = MutationEngine.GREMLINS,
         reset_cache: bool = False,
         workers: int | str | None = None,
@@ -335,7 +336,7 @@ class HexaqueueClusterRunnerAdapter(TestingRunnerPort):
         """Run mutation testing on a remote Hexaqueue cluster.
 
         Args:
-            package_dir: Directory path of package to mutate.
+            package_dir: Directory path or sequence of package directories to mutate.
             engine: Mutation engine to use (e.g. GREMLINS or MUTMUT).
             reset_cache: Whether to clear incremental analysis cache.
             workers: Number of mutation workers (or 'auto') during mutation phase.
@@ -352,33 +353,51 @@ class HexaqueueClusterRunnerAdapter(TestingRunnerPort):
         Notes/Architectural Intent:
             Converts local mutation flags into a Hexaqueue JobSpec DAG, submits it to
             POST /v1/runs, streams progress via SSE (or polling fallback), and maps
-            cluster RunOutcome to process returncode.
+            cluster RunOutcome to process returncode. Supports scheduling multiple packages
+            within a single unified run DAG to maximize cluster worker utilization.
         """
-        client = self._build_client()
-        repo_root = self._find_repo_root(package_dir)
-        collateral_id = self._stage_workspace_collateral(client, package_dir)
+        pkg_list = [package_dir] if isinstance(package_dir, Path) else list(package_dir)
 
-        run_id = f"mut-{package_dir.name}-{uuid4().hex[:8]}"
-        job_specs = self._build_mutation_job_specs(
-            run_id=run_id,
-            package_dir=package_dir,
-            repo_root=repo_root,
-            collateral_id=collateral_id,
-            engine=engine,
-            reset_cache=reset_cache,
-            workers=workers,
-            numprocesses=numprocesses,
-            batch_size=batch_size,
-            report_file=report_file,
-        )
+        if not pkg_list:
+            return 0
+
+        client = self._build_client()
+        first_pkg = pkg_list[0]
+        repo_root = self._find_repo_root(first_pkg)
+        collateral_id = self._stage_workspace_collateral(client, first_pkg)
+
+        if len(pkg_list) == 1:
+            run_id = f"mut-{first_pkg.name}-{uuid4().hex[:8]}"
+            run_name = f"Mutation Testing [{first_pkg.name}]"
+            tags = [f"package:{first_pkg.name}", "type:mutation"]
+        else:
+            run_id = f"mut-multi-{uuid4().hex[:8]}"
+            run_name = f"Mutation Testing [{len(pkg_list)} packages]"
+            tags = ["type:mutation", *(f"package:{p.name}" for p in pkg_list)]
+
+        all_job_specs: list[dict[str, Any]] = []
+        for pkg in pkg_list:
+            job_specs = self._build_mutation_job_specs(
+                run_id=run_id,
+                package_dir=pkg,
+                repo_root=repo_root,
+                collateral_id=collateral_id,
+                engine=engine,
+                reset_cache=reset_cache,
+                workers=workers,
+                numprocesses=numprocesses,
+                batch_size=batch_size,
+                report_file=report_file,
+            )
+            all_job_specs.extend(job_specs)
 
         submission_payload = {
             "run_spec": {
                 "id": run_id,
-                "name": f"Mutation Testing [{package_dir.name}]",
-                "tags": [f"package:{package_dir.name}", "type:mutation"],
+                "name": run_name,
+                "tags": tags,
             },
-            "jobs": job_specs,
+            "jobs": all_job_specs,
             "dependencies": {},
             "user_id": self._user_id,
             "elevate": self._elevate,

@@ -177,6 +177,17 @@ def test_resolve_affected_packages(tmp_path: Path) -> None:
     # 3. .github impacts all (None)
     assert resolve_affected_packages([".github/workflows/ci.yml"], repo_root=tmp_path) is None
 
+    # direct_only ignores root files and .github
+    assert (
+        resolve_affected_packages(["pyproject.toml"], repo_root=tmp_path, direct_only=True) == set()
+    )
+    assert (
+        resolve_affected_packages(
+            [".github/workflows/ci.yml"], repo_root=tmp_path, direct_only=True
+        )
+        == set()
+    )
+
     # 4. examples directory changes do NOT impact packages
     assert (
         resolve_affected_packages(["examples/financial-ledger/Dockerfile"], repo_root=tmp_path)
