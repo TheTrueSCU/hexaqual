@@ -33,6 +33,23 @@ def test_run_mutmut(tmp_path: Path):
         mock_run.assert_called_once_with(["mutmut", "run"], cwd=tmp_path)
 
 
+def test_run_mutation_testing_multiple_packages_sequential(tmp_path: Path) -> None:
+    """Verify SubprocessTestingRunnerAdapter processes multiple packages sequentially."""
+    adapter = SubprocessTestingRunnerAdapter()
+    pkg1 = tmp_path / "pkg1"
+    pkg2 = tmp_path / "pkg2"
+    pkg1.mkdir()
+    pkg2.mkdir()
+
+    with patch.object(adapter, "_run_gremlins", side_effect=[0, 1]) as mock_gremlins:
+        exit_code = adapter.run_mutation_testing(
+            package_dir=[pkg1, pkg2],
+            engine=MutationEngine.GREMLINS,
+        )
+        assert exit_code == 1
+        assert mock_gremlins.call_count == 2
+
+
 def test_read_mutmut_cache_missing_file(tmp_path: Path):
     """Verify missing mutmut cache returns empty list."""
     adapter = SubprocessTestingRunnerAdapter()

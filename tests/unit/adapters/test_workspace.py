@@ -421,6 +421,32 @@ def test_resolve_affected_packages_detailed(tmp_path: Path) -> None:
     )
     assert aff3 == {"core"}
 
+    # 4. direct_only=True ignores downstream dependents
+    aff4 = resolve_affected_packages(
+        ["packages/hexastack_core/src/hexastack_core/mod.py"],
+        repo_root=tmp_path,
+        direct_only=True,
+    )
+    assert aff4 == {"core"}
+
+    aff5 = resolve_affected_packages(
+        ["packages/hexastack_core/pyproject.toml"],
+        repo_root=tmp_path,
+        direct_only=True,
+    )
+    assert aff5 == {"core"}
+
+    # 5. Non-code files in package directory
+    aff6 = resolve_affected_packages(
+        ["packages/hexastack_core/README.md"],
+        repo_root=tmp_path,
+    )
+    assert aff6 == set()
+
+    # 6. Bare packages dir and path outside repo root
+    assert resolve_affected_packages(["packages"], repo_root=tmp_path) == set()
+    assert resolve_affected_packages(["/var/outside/path.py"], repo_root=tmp_path) == set()
+
 
 def test_local_workspace_adapter(tmp_path: Path) -> None:
     """Verify LocalWorkspaceAdapter delegates to module-level functions."""
