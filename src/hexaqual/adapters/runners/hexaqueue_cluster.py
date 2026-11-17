@@ -19,6 +19,7 @@ import sys
 import time
 import urllib.parse
 from collections.abc import Sequence
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 from uuid import uuid4
@@ -90,6 +91,9 @@ class HexaqueueClusterRunnerAdapter(TestingRunnerPort):
         self._console = console or Console()
         self._err_console = console if console is not None else Console(stderr=True)
         self._client = http_client
+        self._heartbeat_interval = 30.0
+        self._last_status_snapshot: tuple[Any, int, int, int, int] | None = None
+        self._last_print_time: float = 0.0
         self._validate_security()
 
     def _validate_security(self) -> None:
@@ -544,6 +548,8 @@ class HexaqueueClusterRunnerAdapter(TestingRunnerPort):
         self._console.print(
             f"[bold blue]Submitting workload to Hexaqueue cluster:[/bold blue] {run_id}"
         )
+        self._last_status_snapshot = None
+        self._last_print_time = 0.0
         try:
             try:
                 resp = client.post(submit_url, json=payload, headers=self._get_headers())
@@ -558,10 +564,33 @@ class HexaqueueClusterRunnerAdapter(TestingRunnerPort):
                 )
                 return 1
 
+            self._emit_step_summary(run_id, payload)
             return self._stream_run_progress(client=client, run_id=run_id)
         finally:
             if should_close:
                 client.close()
+
+    def _emit_step_summary(self, run_id: str, payload: dict[str, Any]) -> None:
+        """Append run and job inspection CLI commands to GITHUB_STEP_SUMMARY."""
+        summary_path = os.environ.get("GITHUB_STEP_SUMMARY", "").strip()
+        if not summary_path:
+            return
+        jobs = payload.get("jobs", [])
+        job_ids = [str(j["id"]) for j in jobs if isinstance(j, dict) and j.get("id")]
+        lines = [
+            f"### Hexaqueue Remote Run: `{run_id}`\n",
+            f"- **Run Status**: `hq status {run_id}`",
+            "- **Live Monitor**: `hq top`",
+        ]
+        for job_id in job_ids[:10]:
+            lines.append(f"- **Job Logs**: `hq logs {job_id}`")
+        if len(job_ids) > 10:
+            lines.append(f"- _...and {len(job_ids) - 10} more jobs (`hq status {run_id}`)_")
+        with (
+            contextlib.suppress(OSError),
+            Path(summary_path).open("a", encoding="utf-8") as fh,
+        ):
+            fh.write("\n".join(lines) + "\n\n")
 
     def _stream_run_progress(self, client: httpx.Client, run_id: str) -> int:
         """Stream SSE run progress pulses, falling back to polling if necessary."""
@@ -570,7 +599,7 @@ class HexaqueueClusterRunnerAdapter(TestingRunnerPort):
         params = {"poll_interval": self._poll_interval, "timeout": self._timeout}
         stream_timeout = httpx.Timeout(
             timeout=float(self._timeout),
-            read=min(max(float(self._poll_interval) * 3, 5.0), float(self._timeout)),
+            read=min(max(float(self._poll_interval) * 3, 65.0), float(self._timeout)),
         )
 
         try:
@@ -611,14 +640,26 @@ class HexaqueueClusterRunnerAdapter(TestingRunnerPort):
         running = data.get("running_jobs", 0)
         outcome = data.get("outcome")
 
-        self._console.print(
-            f"[dim][Hexaqueue][/dim] State: [cyan]{state}[/cyan] | "
-            f"Progress: [green]{completed}/{total}[/green] completed, "
-            f"[yellow]{running}[/yellow] running, "
-            f"[red]{failed}[/red] failed"
+        snapshot = (state, completed, total, running, failed)
+        is_terminal = state == "DONE" or outcome is not None
+        now = time.monotonic()
+        should_print = (
+            is_terminal
+            or snapshot != self._last_status_snapshot
+            or (now - self._last_print_time) >= self._heartbeat_interval
         )
+        if should_print:
+            self._last_status_snapshot = snapshot
+            self._last_print_time = now
+            timestamp = datetime.now(UTC).strftime("%Y-%m-%d %H:%M:%S UTC")
+            self._console.print(
+                f"[dim][Hexaqueue {timestamp}][/dim] State: [cyan]{state}[/cyan] | "
+                f"Progress: [green]{completed}/{total}[/green] completed, "
+                f"[yellow]{running}[/yellow] running, "
+                f"[red]{failed}[/red] failed"
+            )
 
-        if state == "DONE" or outcome is not None:
+        if is_terminal:
             if outcome in ("FAILED", "failed", "CANCELLED", "cancelled"):
                 err = data.get("error") or data.get("failure_reason") or data.get("message")
                 if err:
