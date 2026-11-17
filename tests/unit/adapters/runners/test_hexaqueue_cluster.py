@@ -921,3 +921,73 @@ def test_run_mutation_testing_empty_package_list() -> None:
     adapter = HexaqueueClusterRunnerAdapter(cluster_url="http://localhost:8000")
     res = adapter.run_mutation_testing(package_dir=[])
     assert res == 0
+
+
+def test_process_sse_data_deduplicates_unchanged_status_with_heartbeat() -> None:
+    """Verify _process_sse_data prints on change or heartbeat and includes UTC timestamp."""
+    console = MagicMock()
+    adapter = HexaqueueClusterRunnerAdapter(
+        cluster_url="http://localhost:8000",
+        console=console,
+    )
+    adapter._heartbeat_interval = 30.0
+
+    payload_1 = json.dumps(
+        {
+            "state": "RUNNING",
+            "completed_jobs": 1,
+            "total_jobs": 4,
+            "running_jobs": 3,
+            "failed_jobs": 0,
+        }
+    )
+    adapter._process_sse_data(payload_1)
+    first_count = console.print.call_count
+    assert first_count == 1
+    first_msg = str(console.print.call_args[0][0])
+    assert "UTC]" in first_msg
+
+    # Same snapshot before heartbeat interval should not print again
+    adapter._process_sse_data(payload_1)
+    second_count = console.print.call_count
+    assert second_count == 1
+
+    # Changed snapshot prints immediately
+    payload_2 = json.dumps(
+        {
+            "state": "RUNNING",
+            "completed_jobs": 2,
+            "total_jobs": 4,
+            "running_jobs": 2,
+            "failed_jobs": 0,
+        }
+    )
+    adapter._process_sse_data(payload_2)
+    third_count = console.print.call_count
+    assert third_count == 2
+
+    # Force heartbeat expiration for unchanged snapshot
+    adapter._last_print_time -= 35.0
+    adapter._process_sse_data(payload_2)
+    fourth_count = console.print.call_count
+    assert fourth_count == 3
+
+
+def test_emit_step_summary_writes_run_and_job_commands(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Verify _emit_step_summary writes run and job CLI commands to GITHUB_STEP_SUMMARY."""
+    summary_file = tmp_path / "step_summary.md"
+    monkeypatch.setenv("GITHUB_STEP_SUMMARY", str(summary_file))
+
+    adapter = HexaqueueClusterRunnerAdapter()
+    adapter._emit_step_summary(
+        "run-abc-123",
+        {"jobs": [{"id": "job-1"}, {"id": "job-2"}]},
+    )
+
+    content = summary_file.read_text(encoding="utf-8")
+    assert "run-abc-123" in content
+    assert "hq status run-abc-123" in content
+    assert "hq logs job-1" in content
+    assert "hq logs job-2" in content
