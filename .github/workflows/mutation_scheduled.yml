@@ -22,11 +22,21 @@ jobs:
         id: discover
         run: python3 .github/scripts/discover_mutation_slices.py >> "$GITHUB_OUTPUT"
 
+      - name: Install uv
+        uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+        with:
+          enable-cache: true
+
+      - name: Visualize Pipeline DAG & Critical Path via Hexaflow
+        if: always()
+        run: |
+          uvx --python 3.13 --from "hexaflow>=0.5.0" hexaflow graph render .github/workflows/mutation_scheduled.yml --summary --critical-path
+
   mutation-audit:
     name: Mutation Audit (${{ matrix.name }})
     needs: discover-slices
     runs-on: ubuntu-latest
-    timeout-minutes: 45
+    timeout-minutes: 25
     strategy:
       fail-fast: false
       matrix: ${{ fromJson(needs.discover-slices.outputs.matrix) }}
@@ -40,11 +50,6 @@ jobs:
         uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
         with:
           enable-cache: true
-
-      - name: Visualize Pipeline DAG & Critical Path via Hexaflow
-        if: always()
-        run: |
-          uvx --python 3.13 --from "hexaflow>=0.5.0" hexaflow graph render .github/workflows/mutation_scheduled.yml --summary --critical-path
 
       - name: Set up Python
         uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
@@ -65,8 +70,7 @@ jobs:
 
       - name: Generate Mutation Triage Summary
         if: always()
-        run: |
-          uv run hexaqual mutate inspect -s -f markdown >> "$GITHUB_STEP_SUMMARY" || true
+        run: uv run hexaqual mutate inspect -s || true
 
       - name: Upload Mutation Audit Artifacts
         if: always()
@@ -74,6 +78,25 @@ jobs:
         with:
           name: mutation-audit-report-${{ matrix.name }}
           path: |
-            .gremlins-cache/
-            .mutmut-cache
+            coverage/gremlins/
+            .gremlins_cache/
+          if-no-files-found: ignore
           retention-days: 14
+
+  audit-success:
+    name: Mutation Audit Success (All Slices)
+    needs:
+      - discover-slices
+      - mutation-audit
+    if: ${{ always() }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Verify All Mutation Slices Passed
+        run: |
+          echo "### Scheduled Mutation Audit Summary" >> "$GITHUB_STEP_SUMMARY"
+          echo "- **Discover Slices**: ${{ needs.discover-slices.result }}" >> "$GITHUB_STEP_SUMMARY"
+          echo "- **Mutation Audit**: ${{ needs.mutation-audit.result }}" >> "$GITHUB_STEP_SUMMARY"
+          if [ "${{ needs.discover-slices.result }}" != "success" ] || [ "${{ needs.mutation-audit.result }}" != "success" ]; then
+            echo "::error::One or more mutation audit slices failed."
+            exit 1
+          fi
