@@ -1,5 +1,15 @@
 # CHANGELOG
 
+## v0.10.6 (2026-11-17)
+
+### Fixes & Improvements
+* **Hexaqueue Cluster Runner Observability**:
+  - Timestamped (`UTC`) and 30s-throttled `[Hexaqueue ...]` SSE/poll status heartbeats in `HexaqueueClusterRunnerAdapter`.
+  - Appended `hq status <run_id>`, `hq top`, and `hq logs <job_id>` inspection commands to `GITHUB_STEP_SUMMARY` upon remote run submission.
+* **Mutation Testing Scoping & Guardrails**:
+  - Scoped `pytest-gremlins` invocations in `SubprocessTestingRunnerAdapter._run_gremlins` and `HexaqueueClusterRunnerAdapter._build_pytest_args` to `tests/unit` when present, avoiding e2e, demo, integration, and benchmark suites during mutation sweeps.
+  - Enabled `--gremlin-cache` and `--gremlin-mutant-timeout=30` to prevent runaway mutant loops.
+
 ## v0.10.5 (2026-11-10)
 
 ### Highlights & Features
