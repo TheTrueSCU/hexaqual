@@ -125,6 +125,7 @@ class SubprocessTestingRunnerAdapter(TestingRunnerPort):
         cmd.append("--gremlin-batch")
         cmd.append("--gremlin-mutant-timeout=30")
         cmd.append("--gremlin-cache")
+        cmd.extend(["-m", "not demo and not e2e and not integration"])
 
         if numprocesses is not None:
             cmd.extend(["-n", str(numprocesses)])

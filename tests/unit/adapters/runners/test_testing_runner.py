@@ -229,6 +229,8 @@ def test_run_gremlins(tmp_path: Path):
             "--gremlin-batch",
             "--gremlin-mutant-timeout=30",
             "--gremlin-cache",
+            "-m",
+            "not demo and not e2e and not integration",
             "-n",
             "4",
             f"--gremlins-html-dir={tmp_path / 'coverage' / 'gremlins'}",

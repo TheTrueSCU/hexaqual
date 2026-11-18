@@ -978,6 +978,7 @@ def test_emit_step_summary_writes_run_and_job_commands(
 ) -> None:
     """Verify _emit_step_summary writes run and job CLI commands to GITHUB_STEP_SUMMARY."""
     summary_file = tmp_path / "step_summary.md"
+    monkeypatch.delenv("PYTEST_CURRENT_TEST", raising=False)
     monkeypatch.setenv("GITHUB_STEP_SUMMARY", str(summary_file))
 
     adapter = HexaqueueClusterRunnerAdapter()

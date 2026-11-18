@@ -250,6 +250,10 @@ def test_create_governance_bus_wires_and_dispatches():
             "hexaqual.infra.handlers.generators.resolve_impacted_usage_targets",
             return_value=[],
         ),
+        patch(
+            "hexaqual.infra.handlers.generators._process_target_file",
+            return_value=("up_to_date", "USAGE.md", ""),
+        ),
     ):
         usage_res = bus.dispatch(GenerateUsageDocsCommand(check_only=True))
         assert isinstance(usage_res, UsageDocsReport)

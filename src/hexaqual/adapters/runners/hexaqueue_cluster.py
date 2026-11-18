@@ -525,6 +525,7 @@ class HexaqueueClusterRunnerAdapter(TestingRunnerPort):
             args.append(f"--gremlin-batch-size={eff_batch}")
             args.append("--gremlin-batch")
             args.append("--gremlin-mutant-timeout=30")
+            args.extend(["-m", "not demo and not e2e and not integration"])
 
             if numprocesses is not None:
                 args.extend(["-n", str(numprocesses)])
@@ -575,6 +576,8 @@ class HexaqueueClusterRunnerAdapter(TestingRunnerPort):
 
     def _emit_step_summary(self, run_id: str, payload: dict[str, Any]) -> None:
         """Append run and job inspection CLI commands to GITHUB_STEP_SUMMARY."""
+        if os.environ.get("PYTEST_CURRENT_TEST"):
+            return
         summary_path = os.environ.get("GITHUB_STEP_SUMMARY", "").strip()
         if not summary_path:
             return
