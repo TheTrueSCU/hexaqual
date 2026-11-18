@@ -1,5 +1,14 @@
 # CHANGELOG
 
+## v0.10.7 (2026-11-18)
+
+### Fixes & Improvements
+* **Mutation Testing Scoping, Matrix Sharding & CI Guardrails**:
+  - Excluded `demo`, `e2e`, and `integration` pytest markers (`-m "not demo and not e2e and not integration"`) from `SubprocessTestingRunnerAdapter._run_gremlins` and `HexaqueueClusterRunnerAdapter._build_pytest_args`.
+  - Guarded `HexaqueueClusterRunnerAdapter._emit_step_summary` to skip writing to `$GITHUB_STEP_SUMMARY` when `PYTEST_CURRENT_TEST` is active so unit tests never pollute CI job summaries.
+  - Added LPT greedy bin-packing matrix sharding (`.github/scripts/discover_mutation_slices.py`) and consolidated summary aggregation (`.github/scripts/aggregate_mutation_summary.py`) for `mutation_scheduled.yml`.
+  - Fortified `tests/unit/domain/test_openssf.py` (`CRITERIA_CATALOG` `met_url_required` set and defaults), raising `domain/openssf.py` mutation score from 4.5% to 96%.
+
 ## v0.10.6 (2026-11-17)
 
 ### Fixes & Improvements
