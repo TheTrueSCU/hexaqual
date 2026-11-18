@@ -61,11 +61,11 @@ jobs:
 
       - name: Execute Mutation Sweep
         run: |
-          uv run pytest --rootdir=. -o addopts= --cov=src --cov-fail-under=0 --gremlins \
+          uv run pytest --rootdir=. -o addopts= --gremlins \
             --gremlin-targets="${{ matrix.targets }}" \
             --gremlin-workers=auto --gremlin-batch-size=10 --gremlin-batch \
             --gremlin-mutant-timeout=30 --gremlin-cache \
-            -m "not demo and not e2e and not integration" -n auto \
+            -m "not demo and not e2e and not integration" \
             --gremlin-report=json,console tests/unit
 
       - name: Generate Mutation Triage Summary
