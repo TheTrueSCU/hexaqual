@@ -202,6 +202,7 @@ def test_run_gremlins(tmp_path: Path):
     """Verify run_mutation_testing with gremlins engine invokes pytest with expected options."""
     adapter = SubprocessTestingRunnerAdapter()
 
+    (tmp_path / "tests" / "unit").mkdir(parents=True)
     with patch("subprocess.run") as mock_run:
         mock_run.return_value = MagicMock(returncode=0)
         code = adapter.run_mutation_testing(
@@ -226,10 +227,13 @@ def test_run_gremlins(tmp_path: Path):
             "--gremlin-workers=auto",
             "--gremlin-batch-size=10",
             "--gremlin-batch",
+            "--gremlin-mutant-timeout=30",
+            "--gremlin-cache",
             "-n",
             "4",
             f"--gremlins-html-dir={tmp_path / 'coverage' / 'gremlins'}",
             "--gremlin-report=json,console",
+            "tests/unit",
         ]
         mock_run.assert_called_once_with(expected_cmd, cwd=tmp_path)
 

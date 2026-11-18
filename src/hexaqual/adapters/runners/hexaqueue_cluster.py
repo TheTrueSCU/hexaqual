@@ -524,6 +524,7 @@ class HexaqueueClusterRunnerAdapter(TestingRunnerPort):
             eff_batch = batch_size if batch_size is not None else 10
             args.append(f"--gremlin-batch-size={eff_batch}")
             args.append("--gremlin-batch")
+            args.append("--gremlin-mutant-timeout=30")
 
             if numprocesses is not None:
                 args.extend(["-n", str(numprocesses)])
@@ -533,6 +534,8 @@ class HexaqueueClusterRunnerAdapter(TestingRunnerPort):
             if report_file is not None:
                 args.append(f"--gremlins-html-dir={report_file.parent}")
             args.append("--gremlin-report=json,console")
+            if (package_dir / "tests" / "unit").is_dir():
+                args.append("tests/unit")
             return cmd, args
 
         cmd = "mutmut"
