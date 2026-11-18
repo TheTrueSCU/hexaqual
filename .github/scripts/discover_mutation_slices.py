@@ -1,9 +1,9 @@
 """Discover balanced mutation testing slices for GitHub Actions matrix execution.
 
 Notes/Architectural Intent:
-    Emits a single ``matrix=<json>`` line suitable for ``$GITHUB_OUTPUT`` by
-    splitting ``domain``, ``ports``, ``cli``, ``infra``, each ``adapters/``
-    subdirectory, and top-level ``adapters/*.py`` modules into independent slices.
+    Globs all Python source modules under ``src/hexaqual`` and uses
+    Longest-Processing-Time-first (LPT) greedy bin-packing by line count to
+    partition ``--gremlin-targets`` into balanced matrix slices.
 """
 
 from __future__ import annotations
@@ -11,55 +11,45 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
+DEFAULT_NUM_SLICES = 12
 
-def build_mutation_slices(root: Path = Path("src/hexaqual")) -> list[dict[str, str]]:
-    """Build ordered list of mutation target slices under ``root``.
+
+def build_mutation_slices(
+    root: Path = Path("src/hexaqual"),
+    num_slices: int = DEFAULT_NUM_SLICES,
+) -> list[dict[str, str]]:
+    """Partition Python source files under ``root`` into balanced slices.
 
     Args:
         root: Package source directory to partition into slices.
+        num_slices: Maximum number of parallel matrix slices.
 
     Returns:
         List of ``{"name": ..., "targets": ...}`` dictionaries.
     """
-    slices: list[dict[str, str]] = []
-    for layer in ("domain", "ports", "cli"):
-        layer_dir = root / layer
-        if layer_dir.is_dir():
-            slices.append({"name": layer, "targets": str(layer_dir)})
+    files = [
+        (len(path.read_text(encoding="utf-8").splitlines()), str(path))
+        for path in sorted(root.rglob("*.py"))
+        if path.name != "__init__.py" and "__pycache__" not in path.parts
+    ]
+    if not files:
+        return []
 
-    infra_dir = root / "infra"
-    if infra_dir.is_dir():
-        infra_root = sorted(str(f) for f in infra_dir.glob("*.py") if f.name != "__init__.py")
-        if infra_root:
-            slices.append({"name": "infra-root", "targets": ",".join(infra_root)})
-        handlers_dir = infra_dir / "handlers"
-        if handlers_dir.is_dir():
-            handler_files = sorted(
-                str(f) for f in handlers_dir.glob("*.py") if f.name != "__init__.py"
-            )
-            mid = (len(handler_files) + 1) // 2
-            if handler_files[:mid]:
-                slices.append(
-                    {"name": "infra-handlers-1", "targets": ",".join(handler_files[:mid])}
-                )
-            if handler_files[mid:]:
-                slices.append(
-                    {"name": "infra-handlers-2", "targets": ",".join(handler_files[mid:])}
-                )
+    files.sort(key=lambda item: (-item[0], item[1]))
+    bucket_count = min(max(num_slices, 1), len(files))
+    buckets: list[tuple[int, list[str]]] = [(0, []) for _ in range(bucket_count)]
 
-    adapters_dir = root / "adapters"
-    if adapters_dir.is_dir():
-        for subdir in sorted(adapters_dir.iterdir()):
-            if subdir.is_dir() and subdir.name != "__pycache__":
-                slices.append({"name": f"adapters-{subdir.name}", "targets": str(subdir)})
-        top_files = sorted(
-            str(file_path)
-            for file_path in adapters_dir.glob("*.py")
-            if file_path.name != "__init__.py"
-        )
-        if top_files:
-            slices.append({"name": "adapters-root", "targets": ",".join(top_files)})
-    return slices
+    for line_count, rel_path in files:
+        min_idx = min(range(bucket_count), key=lambda idx: buckets[idx][0])
+        cur_lines, cur_paths = buckets[min_idx]
+        cur_paths.append(rel_path)
+        buckets[min_idx] = (cur_lines + line_count, cur_paths)
+
+    return [
+        {"name": f"slice-{idx + 1:02d}", "targets": ",".join(sorted(paths))}
+        for idx, (_lines, paths) in enumerate(buckets)
+        if paths
+    ]
 
 
 def main() -> None:
