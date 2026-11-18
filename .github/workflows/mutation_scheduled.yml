@@ -61,16 +61,13 @@ jobs:
 
       - name: Execute Mutation Sweep
         run: |
+          unset GITHUB_STEP_SUMMARY
           uv run pytest --rootdir=. -o addopts= --gremlins \
             --gremlin-targets="${{ matrix.targets }}" \
             --gremlin-workers=auto --gremlin-batch-size=10 --gremlin-batch \
             --gremlin-mutant-timeout=30 --gremlin-cache \
             -m "not demo and not e2e and not integration" \
             --gremlin-report=json,console tests/unit
-
-      - name: Generate Mutation Triage Summary
-        if: always()
-        run: GITHUB_STEP_SUMMARY="" uv run hexaqual mutate inspect -s || true
 
       - name: Upload Mutation Audit Artifacts
         if: always()
@@ -90,12 +87,28 @@ jobs:
       - mutation-audit
     if: ${{ always() }}
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      actions: read
     steps:
+      - name: Checkout Repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+
+      - name: Download Slice Artifacts & Emit Consolidated Summary
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh run download "${{ github.run_id }}" --pattern "mutation-audit-report-*" --dir artifacts || true
+          {
+            echo "### Scheduled Mutation Audit Status"
+            echo "- **Discover Slices**: ${{ needs.discover-slices.result }}"
+            echo "- **Mutation Audit**: ${{ needs.mutation-audit.result }}"
+            echo ""
+            python3 .github/scripts/aggregate_mutation_summary.py artifacts
+          } >> "$GITHUB_STEP_SUMMARY"
+
       - name: Verify All Mutation Slices Passed
         run: |
-          echo "### Scheduled Mutation Audit Summary" >> "$GITHUB_STEP_SUMMARY"
-          echo "- **Discover Slices**: ${{ needs.discover-slices.result }}" >> "$GITHUB_STEP_SUMMARY"
-          echo "- **Mutation Audit**: ${{ needs.mutation-audit.result }}" >> "$GITHUB_STEP_SUMMARY"
           if [ "${{ needs.discover-slices.result }}" != "success" ] || [ "${{ needs.mutation-audit.result }}" != "success" ]; then
             echo "::error::One or more mutation audit slices failed."
             exit 1
