@@ -70,7 +70,7 @@ jobs:
 
       - name: Generate Mutation Triage Summary
         if: always()
-        run: uv run hexaqual mutate inspect -s || true
+        run: GITHUB_STEP_SUMMARY="" uv run hexaqual mutate inspect -s || true
 
       - name: Upload Mutation Audit Artifacts
         if: always()
