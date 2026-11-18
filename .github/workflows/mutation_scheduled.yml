@@ -10,8 +10,25 @@ permissions:
 
 jobs:
   mutation-audit:
-    name: Mutation Audit
+    name: Mutation Audit (${{ matrix.name }})
     runs-on: ubuntu-latest
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: domain-ports
+            targets: src/hexaqual/domain,src/hexaqual/ports
+          - name: cli
+            targets: src/hexaqual/cli
+          - name: infra
+            targets: src/hexaqual/infra
+          - name: adapters-core
+            targets: src/hexaqual/adapters/runners,src/hexaqual/adapters/testing,src/hexaqual/adapters/github,src/hexaqual/adapters/pypi,src/hexaqual/adapters/hooks
+          - name: adapters-analysis
+            targets: src/hexaqual/adapters/code_analysis,src/hexaqual/adapters/generators,src/hexaqual/adapters/publishers,src/hexaqual/adapters/dependencies
+          - name: adapters-root
+            targets: src/hexaqual/adapters/workspace.py,src/hexaqual/adapters/openssf.py
     steps:
       - name: Checkout Repository
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
@@ -37,7 +54,13 @@ jobs:
         run: uv sync --all-extras --all-groups
 
       - name: Execute Mutation Sweep
-        run: uv run hexaqual mutate run -e gremlins -w auto --batch-size 10 -n auto
+        run: |
+          uv run pytest --rootdir=. -o addopts= --cov=src --cov-fail-under=0 --gremlins \
+            --gremlin-targets="${{ matrix.targets }}" \
+            --gremlin-workers=auto --gremlin-batch-size=10 --gremlin-batch \
+            --gremlin-mutant-timeout=30 --gremlin-cache \
+            -m "not demo and not e2e and not integration" -n auto \
+            --gremlin-report=json,console tests/unit
 
       - name: Generate Mutation Triage Summary
         if: always()
@@ -48,7 +71,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v4
         with:
-          name: mutation-audit-report
+          name: mutation-audit-report-${{ matrix.name }}
           path: |
             .gremlins-cache/
             .mutmut-cache
