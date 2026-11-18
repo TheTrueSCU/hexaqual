@@ -5,6 +5,7 @@ import tempfile
 from pathlib import Path
 from typing import Any
 
+import pytest
 import typer
 
 from hexaqual.adapters.testing.narrator import CliNarrator
@@ -28,6 +29,7 @@ def test_cli_narrator_fast_execution():
     assert artifacts == {}
 
 
+@pytest.mark.demo
 def test_cli_narrator_demo_recording_mode():
     """Verify CliNarrator exports .vtt subtitle file when RECORD_DEMO=1."""
     app = typer.Typer()

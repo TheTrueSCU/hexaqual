@@ -525,6 +525,7 @@ class HexaqueueClusterRunnerAdapter(TestingRunnerPort):
             args.append(f"--gremlin-batch-size={eff_batch}")
             args.append("--gremlin-batch")
             args.append("--gremlin-mutant-timeout=30")
+            args.extend(["-m", "not demo and not e2e and not integration"])
 
             if numprocesses is not None:
                 args.extend(["-n", str(numprocesses)])
