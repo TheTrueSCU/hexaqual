@@ -104,10 +104,79 @@ def test_criteria_catalog_and_definition() -> None:
     assert found_defn.criterion_id == "dco"
     assert found_defn.tier == OpenSsfTier.SILVER
     assert found_defn.met_url_required is True
+    assert OpenSsfCriteriaCatalog.get("nonexistent-criterion") is None
+
+    # Verify exact set of (tier, criterion_id) requiring met_url
+    actual_url_required = sorted(
+        (d.tier.value, d.criterion_id)
+        for items in CRITERIA_CATALOG.values()
+        for d in items
+        if d.met_url_required
+    )
+    expected_url_required = [
+        ("gold", "build_reproducible"),
+        ("gold", "bus_factor"),
+        ("gold", "code_review_standards"),
+        ("gold", "contributors_unassociated"),
+        ("gold", "hardened_site"),
+        ("gold", "hardening"),
+        ("gold", "small_tasks"),
+        ("gold", "test_continuous_integration"),
+        ("gold", "test_invocation"),
+        ("passing", "contribution"),
+        ("passing", "contribution_requirements"),
+        ("passing", "license_location"),
+        ("passing", "release_notes"),
+        ("passing", "report_archive"),
+        ("passing", "report_process"),
+        ("passing", "vulnerability_report_private"),
+        ("passing", "vulnerability_report_process"),
+        ("silver", "access_continuity"),
+        ("silver", "assurance_case"),
+        ("silver", "bus_factor"),
+        ("silver", "code_of_conduct"),
+        ("silver", "coding_standards"),
+        ("silver", "contribution_requirements"),
+        ("silver", "dco"),
+        ("silver", "documentation_achievements"),
+        ("silver", "documentation_architecture"),
+        ("silver", "documentation_quick_start"),
+        ("silver", "documentation_roadmap"),
+        ("silver", "documentation_security"),
+        ("silver", "external_dependencies"),
+        ("silver", "governance"),
+        ("silver", "roles_responsibilities"),
+        ("silver", "vulnerability_report_credit"),
+        ("silver", "vulnerability_response_process"),
+    ]
+    assert actual_url_required == expected_url_required
 
     # Test immutability of the catalog view
     assert isinstance(CRITERIA_CATALOG, MappingProxyType)
     assert hasattr(CRITERIA_CATALOG, "__setitem__") is False
+
+
+def test_openssf_check_result_and_definition_defaults() -> None:
+    """Test OpenSsfCheckResult and OpenSsfCriterionDefinition defaults."""
+    from hexaqual.domain.openssf import OpenSsfCheckResult
+
+    defn = OpenSsfCriterionDefinition(
+        criterion_id="custom", tier=OpenSsfTier.PASSING, category="MUST"
+    )
+    assert defn.met_url_required is False
+
+    check_res = OpenSsfCheckResult(
+        passed=False,
+        tier=OpenSsfTier.PASSING,
+        badge_level="in_progress",
+        score=80,
+        min_score=100,
+    )
+    assert check_res.passed is False
+    assert check_res.score == 80
+    assert check_res.min_score == 100
+    assert check_res.unmet_must == []
+    assert check_res.errors == []
 
 
 def test_scorecard_models() -> None:
