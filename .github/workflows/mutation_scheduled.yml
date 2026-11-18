@@ -9,14 +9,18 @@ permissions:
   contents: read
 
 jobs:
-  mutation-audit:
-    name: Mutation Audit
+  discover-slices:
+    name: Discover Mutation Slices
     runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.discover.outputs.matrix }}
     steps:
       - name: Checkout Repository
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
-        with:
-          fetch-depth: 0
+
+      - name: Build Dynamic Slice Matrix
+        id: discover
+        run: python3 .github/scripts/discover_mutation_slices.py >> "$GITHUB_OUTPUT"
 
       - name: Install uv
         uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
@@ -28,6 +32,25 @@ jobs:
         run: |
           uvx --python 3.13 --from "hexaflow>=0.5.0" hexaflow graph render .github/workflows/mutation_scheduled.yml --summary --critical-path
 
+  mutation-audit:
+    name: Mutation Audit (${{ matrix.name }})
+    needs: discover-slices
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJson(needs.discover-slices.outputs.matrix) }}
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          fetch-depth: 0
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+        with:
+          enable-cache: true
+
       - name: Set up Python
         uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
         with:
@@ -37,19 +60,43 @@ jobs:
         run: uv sync --all-extras --all-groups
 
       - name: Execute Mutation Sweep
-        run: uv run hexaqual mutate run -e gremlins -w auto --batch-size 10 -n auto
+        run: |
+          uv run pytest --rootdir=. -o addopts= --gremlins \
+            --gremlin-targets="${{ matrix.targets }}" \
+            --gremlin-workers=auto --gremlin-batch-size=10 --gremlin-batch \
+            --gremlin-mutant-timeout=30 --gremlin-cache \
+            -m "not demo and not e2e and not integration" \
+            --gremlin-report=json,console tests/unit
 
       - name: Generate Mutation Triage Summary
         if: always()
-        run: |
-          uv run hexaqual mutate inspect -s -f markdown >> "$GITHUB_STEP_SUMMARY" || true
+        run: GITHUB_STEP_SUMMARY="" uv run hexaqual mutate inspect -s || true
 
       - name: Upload Mutation Audit Artifacts
         if: always()
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v4
         with:
-          name: mutation-audit-report
+          name: mutation-audit-report-${{ matrix.name }}
           path: |
-            .gremlins-cache/
-            .mutmut-cache
+            coverage/gremlins/
+            .gremlins_cache/
+          if-no-files-found: ignore
           retention-days: 14
+
+  audit-success:
+    name: Mutation Audit Success (All Slices)
+    needs:
+      - discover-slices
+      - mutation-audit
+    if: ${{ always() }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Verify All Mutation Slices Passed
+        run: |
+          echo "### Scheduled Mutation Audit Summary" >> "$GITHUB_STEP_SUMMARY"
+          echo "- **Discover Slices**: ${{ needs.discover-slices.result }}" >> "$GITHUB_STEP_SUMMARY"
+          echo "- **Mutation Audit**: ${{ needs.mutation-audit.result }}" >> "$GITHUB_STEP_SUMMARY"
+          if [ "${{ needs.discover-slices.result }}" != "success" ] || [ "${{ needs.mutation-audit.result }}" != "success" ]; then
+            echo "::error::One or more mutation audit slices failed."
+            exit 1
+          fi
