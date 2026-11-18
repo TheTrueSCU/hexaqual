@@ -60,9 +60,8 @@ jobs:
         run: uv sync --all-extras --all-groups
 
       - name: Execute Mutation Sweep
-        env:
-          GITHUB_STEP_SUMMARY: ""
         run: |
+          unset GITHUB_STEP_SUMMARY
           uv run pytest --rootdir=. -o addopts= --gremlins \
             --gremlin-targets="${{ matrix.targets }}" \
             --gremlin-workers=auto --gremlin-batch-size=10 --gremlin-batch \
