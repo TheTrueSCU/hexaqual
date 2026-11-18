@@ -9,26 +9,27 @@ permissions:
   contents: read
 
 jobs:
+  discover-slices:
+    name: Discover Mutation Slices
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.discover.outputs.matrix }}
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+
+      - name: Build Dynamic Slice Matrix
+        id: discover
+        run: python3 .github/scripts/discover_mutation_slices.py >> "$GITHUB_OUTPUT"
+
   mutation-audit:
     name: Mutation Audit (${{ matrix.name }})
+    needs: discover-slices
     runs-on: ubuntu-latest
     timeout-minutes: 45
     strategy:
       fail-fast: false
-      matrix:
-        include:
-          - name: domain-ports
-            targets: src/hexaqual/domain,src/hexaqual/ports
-          - name: cli
-            targets: src/hexaqual/cli
-          - name: infra
-            targets: src/hexaqual/infra
-          - name: adapters-core
-            targets: src/hexaqual/adapters/runners,src/hexaqual/adapters/testing,src/hexaqual/adapters/github,src/hexaqual/adapters/pypi,src/hexaqual/adapters/hooks
-          - name: adapters-analysis
-            targets: src/hexaqual/adapters/code_analysis,src/hexaqual/adapters/generators,src/hexaqual/adapters/publishers,src/hexaqual/adapters/dependencies
-          - name: adapters-root
-            targets: src/hexaqual/adapters/workspace.py,src/hexaqual/adapters/openssf.py
+      matrix: ${{ fromJson(needs.discover-slices.outputs.matrix) }}
     steps:
       - name: Checkout Repository
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
