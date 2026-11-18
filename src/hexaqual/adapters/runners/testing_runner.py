@@ -123,6 +123,8 @@ class SubprocessTestingRunnerAdapter(TestingRunnerPort):
         effective_batch_size = batch_size if batch_size is not None else 10
         cmd.append(f"--gremlin-batch-size={effective_batch_size}")
         cmd.append("--gremlin-batch")
+        cmd.append("--gremlin-mutant-timeout=30")
+        cmd.append("--gremlin-cache")
 
         if numprocesses is not None:
             cmd.extend(["-n", str(numprocesses)])
@@ -134,6 +136,9 @@ class SubprocessTestingRunnerAdapter(TestingRunnerPort):
             cmd.append("--gremlin-report=json,console")
         else:
             cmd.append("--gremlin-report=json,console")
+
+        if (package_dir / "tests" / "unit").is_dir():
+            cmd.append("tests/unit")
 
         res = subprocess.run(cmd, cwd=package_dir)
         return res.returncode
