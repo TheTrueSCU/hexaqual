@@ -258,6 +258,7 @@ class HexaqueueClusterRunnerAdapter(TestingRunnerPort):
         numprocesses: int | str | None,
         batch_size: int | None,
         report_file: Path | None,
+        targets: Sequence[str] | None = None,
     ) -> list[dict[str, Any]]:
         """Construct constituent JobSpecs for mutation testing across worker slots.
 
@@ -281,16 +282,20 @@ class HexaqueueClusterRunnerAdapter(TestingRunnerPort):
         except ValueError:
             rel_cwd = package_dir.resolve()
 
-        targets: list[str] = []
+        resolved_targets: list[str] = []
         slice_count = 1
         if engine == MutationEngine.GREMLINS or str(engine).lower() == "gremlins":
-            targets = self._collect_mutation_targets(package_dir)
+            resolved_targets = (
+                [t.strip() for t in targets if t.strip()]
+                if targets
+                else self._collect_mutation_targets(package_dir)
+            )
             if isinstance(workers, int) and workers > 1:
                 slice_count = workers
             elif workers == "auto" or workers is None:
                 slice_count = 4
 
-        target_groups = self._partition_targets(targets, slice_count)
+        target_groups = self._partition_targets(resolved_targets, slice_count)
         job_specs: list[dict[str, Any]] = []
 
         for idx, group in enumerate(target_groups):
@@ -338,6 +343,7 @@ class HexaqueueClusterRunnerAdapter(TestingRunnerPort):
         numprocesses: int | str | None = None,
         batch_size: int | None = None,
         report_file: Path | None = None,
+        targets: Sequence[str] | None = None,
     ) -> int:
         """Run mutation testing on a remote Hexaqueue cluster.
 
@@ -394,6 +400,7 @@ class HexaqueueClusterRunnerAdapter(TestingRunnerPort):
                 numprocesses=numprocesses,
                 batch_size=batch_size,
                 report_file=report_file,
+                targets=targets,
             )
             all_job_specs.extend(job_specs)
 

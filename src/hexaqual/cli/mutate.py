@@ -82,6 +82,12 @@ def mutate_run(
         "--batch-size",
         help="Number of gremlins per worker batch (defaults to 10).",
     ),
+    targets: str | None = typer.Option(
+        None,
+        "-t",
+        "--targets",
+        help="Comma-separated relative source file paths to mutate.",
+    ),
     cluster: str = typer.Option(
         "local",
         "--cluster",
@@ -173,6 +179,7 @@ def mutate_run(
 
     bus = create_governance_bus(repo_root=root, testing_runner=testing_runner)
 
+    target_list = [item.strip() for item in targets.split(",") if item.strip()] if targets else None
     exit_code = bus.dispatch(
         RunMutationTestsCommand(
             package=package,
@@ -184,6 +191,7 @@ def mutate_run(
             workers=workers,
             numprocesses=numprocesses,
             batch_size=batch_size,
+            targets=target_list,
         )
     )
 

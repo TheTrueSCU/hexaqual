@@ -84,3 +84,40 @@ def test_main_writes_github_output(
     content = out_file.read_text(encoding="utf-8")
     assert f"matrix={json.dumps({'package': ['core']})}" in content
     assert "has_affected=true" in content
+
+
+def test_build_changed_slices_workspace(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Verify changed-slices mode partitions only changed files per package in LPT order."""
+    packages = tmp_path / "packages"
+    src_dir = packages / "srv" / "src" / "srv"
+    src_dir.mkdir(parents=True)
+    (packages / "srv" / "pyproject.toml").write_text('[project]\nname = "srv"\n', encoding="utf-8")
+    f1 = src_dir / "a.py"
+    f2 = src_dir / "b.py"
+    f3 = src_dir / "untouched.py"
+    f1.write_text("\n".join(["x = 1"] * 40), encoding="utf-8")
+    f2.write_text("\n".join(["x = 1"] * 10), encoding="utf-8")
+    f3.write_text("\n".join(["x = 1"] * 500), encoding="utf-8")
+
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setattr(
+        plan_mod,
+        "_changed_files",
+        lambda _base: ["packages/srv/src/srv/a.py", "packages/srv/src/srv/b.py"],
+    )
+
+    matrix_obj, has_affected = plan_mod.plan_mutation_matrix(
+        "changed-slices",
+        base_ref="main",
+        packages_root=Path("packages"),
+        num_slices=2,
+    )
+    assert has_affected is True
+    include = matrix_obj["include"]
+    assert isinstance(include, list)
+    assert len(include) == 2
+    assert include[0]["package"] == "srv"
+    assert "untouched.py" not in str(include)

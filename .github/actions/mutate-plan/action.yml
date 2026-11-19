@@ -3,7 +3,7 @@ description: "Plans Longest-Processing-Time-first (LPT) balanced mutation matric
 
 inputs:
   mode:
-    description: "Planning mode: 'affected' (PR diff packages), 'all' (all workspace packages), or 'slices' (file-level LPT buckets)"
+    description: "Planning mode: 'affected', 'all', 'slices', or 'changed-slices' (LPT buckets of PR-changed files)"
     required: false
     default: "affected"
   base-ref:

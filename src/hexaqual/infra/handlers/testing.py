@@ -74,6 +74,7 @@ class RunMutationTestsHandler:
                 numprocesses=command.numprocesses,
                 batch_size=command.batch_size,
                 report_file=command.report_file,
+                targets=command.targets,
             )
 
         if command.package:
@@ -102,6 +103,7 @@ class RunMutationTestsHandler:
                 numprocesses=command.numprocesses,
                 batch_size=command.batch_size,
                 report_file=command.report_file,
+                targets=command.targets,
             )
 
         if command.all_packages:
@@ -115,6 +117,7 @@ class RunMutationTestsHandler:
                 numprocesses=command.numprocesses,
                 batch_size=command.batch_size,
                 report_file=command.report_file,
+                targets=command.targets,
             )
 
         return 0
