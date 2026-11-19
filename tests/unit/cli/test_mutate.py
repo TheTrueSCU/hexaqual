@@ -200,3 +200,18 @@ def test_mutate_plan_invalid_mode() -> None:
     """Verify mutate plan rejects unsupported planning modes."""
     res = runner.invoke(mutate_app, ["plan", "--mode", "bogus"])
     assert res.exit_code != 0
+
+
+def test_mutate_plan_stdout(tmp_path: Path) -> None:
+    """Verify mutate plan writes to stdout when --github-output is not set."""
+    packages = tmp_path / "packages"
+    src_dir = packages / "core" / "src" / "core"
+    src_dir.mkdir(parents=True)
+    (packages / "core" / "pyproject.toml").write_text(
+        '[project]\nname = "core"\n', encoding="utf-8"
+    )
+    (src_dir / "app.py").write_text("x = 1 + 2\n", encoding="utf-8")
+
+    res = runner.invoke(mutate_app, ["plan", "--mode", "all", "--packages-root", str(packages)])
+    assert res.exit_code == 0
+    assert "has_affected=true" in res.stdout

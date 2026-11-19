@@ -154,3 +154,71 @@ def test_build_changed_slices_workspace(
     assert include[0]["package"] == "srv"
     assert include[0]["targets"] == "src/srv/a.py"
     assert "untouched.py" not in str(include)
+
+
+def test_partition_targets_lpt_fixed_bucket_and_empty() -> None:
+    """Verify fixed-bucket LPT mode (max_slice_weight=None) and empty input."""
+    assert slicing_mod.partition_targets_lpt([]) == []
+    items = [(100, "a.py"), (60, "b.py"), (40, "c.py"), (10, "d.py")]
+    slices = slicing_mod.partition_targets_lpt(
+        items, min_slices=2, max_slices=8, max_slice_weight=None
+    )
+    assert len(slices) == 2
+    assert slices[0][1] == ["a.py", "d.py"]
+    assert slices[1][1] == ["b.py", "c.py"]
+
+
+def test_build_changed_slices_single_package_and_empty(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Verify single-package changed-slices, empty diff, and missing dirs."""
+    src_dir = tmp_path / "src" / "app"
+    src_dir.mkdir(parents=True)
+    (src_dir / "mod.py").write_text("x = 1 + 2\n", encoding="utf-8")
+
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setattr(slicing_mod, "_changed_files", lambda _base: [])
+    assert slicing_mod.build_changed_slices(packages_root=Path("packages")) == []
+
+    monkeypatch.setattr(slicing_mod, "_changed_files", lambda _base: ["src/app/mod.py"])
+    single = slicing_mod.build_changed_slices(
+        packages_root=Path("nonexistent_packages"), root=Path("src"), num_slices=2
+    )
+    assert len(single) == 1
+    assert single[0]["targets"] == "src/app/mod.py"
+
+    assert slicing_mod.discover_all_packages(packages_root=Path("nonexistent_packages")) == []
+    assert slicing_mod.build_file_slices(root=Path("nonexistent_src")) == []
+
+
+def test_plan_mutation_matrix_modes_and_invalid(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Verify affected, slices, and unsupported mode handling in plan_mutation_matrix."""
+    packages = tmp_path / "packages"
+    src_dir = packages / "core" / "src" / "core"
+    src_dir.mkdir(parents=True)
+    (packages / "core" / "pyproject.toml").write_text(
+        '[project]\nname = "core"\n', encoding="utf-8"
+    )
+    (src_dir / "mod.py").write_text("x = 1 + 2\n", encoding="utf-8")
+
+    monkeypatch.setattr(
+        slicing_mod,
+        "_changed_files",
+        lambda _base: ["packages/core/src/core/mod.py"],
+    )
+    affected_matrix, has_aff = slicing_mod.plan_mutation_matrix("affected", packages_root=packages)
+    assert has_aff is True
+    assert affected_matrix == {"package": ["core"]}
+
+    slices_matrix, has_slices = slicing_mod.plan_mutation_matrix(
+        "slices", root=src_dir, num_slices=2
+    )
+    assert has_slices is True
+    assert "include" in slices_matrix
+
+    with pytest.raises(ValueError, match="Unsupported mutation plan mode"):
+        slicing_mod.plan_mutation_matrix("invalid")
