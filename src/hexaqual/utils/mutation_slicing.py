@@ -1,28 +1,24 @@
-#!/usr/bin/env python3
-"""Standalone LPT-balanced mutation testing matrix planner for GitHub Actions.
+"""AST-weighted, capacity-capped LPT bin packing and mutation matrix planning.
 
 Notes/Architectural Intent:
-    Uses only the Python standard library so CI planning steps can invoke
-    ``python3 "${{ github.action_path }}/plan.py"`` before installing project
-    dependencies. Weights files and packages by AST mutable-site density,
-    isolates oversized files into solo slices, dynamically expands slices under
-    a per-slice weight cap, and emits slices heaviest-first (LPT dispatch order).
+    Shared pure-stdlib utility module imported by both the Hexaqueue cluster
+    runner adapter and the ``hexaqual mutate plan`` CLI command so AST mutation
+    weighting, heavy-file isolation, dynamic slice expansion, and LPT dispatch
+    ordering have a single source of truth with zero external dependencies.
 """
 
 from __future__ import annotations
 
-import argparse
 import ast
-import json
 import math
-import os
 import subprocess
-import sys
 import tomllib
+from collections.abc import Sequence
 from pathlib import Path
 
-DEFAULT_NUM_SLICES = 12
+DEFAULT_MAX_CLUSTER_SLICES = 16
 DEFAULT_MAX_SLICE_WEIGHT = 450
+DEFAULT_NUM_SLICES = 12
 
 _HEAVY_MUTABLE_NODES = (ast.BinOp, ast.Compare, ast.BoolOp, ast.AugAssign)
 _LIGHT_MUTABLE_NODES = (ast.UnaryOp, ast.If, ast.IfExp, ast.While, ast.Return)
@@ -62,6 +58,7 @@ def estimate_ast_mutation_weight(source: str) -> int:
     Notes/Architectural Intent:
         Counts operator, comparison, boolean, branch, return, and numeric/bool
         constant AST nodes while ignoring docstrings, comments, and blank lines.
+        Falls back to line count if ``source`` cannot be parsed.
     """
     try:
         tree = ast.parse(source)
@@ -82,12 +79,96 @@ def estimate_ast_mutation_weight(source: str) -> int:
     return weight
 
 
-def _file_mutation_weight(path: Path) -> int:
-    """Compute AST mutation weight for a Python source file on disk."""
+def estimate_file_mutation_weight(path: Path) -> int:
+    """Estimate mutation workload weight for a Python file on disk.
+
+    Args:
+        path: Filesystem path to a Python source file.
+
+    Returns:
+        Positive integer estimating relative gremlin generation workload.
+
+    Notes/Architectural Intent:
+        Returns ``_PER_FILE_OVERHEAD`` when the file cannot be read.
+    """
     try:
-        return estimate_ast_mutation_weight(path.read_text(encoding="utf-8"))
+        source = path.read_text(encoding="utf-8")
     except OSError:
         return _PER_FILE_OVERHEAD
+    return estimate_ast_mutation_weight(source)
+
+
+def _pack_into_buckets(
+    items: list[tuple[int, str]],
+    bucket_count: int,
+) -> list[tuple[int, list[str]]]:
+    """Pack sorted ``(weight, path)`` items into ``bucket_count`` LPT buckets."""
+    buckets: list[tuple[int, list[str]]] = [(0, []) for _ in range(bucket_count)]
+    for weight, target in items:
+        min_idx = min(range(bucket_count), key=lambda idx: buckets[idx][0])
+        cur_weight, cur_paths = buckets[min_idx]
+        cur_paths.append(target)
+        buckets[min_idx] = (cur_weight + weight, cur_paths)
+    return [(w, sorted(paths)) for w, paths in buckets if paths]
+
+
+def partition_targets_lpt(
+    weighted_items: Sequence[tuple[int, str]],
+    *,
+    min_slices: int = 1,
+    max_slices: int = DEFAULT_MAX_CLUSTER_SLICES,
+    max_slice_weight: int | None = DEFAULT_MAX_SLICE_WEIGHT,
+) -> list[tuple[int, list[str]]]:
+    """Partition weighted target files into capacity-capped LPT slices.
+
+    Args:
+        weighted_items: Sequence of ``(weight, target_path)`` tuples.
+        min_slices: Minimum number of slices to produce (bounded by file count).
+        max_slices: Upper bound on total slices produced.
+        max_slice_weight: Optional per-slice AST weight cap. When set, files
+            with ``weight >= max_slice_weight`` are isolated into solo slices
+            and remaining files expand dynamically to stay near the cap.
+
+    Returns:
+        List of ``(total_weight, sorted_target_paths)`` tuples ordered
+        heaviest-first (LPT dispatch order).
+
+    Notes/Architectural Intent:
+        Isolating oversized files prevents extra files from piling onto dense
+        modules, while heaviest-first ordering schedules the slowest slice first.
+    """
+    if not weighted_items:
+        return []
+
+    ordered = sorted(weighted_items, key=lambda item: (-item[0], item[1]))
+    clamped_max = max(1, max_slices)
+    clamped_min = min(max(1, min_slices), clamped_max, len(ordered))
+
+    if max_slice_weight is None or max_slice_weight <= 0:
+        packed = _pack_into_buckets(ordered, clamped_min)
+        packed.sort(key=lambda item: (-item[0], item[1][0]))
+        return packed
+
+    solo_limit = clamped_max - 1 if len(ordered) > clamped_max else clamped_max
+    solo: list[tuple[int, str]] = []
+    rest: list[tuple[int, str]] = []
+    for item in ordered:
+        if item[0] >= max_slice_weight and len(solo) < solo_limit:
+            solo.append(item)
+        else:
+            rest.append(item)
+
+    slices: list[tuple[int, list[str]]] = [(w, [p]) for w, p in solo]
+    if rest:
+        remaining_slots = max(1, clamped_max - len(solo))
+        rest_total = sum(w for w, _ in rest)
+        min_rest_buckets = max(1, clamped_min - len(solo))
+        needed_buckets = max(min_rest_buckets, math.ceil(rest_total / max_slice_weight))
+        bucket_count = min(len(rest), remaining_slots, needed_buckets)
+        slices.extend(_pack_into_buckets(rest, bucket_count))
+
+    slices.sort(key=lambda item: (-item[0], item[1][0]))
+    return slices
 
 
 def _changed_files(base_ref: str) -> list[str]:
@@ -111,7 +192,7 @@ def _package_mutation_weight(pkg_dir: Path) -> int:
     if not src_dir.is_dir():
         return 0
     return sum(
-        _file_mutation_weight(path)
+        estimate_file_mutation_weight(path)
         for path in src_dir.rglob("*.py")
         if path.name != "__init__.py" and "__pycache__" not in path.parts
     )
@@ -150,7 +231,7 @@ def discover_affected_packages(
 
     Notes/Architectural Intent:
         Prioritizes heaviest packages first so long-running mutation jobs start
-        immediately on bounded GitHub Actions / Hexaqueue worker pools.
+        immediately on bounded worker pools.
     """
     changed = _changed_files(base_ref)
     touched_dirs: set[str] = set()
@@ -183,56 +264,13 @@ def discover_all_packages(packages_root: Path = Path("packages")) -> list[str]:
     return _resolve_package_names(dirs, packages_root)
 
 
-def _pack_buckets(
-    items: list[tuple[int, str]],
-    bucket_count: int,
-) -> list[tuple[int, list[str]]]:
-    """Pack sorted ``(weight, path)`` items into ``bucket_count`` LPT buckets."""
-    buckets: list[tuple[int, list[str]]] = [(0, []) for _ in range(bucket_count)]
-    for weight, rel_path in items:
-        min_idx = min(range(bucket_count), key=lambda idx: buckets[idx][0])
-        cur_weight, cur_paths = buckets[min_idx]
-        cur_paths.append(rel_path)
-        buckets[min_idx] = (cur_weight + weight, cur_paths)
-    return [(w, sorted(paths)) for w, paths in buckets if paths]
-
-
-def _lpt_pack_files(
-    files: list[tuple[int, str]],
-    num_slices: int,
+def _format_slices(
+    packed: list[tuple[int, list[str]]],
     *,
-    max_slice_weight: int | None = DEFAULT_MAX_SLICE_WEIGHT,
     prefix: str = "slice",
     extra: dict[str, str] | None = None,
 ) -> list[dict[str, str]]:
-    """Pack ``(weight, rel_path)`` pairs into capacity-capped LPT slices."""
-    if not files:
-        return []
-    ordered = sorted(files, key=lambda item: (-item[0], item[1]))
-    clamped_max = max(1, num_slices)
-
-    if max_slice_weight is None or max_slice_weight <= 0:
-        packed = _pack_buckets(ordered, min(clamped_max, len(ordered)))
-    else:
-        solo_limit = clamped_max - 1 if len(ordered) > clamped_max else clamped_max
-        solo: list[tuple[int, str]] = []
-        rest: list[tuple[int, str]] = []
-        for item in ordered:
-            if item[0] >= max_slice_weight and len(solo) < solo_limit:
-                solo.append(item)
-            else:
-                rest.append(item)
-
-        packed = [(w, [p]) for w, p in solo]
-        if rest:
-            remaining_slots = max(1, clamped_max - len(solo))
-            rest_total = sum(w for w, _ in rest)
-            needed = max(1, math.ceil(rest_total / max_slice_weight))
-            bucket_count = min(len(rest), remaining_slots, needed)
-            packed.extend(_pack_buckets(rest, bucket_count))
-
-    packed.sort(key=lambda item: (-item[0], item[1][0]))
-
+    """Format packed ``(weight, paths)`` tuples into matrix include dicts."""
     result: list[dict[str, str]] = []
     for idx, (_weight, paths) in enumerate(packed):
         entry = {"name": f"{prefix}-{idx + 1:02d}", "targets": ",".join(paths)}
@@ -254,24 +292,31 @@ def build_file_slices(
         root: Package source directory to partition.
         num_slices: Maximum number of parallel matrix slices.
         max_slice_weight: Optional per-slice AST weight cap (``None`` or ``0``
-            disables capacity capping and uses ``num_slices`` directly).
+            disables capacity capping).
 
     Returns:
         List of ``{"name": ..., "targets": ...}`` dictionaries ordered
         heaviest-first.
 
     Notes/Architectural Intent:
-        Isolates oversized modules into dedicated slices and dynamically
-        chooses slice count up to ``num_slices`` based on AST mutation density.
+        Isolates oversized modules into solo slices and dynamically chooses
+        slice count up to ``num_slices`` based on AST mutation density.
     """
     if not root.is_dir():
         return []
     files = [
-        (_file_mutation_weight(path), str(path))
+        (estimate_file_mutation_weight(path), str(path))
         for path in sorted(root.rglob("*.py"))
         if path.name != "__init__.py" and "__pycache__" not in path.parts
     ]
-    return _lpt_pack_files(files, num_slices, max_slice_weight=max_slice_weight)
+    min_slices = 1 if (max_slice_weight and max_slice_weight > 0) else num_slices
+    packed = partition_targets_lpt(
+        files,
+        min_slices=min_slices,
+        max_slices=num_slices,
+        max_slice_weight=max_slice_weight,
+    )
+    return _format_slices(packed)
 
 
 def build_changed_slices(
@@ -303,6 +348,8 @@ def build_changed_slices(
     if not changed:
         return []
 
+    min_slices = 1 if (max_slice_weight and max_slice_weight > 0) else num_slices
+
     if packages_root.is_dir():
         by_pkg: dict[str, list[tuple[int, str]]] = {}
         for rel_path in changed:
@@ -317,7 +364,9 @@ def build_changed_slices(
                 and path.is_file()
             ):
                 pkg_rel = str(Path(*parts[2:]))
-                by_pkg.setdefault(parts[1], []).append((_file_mutation_weight(path), pkg_rel))
+                by_pkg.setdefault(parts[1], []).append(
+                    (estimate_file_mutation_weight(path), pkg_rel)
+                )
 
         slices: list[dict[str, str]] = []
         for dist_name in _resolve_package_names(list(by_pkg.keys()), packages_root):
@@ -338,11 +387,15 @@ def build_changed_slices(
                 ),
                 dist_name,
             )
+            packed = partition_targets_lpt(
+                by_pkg.get(matched_dir, []),
+                min_slices=min_slices,
+                max_slices=num_slices,
+                max_slice_weight=max_slice_weight,
+            )
             slices.extend(
-                _lpt_pack_files(
-                    by_pkg.get(matched_dir, []),
-                    num_slices,
-                    max_slice_weight=max_slice_weight,
+                _format_slices(
+                    packed,
                     prefix=f"{dist_name}-slice",
                     extra={"package": dist_name},
                 )
@@ -350,14 +403,20 @@ def build_changed_slices(
         return slices
 
     single_files = [
-        (_file_mutation_weight(Path(rel)), rel)
+        (estimate_file_mutation_weight(Path(rel)), rel)
         for rel in changed
         if rel.endswith(".py")
         and Path(rel).name != "__init__.py"
         and Path(rel).is_file()
         and Path(rel).is_relative_to(root)
     ]
-    return _lpt_pack_files(single_files, num_slices, max_slice_weight=max_slice_weight)
+    packed = partition_targets_lpt(
+        single_files,
+        min_slices=min_slices,
+        max_slices=num_slices,
+        max_slice_weight=max_slice_weight,
+    )
+    return _format_slices(packed)
 
 
 def plan_mutation_matrix(
@@ -413,55 +472,16 @@ def plan_mutation_matrix(
     raise ValueError(msg)
 
 
-def main(argv: list[str] | None = None) -> int:
-    """CLI entrypoint writing ``matrix`` and ``has_affected`` to ``$GITHUB_OUTPUT``."""
-    parser = argparse.ArgumentParser(description="Plan LPT-balanced mutation matrix")
-    parser.add_argument(
-        "--mode",
-        default="affected",
-        choices=("affected", "all", "slices", "changed-slices"),
-    )
-    parser.add_argument("--base-ref", default=os.environ.get("GITHUB_BASE_REF", "main"))
-    parser.add_argument("--packages-root", default="packages")
-    parser.add_argument("--root", default="src")
-    parser.add_argument("--slices", type=int, default=DEFAULT_NUM_SLICES)
-    parser.add_argument("--max-weight", type=int, default=DEFAULT_MAX_SLICE_WEIGHT)
-    args = parser.parse_args(argv)
-
-    max_weight = args.max_weight if args.max_weight > 0 else None
-    matrix_obj, has_affected = plan_mutation_matrix(
-        args.mode,
-        base_ref=args.base_ref,
-        packages_root=Path(args.packages_root),
-        root=Path(args.root),
-        num_slices=args.slices,
-        max_slice_weight=max_weight,
-    )
-    matrix_json = json.dumps(matrix_obj)
-    has_flag = "true" if has_affected else "false"
-    output_lines = [f"matrix={matrix_json}", f"has_affected={has_flag}"]
-
-    output_path = os.environ.get("GITHUB_OUTPUT", "").strip()
-    if output_path:
-        with Path(output_path).open("a", encoding="utf-8") as handle:
-            handle.write("\n".join(output_lines) + "\n")
-    else:
-        sys.stdout.write("\n".join(output_lines) + "\n")
-    return 0
-
-
 __all__ = [
     "build_changed_slices",
     "build_file_slices",
+    "DEFAULT_MAX_CLUSTER_SLICES",
     "DEFAULT_MAX_SLICE_WEIGHT",
     "DEFAULT_NUM_SLICES",
     "discover_affected_packages",
     "discover_all_packages",
     "estimate_ast_mutation_weight",
-    "main",
+    "estimate_file_mutation_weight",
+    "partition_targets_lpt",
     "plan_mutation_matrix",
 ]
-
-
-if __name__ == "__main__":
-    raise SystemExit(main())

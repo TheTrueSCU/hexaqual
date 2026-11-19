@@ -2,8 +2,10 @@
 
 from __future__ import annotations
 
+from pathlib import Path
 from unittest.mock import MagicMock, patch
 
+import pytest
 from typer.testing import CliRunner
 
 from hexaqual.cli.mutate import mutate_app
@@ -165,3 +167,36 @@ def test_mutate_inspect_step_summary_actionable() -> None:
         mock_append.assert_called_once()
         args = mock_append.call_args[0]
         assert "Actionable Surviving Mutants" in args[0]
+
+
+def test_mutate_plan_writes_github_output(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Verify mutate plan writes matrix and has_affected to GITHUB_OUTPUT."""
+    import json
+
+    out_file = tmp_path / "github_output.txt"
+    monkeypatch.setenv("GITHUB_OUTPUT", str(out_file))
+    packages = tmp_path / "packages"
+    src_dir = packages / "core" / "src" / "core"
+    src_dir.mkdir(parents=True)
+    (packages / "core" / "pyproject.toml").write_text(
+        '[project]\nname = "core"\n', encoding="utf-8"
+    )
+    (src_dir / "app.py").write_text("x = 1 + 2\n", encoding="utf-8")
+
+    res = runner.invoke(
+        mutate_app,
+        ["plan", "--mode", "all", "--packages-root", str(packages), "--github-output"],
+    )
+    assert res.exit_code == 0
+    content = out_file.read_text(encoding="utf-8")
+    assert f"matrix={json.dumps({'package': ['core']})}" in content
+    assert "has_affected=true" in content
+
+
+def test_mutate_plan_invalid_mode() -> None:
+    """Verify mutate plan rejects unsupported planning modes."""
+    res = runner.invoke(mutate_app, ["plan", "--mode", "bogus"])
+    assert res.exit_code != 0

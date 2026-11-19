@@ -1,5 +1,5 @@
 name: "Hexaqual LPT Mutation Matrix Planner"
-description: "Plans AST-weighted, capacity-capped Longest-Processing-Time-first (LPT) mutation matrices for affected/all workspace packages or file slices."
+description: "Plans AST-weighted, capacity-capped Longest-Processing-Time-first (LPT) mutation matrices via 'hexaqual mutate plan'."
 
 inputs:
   mode:
@@ -50,10 +50,21 @@ runs:
         PLAN_MAX_WEIGHT: ${{ inputs.max-weight }}
       run: |
         BASE_REF="${PLAN_BASE_REF:-${GITHUB_BASE_REF:-main}}"
-        python3 "${{ github.action_path }}/plan.py" \
-          --mode "$PLAN_MODE" \
-          --base-ref "$BASE_REF" \
-          --packages-root "$PLAN_PACKAGES_ROOT" \
-          --root "$PLAN_ROOT" \
-          --slices "$PLAN_SLICES" \
+        ARGS=(
+          mutate plan
+          --mode "$PLAN_MODE"
+          --base-ref "$BASE_REF"
+          --packages-root "$PLAN_PACKAGES_ROOT"
+          --root "$PLAN_ROOT"
+          --slices "$PLAN_SLICES"
           --max-weight "$PLAN_MAX_WEIGHT"
+          --github-output
+        )
+        if command -v hexaqual >/dev/null 2>&1; then
+          hexaqual "${ARGS[@]}"
+        elif command -v uv >/dev/null 2>&1; then
+          uvx --from "${{ github.action_path }}/../../.." hexaqual "${ARGS[@]}"
+        else
+          echo "::error::Neither 'hexaqual' nor 'uv' is available on PATH." >&2
+          exit 1
+        fi

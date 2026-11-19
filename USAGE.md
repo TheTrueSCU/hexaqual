@@ -1081,6 +1081,7 @@ Usage: hexaqual mutate [OPTIONS] COMMAND [ARGS]...
 ╭─ Commands ───────────────────────────────────────────────────────────────────╮
 │ run      Run mutation testing scoped to package or workspace.                │
 │ inspect  Triage and inspect mutation testing results cache or report.        │
+│ plan     Plan an AST-weighted, capacity-capped LPT mutation testing matrix.  │
 ╰──────────────────────────────────────────────────────────────────────────────╯
 ```
 
@@ -1122,6 +1123,56 @@ Usage: hexaqual mutate inspect [OPTIONS]
 │ --step-summary                   Append Markdown summary to                  │
 │                                  $GITHUB_STEP_SUMMARY.                       │
 │ --help                           Show this message and exit.                 │
+╰──────────────────────────────────────────────────────────────────────────────╯
+```
+
+#### `hexaqual mutate plan`
+
+```text
+Usage: hexaqual mutate plan [OPTIONS]
+
+ Plan an AST-weighted, capacity-capped LPT mutation testing matrix.
+
+ Args:
+     mode: Planning mode ('affected', 'all', 'slices', or 'changed-slices').
+     base_ref: Git base branch for diff-based modes.
+     packages_root: Workspace packages root directory.
+     root: Source directory for single-package slice modes.
+     slices: Maximum number of parallel slices.
+     max_weight: Per-slice AST weight cap (0 disables dynamic capping).
+     github_output: Whether to append outputs to ``$GITHUB_OUTPUT``.
+
+ Raises:
+     typer.BadParameter: If ``mode`` is unsupported.
+
+ Notes/Architectural Intent:
+     Single CLI entrypoint consumed both locally for debugging and by the
+     ``.github/actions/mutate-plan`` composite action so CI and cluster
+     runners share the exact same AST-weighted LPT slicer.
+
+╭─ Options ────────────────────────────────────────────────────────────────────╮
+│ --mode                 <str>   Planning mode ('affected', 'all', 'slices',   │
+│                                or 'changed-slices').                         │
+│                                [default: affected]                           │
+│ --base-ref             <str>   Git base branch for 'affected' and            │
+│                                'changed-slices' modes.                       │
+│                                [env var: GITHUB_BASE_REF]                    │
+│                                [default: main]                               │
+│ --packages-root        <path>  Workspace packages directory for monorepo     │
+│                                layouts.                                      │
+│                                [default: packages]                           │
+│ --root                 <path>  Source directory to partition for             │
+│                                single-package slice modes.                   │
+│                                [default: src]                                │
+│ --slices               <int>   Maximum number of parallel slices for         │
+│                                slice-based modes.                            │
+│                                [default: 12]                                 │
+│ --max-weight           <int>   Per-slice AST mutation weight cap (0 disables │
+│                                dynamic capping).                             │
+│                                [default: 450]                                │
+│ --github-output                Write 'matrix' and 'has_affected' to          │
+│                                $GITHUB_OUTPUT when set.                      │
+│ --help                         Show this message and exit.                   │
 ╰──────────────────────────────────────────────────────────────────────────────╯
 ```
 
@@ -1182,6 +1233,8 @@ Usage: hexaqual mutate run [OPTIONS]
 │                                          to 'auto' when xdist is installed). │
 │ --batch-size                    <int>    Number of gremlins per worker batch │
 │                                          (defaults to 10).                   │
+│ --targets               -t      <str>    Comma-separated relative source     │
+│                                          file paths to mutate.               │
 │ --cluster                       <str>    Execution target cluster ('local'   │
 │                                          or 'hexaqueue').                    │
 │                                          [default: local]                    │

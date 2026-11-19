@@ -10,11 +10,9 @@ Notes/Architectural Intent:
 
 from __future__ import annotations
 
-import ast
 import contextlib
 import json
 import logging
-import math
 import os
 import signal
 import subprocess
@@ -35,107 +33,14 @@ from hexaqual.adapters.runners.testing_runner import SubprocessTestingRunnerAdap
 from hexaqual.domain.imports import optional_dependency
 from hexaqual.domain.testing import MutationEngine
 from hexaqual.ports.testing import TestingRunnerPort
+from hexaqual.utils.mutation_slicing import (
+    DEFAULT_MAX_CLUSTER_SLICES,
+    DEFAULT_MAX_SLICE_WEIGHT,
+    estimate_file_mutation_weight,
+    partition_targets_lpt,
+)
 
 logger = logging.getLogger(__name__)
-
-DEFAULT_MAX_CLUSTER_SLICES = 16
-DEFAULT_MAX_SLICE_WEIGHT = 450
-_HEAVY_MUTABLE_NODES = (ast.BinOp, ast.Compare, ast.BoolOp, ast.AugAssign)
-_LIGHT_MUTABLE_NODES = (ast.UnaryOp, ast.If, ast.IfExp, ast.While, ast.Return)
-_PER_FILE_OVERHEAD = 5
-
-
-def _estimate_file_mutation_weight(path: Path) -> int:
-    """Estimate mutation workload weight of a Python source file via AST analysis."""
-    try:
-        source = path.read_text(encoding="utf-8")
-    except OSError:
-        return _PER_FILE_OVERHEAD
-    try:
-        tree = ast.parse(source)
-    except SyntaxError:
-        return max(1, len(source.splitlines()))
-
-    doc_ids: set[int] = set()
-    for node in ast.walk(tree):
-        if (
-            isinstance(node, (ast.Module, ast.ClassDef, ast.FunctionDef, ast.AsyncFunctionDef))
-            and node.body
-        ):
-            first = node.body[0]
-            if (
-                isinstance(first, ast.Expr)
-                and isinstance(first.value, ast.Constant)
-                and isinstance(first.value.value, str)
-            ):
-                doc_ids.add(id(first.value))
-
-    weight = _PER_FILE_OVERHEAD
-    for node in ast.walk(tree):
-        if id(node) in doc_ids:
-            continue
-        if isinstance(node, _HEAVY_MUTABLE_NODES):
-            weight += 3
-        elif isinstance(node, _LIGHT_MUTABLE_NODES) or (
-            isinstance(node, ast.Constant) and isinstance(node.value, (int, float, bool))
-        ):
-            weight += 1
-    return weight
-
-
-def _pack_weighted_buckets(
-    items: list[tuple[int, str]],
-    bucket_count: int,
-) -> list[tuple[int, list[str]]]:
-    """Pack sorted ``(weight, target)`` pairs into ``bucket_count`` LPT buckets."""
-    buckets: list[tuple[int, list[str]]] = [(0, []) for _ in range(bucket_count)]
-    for weight, target in items:
-        min_idx = min(range(bucket_count), key=lambda idx: buckets[idx][0])
-        cur_weight, cur_paths = buckets[min_idx]
-        cur_paths.append(target)
-        buckets[min_idx] = (cur_weight + weight, cur_paths)
-    return [(w, sorted(paths)) for w, paths in buckets if paths]
-
-
-def _partition_targets_lpt(
-    weighted_items: Sequence[tuple[int, str]],
-    *,
-    min_slices: int = 1,
-    max_slices: int = DEFAULT_MAX_CLUSTER_SLICES,
-    max_slice_weight: int | None = DEFAULT_MAX_SLICE_WEIGHT,
-) -> list[tuple[int, list[str]]]:
-    """Partition weighted targets into capacity-capped LPT slices ordered heaviest-first."""
-    if not weighted_items:
-        return []
-    ordered = sorted(weighted_items, key=lambda item: (-item[0], item[1]))
-    clamped_max = max(1, max_slices)
-    clamped_min = min(max(1, min_slices), clamped_max, len(ordered))
-
-    if max_slice_weight is None or max_slice_weight <= 0:
-        packed = _pack_weighted_buckets(ordered, clamped_min)
-        packed.sort(key=lambda item: (-item[0], item[1][0]))
-        return packed
-
-    solo_limit = clamped_max - 1 if len(ordered) > clamped_max else clamped_max
-    solo: list[tuple[int, str]] = []
-    rest: list[tuple[int, str]] = []
-    for item in ordered:
-        if item[0] >= max_slice_weight and len(solo) < solo_limit:
-            solo.append(item)
-        else:
-            rest.append(item)
-
-    slices: list[tuple[int, list[str]]] = [(w, [p]) for w, p in solo]
-    if rest:
-        remaining_slots = max(1, clamped_max - len(solo))
-        rest_total = sum(w for w, _ in rest)
-        min_rest_buckets = max(1, clamped_min - len(solo))
-        needed_buckets = max(min_rest_buckets, math.ceil(rest_total / max_slice_weight))
-        bucket_count = min(len(rest), remaining_slots, needed_buckets)
-        slices.extend(_pack_weighted_buckets(rest, bucket_count))
-
-    slices.sort(key=lambda item: (-item[0], item[1][0]))
-    return slices
 
 
 __all__ = [
@@ -362,7 +267,7 @@ class HexaqueueClusterRunnerAdapter(TestingRunnerPort):
 
         weighted = [
             (
-                _estimate_file_mutation_weight(package_dir / target)
+                estimate_file_mutation_weight(package_dir / target)
                 if package_dir is not None
                 else 1,
                 target,
@@ -374,7 +279,7 @@ class HexaqueueClusterRunnerAdapter(TestingRunnerPort):
             if max_slices is not None
             else max(slice_count, DEFAULT_MAX_CLUSTER_SLICES)
         )
-        packed = _partition_targets_lpt(
+        packed = partition_targets_lpt(
             weighted,
             min_slices=max(1, slice_count),
             max_slices=upper_bound,

@@ -7,6 +7,9 @@ Notes/Architectural Intent:
 
 from __future__ import annotations
 
+import json
+import os
+import sys
 from pathlib import Path
 
 import typer
@@ -27,10 +30,16 @@ from hexaqual.domain.testing import (
     RunMutationTestsCommand,
 )
 from hexaqual.infra.bootstrap import create_governance_bus
+from hexaqual.utils.mutation_slicing import (
+    DEFAULT_MAX_SLICE_WEIGHT,
+    DEFAULT_NUM_SLICES,
+    plan_mutation_matrix,
+)
 
 __all__ = [
     "mutate_app",
     "mutate_inspect",
+    "mutate_plan",
     "mutate_run",
 ]
 
@@ -280,3 +289,85 @@ def mutate_inspect(
 
     if code != 0:
         raise typer.Exit(code=code)
+
+
+@mutate_app.command("plan")
+def mutate_plan(
+    mode: str = typer.Option(
+        "affected",
+        "--mode",
+        help="Planning mode ('affected', 'all', 'slices', or 'changed-slices').",
+    ),
+    base_ref: str = typer.Option(
+        "main",
+        "--base-ref",
+        envvar="GITHUB_BASE_REF",
+        help="Git base branch for 'affected' and 'changed-slices' modes.",
+    ),
+    packages_root: Path = typer.Option(
+        Path("packages"),
+        "--packages-root",
+        help="Workspace packages directory for monorepo layouts.",
+    ),
+    root: Path = typer.Option(
+        Path("src"),
+        "--root",
+        help="Source directory to partition for single-package slice modes.",
+    ),
+    slices: int = typer.Option(
+        DEFAULT_NUM_SLICES,
+        "--slices",
+        help="Maximum number of parallel slices for slice-based modes.",
+    ),
+    max_weight: int = typer.Option(
+        DEFAULT_MAX_SLICE_WEIGHT,
+        "--max-weight",
+        help="Per-slice AST mutation weight cap (0 disables dynamic capping).",
+    ),
+    github_output: bool = typer.Option(
+        False,
+        "--github-output",
+        help="Write 'matrix' and 'has_affected' to $GITHUB_OUTPUT when set.",
+    ),
+) -> None:
+    """Plan an AST-weighted, capacity-capped LPT mutation testing matrix.
+
+    Args:
+        mode: Planning mode ('affected', 'all', 'slices', or 'changed-slices').
+        base_ref: Git base branch for diff-based modes.
+        packages_root: Workspace packages root directory.
+        root: Source directory for single-package slice modes.
+        slices: Maximum number of parallel slices.
+        max_weight: Per-slice AST weight cap (0 disables dynamic capping).
+        github_output: Whether to append outputs to ``$GITHUB_OUTPUT``.
+
+    Raises:
+        typer.BadParameter: If ``mode`` is unsupported.
+
+    Notes/Architectural Intent:
+        Single CLI entrypoint consumed both locally for debugging and by the
+        ``.github/actions/mutate-plan`` composite action so CI and cluster
+        runners share the exact same AST-weighted LPT slicer.
+    """
+    try:
+        matrix_obj, has_affected = plan_mutation_matrix(
+            mode,
+            base_ref=base_ref,
+            packages_root=packages_root,
+            root=root,
+            num_slices=slices,
+            max_slice_weight=max_weight if max_weight > 0 else None,
+        )
+    except ValueError as exc:
+        raise typer.BadParameter(str(exc), param_hint="--mode") from exc
+
+    matrix_json = json.dumps(matrix_obj)
+    has_flag = "true" if has_affected else "false"
+    output_lines = [f"matrix={matrix_json}", f"has_affected={has_flag}"]
+
+    output_path = os.environ.get("GITHUB_OUTPUT", "").strip() if github_output else ""
+    if output_path:
+        with Path(output_path).open("a", encoding="utf-8") as handle:
+            handle.write("\n".join(output_lines) + "\n")
+    else:
+        sys.stdout.write("\n".join(output_lines) + "\n")
