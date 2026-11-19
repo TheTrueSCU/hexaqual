@@ -601,6 +601,42 @@ def test_collect_mutation_targets_and_partitioning(tmp_path: Path) -> None:
     assert empty_content == []
 
 
+def test_partition_targets_ast_weighted_heavy_file_isolation(tmp_path: Path) -> None:
+    """Verify AST-weighted LPT isolates heavy files and dispatches them first."""
+    pkg = tmp_path / "pkg"
+    src = pkg / "src" / "pkg"
+    src.mkdir(parents=True)
+    (src / "heavy.py").write_text(
+        "\n".join(f"x_{i} = {i} + 1 if {i} > 0 else 0" for i in range(120)),
+        encoding="utf-8",
+    )
+    (src / "med_a.py").write_text(
+        "\n".join(f"a_{i} = {i} + 1" for i in range(50)),
+        encoding="utf-8",
+    )
+    (src / "med_b.py").write_text(
+        "\n".join(f"b_{i} = {i} + 1" for i in range(50)),
+        encoding="utf-8",
+    )
+    (src / "tiny.py").write_text("z = 1\n", encoding="utf-8")
+
+    adapter = HexaqueueClusterRunnerAdapter()
+    targets = adapter._collect_mutation_targets(pkg)
+    slices = adapter._partition_targets(
+        targets,
+        1,
+        package_dir=pkg,
+        max_slice_weight=450,
+        max_slices=16,
+    )
+    slice_count = len(slices)
+    assert slice_count >= 2
+    first_slice = slices[0]
+    assert first_slice == ["src/pkg/heavy.py"]
+    flattened = sorted(p for group in slices for p in group)
+    assert flattened == sorted(targets)
+
+
 def test_stage_workspace_collateral_cas_hit(tmp_path: Path) -> None:
     """Verify _stage_workspace_collateral returns cached collateral ID on CAS hit."""
     from unittest.mock import patch

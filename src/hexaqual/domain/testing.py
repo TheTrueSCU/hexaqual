@@ -144,6 +144,7 @@ class RunMutationTestsCommand(Command):
     numprocesses: int | str | None = None
     batch_size: int | None = None
     report_file: Path | None = None
+    targets: list[str] | None = None
 
 
 class InspectMutationCacheCommand(Command):

@@ -33,8 +33,15 @@ from hexaqual.adapters.runners.testing_runner import SubprocessTestingRunnerAdap
 from hexaqual.domain.imports import optional_dependency
 from hexaqual.domain.testing import MutationEngine
 from hexaqual.ports.testing import TestingRunnerPort
+from hexaqual.utils.mutation_slicing import (
+    DEFAULT_MAX_CLUSTER_SLICES,
+    DEFAULT_MAX_SLICE_WEIGHT,
+    estimate_file_mutation_weight,
+    partition_targets_lpt,
+)
 
 logger = logging.getLogger(__name__)
+
 
 __all__ = [
     "HexaqueueClusterRunnerAdapter",
@@ -229,22 +236,56 @@ class HexaqueueClusterRunnerAdapter(TestingRunnerPort):
                 targets.append(py_file.name)
         return targets
 
-    def _partition_targets(self, targets: list[str], slice_count: int) -> list[list[str]]:
-        """Partition target file list into balanced slice groups.
+    def _partition_targets(
+        self,
+        targets: list[str],
+        slice_count: int,
+        *,
+        package_dir: Path | None = None,
+        max_slice_weight: int | None = None,
+        max_slices: int | None = None,
+    ) -> list[list[str]]:
+        """Partition target file list into AST-weighted LPT slice groups.
 
         Args:
             targets: List of relative file paths.
-            slice_count: Maximum number of slice groups.
+            slice_count: Minimum number of slice groups (bounded by file count).
+            package_dir: Optional package directory used to compute AST mutation
+                weights for each target file on disk.
+            max_slice_weight: Optional per-slice AST weight cap enabling
+                heavy-file isolation and dynamic slice expansion.
+            max_slices: Upper bound on slices when capacity-capped expansion is
+                active (defaults to ``max(slice_count, DEFAULT_MAX_CLUSTER_SLICES)``).
 
         Returns:
-            List of partitioned file lists.
+            List of partitioned file lists ordered heaviest-first (LPT).
         """
-        if not targets or slice_count <= 1:
-            return [targets] if targets else [[]]
-        slices: list[list[str]] = [[] for _ in range(min(slice_count, len(targets)))]
-        for idx, target in enumerate(targets):
-            slices[idx % len(slices)].append(target)
-        return slices
+        if not targets:
+            return [[]]
+        if slice_count <= 1 and max_slice_weight is None:
+            return [targets]
+
+        weighted = [
+            (
+                estimate_file_mutation_weight(package_dir / target)
+                if package_dir is not None
+                else 1,
+                target,
+            )
+            for target in targets
+        ]
+        upper_bound = (
+            max(slice_count, max_slices)
+            if max_slices is not None
+            else max(slice_count, DEFAULT_MAX_CLUSTER_SLICES)
+        )
+        packed = partition_targets_lpt(
+            weighted,
+            min_slices=max(1, slice_count),
+            max_slices=upper_bound,
+            max_slice_weight=max_slice_weight,
+        )
+        return [paths for _weight, paths in packed] or [[]]
 
     def _build_mutation_job_specs(
         self,
@@ -258,6 +299,7 @@ class HexaqueueClusterRunnerAdapter(TestingRunnerPort):
         numprocesses: int | str | None,
         batch_size: int | None,
         report_file: Path | None,
+        targets: Sequence[str] | None = None,
     ) -> list[dict[str, Any]]:
         """Construct constituent JobSpecs for mutation testing across worker slots.
 
@@ -281,16 +323,28 @@ class HexaqueueClusterRunnerAdapter(TestingRunnerPort):
         except ValueError:
             rel_cwd = package_dir.resolve()
 
-        targets: list[str] = []
-        slice_count = 1
+        resolved_targets: list[str] = []
+        min_slices = 1
+        max_slice_weight: int | None = None
         if engine == MutationEngine.GREMLINS or str(engine).lower() == "gremlins":
-            targets = self._collect_mutation_targets(package_dir)
+            resolved_targets = (
+                [t.strip() for t in targets if t.strip()]
+                if targets
+                else self._collect_mutation_targets(package_dir)
+            )
+            max_slice_weight = DEFAULT_MAX_SLICE_WEIGHT
             if isinstance(workers, int) and workers > 1:
-                slice_count = workers
+                min_slices = workers
             elif workers == "auto" or workers is None:
-                slice_count = 4
+                min_slices = 1
 
-        target_groups = self._partition_targets(targets, slice_count)
+        target_groups = self._partition_targets(
+            resolved_targets,
+            min_slices,
+            package_dir=package_dir,
+            max_slice_weight=max_slice_weight,
+            max_slices=max(min_slices, DEFAULT_MAX_CLUSTER_SLICES),
+        )
         job_specs: list[dict[str, Any]] = []
 
         for idx, group in enumerate(target_groups):
@@ -338,6 +392,7 @@ class HexaqueueClusterRunnerAdapter(TestingRunnerPort):
         numprocesses: int | str | None = None,
         batch_size: int | None = None,
         report_file: Path | None = None,
+        targets: Sequence[str] | None = None,
     ) -> int:
         """Run mutation testing on a remote Hexaqueue cluster.
 
@@ -394,6 +449,7 @@ class HexaqueueClusterRunnerAdapter(TestingRunnerPort):
                 numprocesses=numprocesses,
                 batch_size=batch_size,
                 report_file=report_file,
+                targets=targets,
             )
             all_job_specs.extend(job_specs)
 

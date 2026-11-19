@@ -321,6 +321,7 @@ def test_run_mutation_testing_dispatch(tmp_path: Path):
             numprocesses=4,
             batch_size=20,
             report_file=tmp_path / "report.json",
+            targets=None,
         )
 
 

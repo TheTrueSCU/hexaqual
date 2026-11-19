@@ -48,6 +48,7 @@ def test_run_mutation_tests_handler(tmp_path: Path):
             numprocesses=None,
             batch_size=None,
             report_file=None,
+            targets=None,
         )
 
 
@@ -111,6 +112,7 @@ def test_run_mutation_tests_handler_gremlins(tmp_path: Path):
             numprocesses=2,
             batch_size=10,
             report_file=None,
+            targets=None,
         )
 
 
@@ -140,6 +142,7 @@ def test_run_mutation_tests_handler_affected_with_packages(tmp_path: Path):
             numprocesses=None,
             batch_size=None,
             report_file=None,
+            targets=None,
         )
 
 
@@ -180,6 +183,7 @@ def test_run_mutation_tests_handler_affected_impacts_all(tmp_path: Path):
             numprocesses=None,
             batch_size=None,
             report_file=None,
+            targets=None,
         )
 
 
@@ -242,6 +246,7 @@ def test_run_mutation_tests_handler_all_packages(tmp_path: Path):
             numprocesses=None,
             batch_size=None,
             report_file=None,
+            targets=None,
         )
 
 

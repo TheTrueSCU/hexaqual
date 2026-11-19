@@ -38,6 +38,7 @@ class SubprocessTestingRunnerAdapter(TestingRunnerPort):
         numprocesses: int | str | None = None,
         batch_size: int | None = None,
         report_file: Path | None = None,
+        targets: Sequence[str] | None = None,
     ) -> int:
         """Run mutation testing on a specific package directory using the specified engine.
 
@@ -68,6 +69,7 @@ class SubprocessTestingRunnerAdapter(TestingRunnerPort):
                     numprocesses=numprocesses,
                     batch_size=batch_size,
                     report_file=report_file,
+                    targets=targets,
                 )
                 if code != 0:
                     exit_code = code
@@ -81,6 +83,7 @@ class SubprocessTestingRunnerAdapter(TestingRunnerPort):
                 numprocesses=numprocesses,
                 batch_size=batch_size,
                 report_file=report_file,
+                targets=targets,
             )
         return self._run_mutmut(package_dir=package_dir, reset_cache=reset_cache)
 
@@ -102,6 +105,7 @@ class SubprocessTestingRunnerAdapter(TestingRunnerPort):
         numprocesses: int | str | None = None,
         batch_size: int | None = None,
         report_file: Path | None = None,
+        targets: Sequence[str] | None = None,
     ) -> int:
         """Execute pytest-gremlins mutation runner."""
         cmd = [
@@ -115,6 +119,8 @@ class SubprocessTestingRunnerAdapter(TestingRunnerPort):
         ]
         if reset_cache:
             cmd.append("--gremlin-clear-cache")
+        if targets:
+            cmd.append(f"--gremlin-targets={','.join(targets)}")
         if workers is not None:
             cmd.append(f"--gremlin-workers={workers}")
         else:

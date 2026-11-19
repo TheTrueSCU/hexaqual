@@ -39,6 +39,7 @@ class TestingRunnerPort(ABC):
         numprocesses: int | str | None = None,
         batch_size: int | None = None,
         report_file: Path | None = None,
+        targets: Sequence[str] | None = None,
     ) -> int:
         """Run mutation testing on a specific package directory or set of directories.
 
@@ -50,6 +51,7 @@ class TestingRunnerPort(ABC):
             numprocesses: Pytest-xdist worker count for baseline test execution.
             batch_size: Number of gremlins per worker batch.
             report_file: Path to write the JSON report.
+            targets: Optional explicit relative source file paths to mutate.
 
         Returns:
             Exit code of mutation testing process.
