@@ -65,6 +65,11 @@ runs:
         elif command -v uv >/dev/null 2>&1; then
           uvx --from "${{ github.action_path }}/../../.." hexaqual "${ARGS[@]}"
         else
-          echo "::error::Neither 'hexaqual' nor 'uv' is available on PATH." >&2
-          exit 1
+          python3 "${{ github.action_path }}/fallback.py" \
+            --mode "$PLAN_MODE" \
+            --base-ref "$BASE_REF" \
+            --packages-root "$PLAN_PACKAGES_ROOT" \
+            --root "$PLAN_ROOT" \
+            --slices "$PLAN_SLICES" \
+            --max-weight "$PLAN_MAX_WEIGHT"
         fi
