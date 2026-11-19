@@ -1,0 +1,53 @@
+name: "Hexaqual LPT Mutation Matrix Planner"
+description: "Plans Longest-Processing-Time-first (LPT) balanced mutation matrices for affected/all workspace packages or single-package file slices."
+
+inputs:
+  mode:
+    description: "Planning mode: 'affected' (PR diff packages), 'all' (all workspace packages), or 'slices' (file-level LPT buckets)"
+    required: false
+    default: "affected"
+  base-ref:
+    description: "Base branch name for 'affected' mode"
+    required: false
+    default: ""
+  packages-root:
+    description: "Workspace packages directory for 'affected' / 'all' modes"
+    required: false
+    default: "packages"
+  root:
+    description: "Source directory to partition for 'slices' mode"
+    required: false
+    default: "src"
+  slices:
+    description: "Maximum number of parallel slices for 'slices' mode"
+    required: false
+    default: "12"
+
+outputs:
+  matrix:
+    description: "JSON matrix payload for GitHub Actions strategy.matrix"
+    value: ${{ steps.plan.outputs.matrix }}
+  has_affected:
+    description: "Whether at least one package or slice was planned ('true' / 'false')"
+    value: ${{ steps.plan.outputs.has_affected }}
+
+runs:
+  using: "composite"
+  steps:
+    - name: Plan LPT Mutation Matrix
+      id: plan
+      shell: bash
+      env:
+        PLAN_MODE: ${{ inputs.mode }}
+        PLAN_BASE_REF: ${{ inputs.base-ref }}
+        PLAN_PACKAGES_ROOT: ${{ inputs.packages-root }}
+        PLAN_ROOT: ${{ inputs.root }}
+        PLAN_SLICES: ${{ inputs.slices }}
+      run: |
+        BASE_REF="${PLAN_BASE_REF:-${GITHUB_BASE_REF:-main}}"
+        PYTHONPATH="${{ github.action_path }}/../../../src" python3 -m hexaqual.domain.mutation_plan \
+          --mode "$PLAN_MODE" \
+          --base-ref "$BASE_REF" \
+          --packages-root "$PLAN_PACKAGES_ROOT" \
+          --root "$PLAN_ROOT" \
+          --slices "$PLAN_SLICES"

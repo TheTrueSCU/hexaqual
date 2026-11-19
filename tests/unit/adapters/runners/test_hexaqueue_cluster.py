@@ -420,6 +420,22 @@ def test_stream_exception_falls_back_to_polling() -> None:
         mock_poll.assert_called_once()
 
 
+def test_stream_cancels_remote_run_on_keyboard_interrupt() -> None:
+    """Verify KeyboardInterrupt/SIGTERM during streaming cancels the remote run."""
+    mock_client = MagicMock()
+    mock_client.stream.side_effect = KeyboardInterrupt()
+    mock_client.post.return_value = httpx.Response(200)
+
+    adapter = HexaqueueClusterRunnerAdapter(
+        cluster_url="http://localhost:8000",
+        console=Console(quiet=True),
+    )
+    code = adapter._stream_run_progress(client=mock_client, run_id="r-sigterm")
+    assert code == 130
+    mock_client.post.assert_called_once()
+    assert "/v1/runs/r-sigterm/cancel" in str(mock_client.post.call_args.args[0])
+
+
 def test_poll_run_progress_timeout(monkeypatch: pytest.MonkeyPatch) -> None:
     """Verify _poll_run_progress cancels timed out run, prints warning on non-200 cancel, and returns 2."""
     cancelled_urls: list[str] = []
