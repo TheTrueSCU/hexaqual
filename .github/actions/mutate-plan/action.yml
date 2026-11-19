@@ -1,5 +1,5 @@
 name: "Hexaqual LPT Mutation Matrix Planner"
-description: "Plans Longest-Processing-Time-first (LPT) balanced mutation matrices for affected/all workspace packages or single-package file slices."
+description: "Plans AST-weighted, capacity-capped Longest-Processing-Time-first (LPT) mutation matrices for affected/all workspace packages or file slices."
 
 inputs:
   mode:
@@ -7,21 +7,25 @@ inputs:
     required: false
     default: "affected"
   base-ref:
-    description: "Base branch name for 'affected' mode"
+    description: "Base branch name for 'affected' / 'changed-slices' modes"
     required: false
     default: ""
   packages-root:
-    description: "Workspace packages directory for 'affected' / 'all' modes"
+    description: "Workspace packages directory for 'affected' / 'all' / 'changed-slices' modes"
     required: false
     default: "packages"
   root:
-    description: "Source directory to partition for 'slices' mode"
+    description: "Source directory to partition for 'slices' / single-package 'changed-slices' modes"
     required: false
     default: "src"
   slices:
-    description: "Maximum number of parallel slices for 'slices' mode"
+    description: "Maximum number of parallel slices for slice-based modes"
     required: false
     default: "12"
+  max-weight:
+    description: "Per-slice AST mutation weight cap (isolates heavy files; 0 disables dynamic capping)"
+    required: false
+    default: "450"
 
 outputs:
   matrix:
@@ -43,11 +47,13 @@ runs:
         PLAN_PACKAGES_ROOT: ${{ inputs.packages-root }}
         PLAN_ROOT: ${{ inputs.root }}
         PLAN_SLICES: ${{ inputs.slices }}
+        PLAN_MAX_WEIGHT: ${{ inputs.max-weight }}
       run: |
         BASE_REF="${PLAN_BASE_REF:-${GITHUB_BASE_REF:-main}}"
-        PYTHONPATH="${{ github.action_path }}/../../../src" python3 -m hexaqual.domain.mutation_plan \
+        python3 "${{ github.action_path }}/plan.py" \
           --mode "$PLAN_MODE" \
           --base-ref "$BASE_REF" \
           --packages-root "$PLAN_PACKAGES_ROOT" \
           --root "$PLAN_ROOT" \
-          --slices "$PLAN_SLICES"
+          --slices "$PLAN_SLICES" \
+          --max-weight "$PLAN_MAX_WEIGHT"
