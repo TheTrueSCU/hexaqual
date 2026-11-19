@@ -15,6 +15,7 @@ from pathlib import Path
 from typing import Any
 
 from coverage import CoverageData
+
 from hexaqual.adapters.code_analysis.coverage import parse_git_diff_hunks
 from hexaqual.adapters.workspace import check_tool_availability
 from hexaqual.domain.testing import MutationEngine
