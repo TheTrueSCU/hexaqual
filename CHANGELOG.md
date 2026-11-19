@@ -1,5 +1,18 @@
 # CHANGELOG
 
+## v0.11.0 (2026-11-19)
+
+### Highlights & Features
+* **AST-Weighted, Capacity-Capped LPT Mutation Slicing & `hexaqual mutate plan` CLI**:
+  - Added shared pure-stdlib `hexaqual.utils.mutation_slicing` module implementing AST mutable-site weighting (ignoring docstrings/comments), heavy-file solo isolation, dynamic slice expansion under a configurable per-slice weight cap (`DEFAULT_MAX_SLICE_WEIGHT = 450`, up to `16` cluster slices), and heaviest-first LPT dispatch ordering.
+  - Upgraded `HexaqueueClusterRunnerAdapter._partition_targets` and `_build_mutation_job_specs` from fixed 4-slice alphabetical round-robin to dynamic AST-weighted LPT bin packing.
+  - Added `hexaqual mutate run --targets` (`-t`) to scope mutation runs to comma-separated relative file paths.
+  - Added `hexaqual mutate plan` CLI command (`--mode affected|all|slices|changed-slices`, `--slices`, `--max-weight`, `--github-output`) and updated `.github/actions/mutate-plan` to invoke it (with a bare-Python `fallback.py` shim).
+* **Cluster Cancellation & Dependency Updates**:
+  - Cancelled remote Hexaqueue runs cleanly on `SIGINT`/`SIGTERM` (#61).
+  - Required `pytest-gremlins>=1.13.2` for `--gremlin-mutant-timeout` (#59).
+  - Updated workspace dependencies via Dependabot (#53) and set `src = ["src"]` in `[tool.ruff]` to prevent root artifacts from skewing import sorting.
+
 ## v0.10.7 (2026-11-18)
 
 ### Fixes & Improvements

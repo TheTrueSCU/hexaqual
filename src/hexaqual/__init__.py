@@ -7,7 +7,7 @@ Notes/Architectural Intent:
 
 from __future__ import annotations
 
-__version__ = "0.10.7"
+__version__ = "0.11.0"
 
 __all__ = [
     "__version__",
