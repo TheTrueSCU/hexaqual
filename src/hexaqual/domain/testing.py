@@ -145,6 +145,10 @@ class RunMutationTestsCommand(Command):
     batch_size: int | None = None
     report_file: Path | None = None
     targets: list[str] | None = None
+    operators: list[str] | None = None
+    mutant_timeout: int | None = None
+    prescan_workers: int | None = None
+    coverage_timeout: int | None = None
 
 
 class InspectMutationCacheCommand(Command):

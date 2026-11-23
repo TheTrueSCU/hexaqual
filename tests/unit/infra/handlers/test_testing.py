@@ -49,6 +49,10 @@ def test_run_mutation_tests_handler(tmp_path: Path):
             batch_size=None,
             report_file=None,
             targets=None,
+            operators=None,
+            mutant_timeout=None,
+            prescan_workers=None,
+            coverage_timeout=None,
         )
 
 
@@ -101,6 +105,10 @@ def test_run_mutation_tests_handler_gremlins(tmp_path: Path):
                 workers="auto",
                 numprocesses=2,
                 batch_size=10,
+                operators=["boolean"],
+                mutant_timeout=90,
+                prescan_workers=4,
+                coverage_timeout=360,
             )
         )
         assert code == 0
@@ -113,6 +121,10 @@ def test_run_mutation_tests_handler_gremlins(tmp_path: Path):
             batch_size=10,
             report_file=None,
             targets=None,
+            operators=["boolean"],
+            mutant_timeout=90,
+            prescan_workers=4,
+            coverage_timeout=360,
         )
 
 
@@ -143,6 +155,10 @@ def test_run_mutation_tests_handler_affected_with_packages(tmp_path: Path):
             batch_size=None,
             report_file=None,
             targets=None,
+            operators=None,
+            mutant_timeout=None,
+            prescan_workers=None,
+            coverage_timeout=None,
         )
 
 
@@ -184,6 +200,10 @@ def test_run_mutation_tests_handler_affected_impacts_all(tmp_path: Path):
             batch_size=None,
             report_file=None,
             targets=None,
+            operators=None,
+            mutant_timeout=None,
+            prescan_workers=None,
+            coverage_timeout=None,
         )
 
 
@@ -247,6 +267,10 @@ def test_run_mutation_tests_handler_all_packages(tmp_path: Path):
             batch_size=None,
             report_file=None,
             targets=None,
+            operators=None,
+            mutant_timeout=None,
+            prescan_workers=None,
+            coverage_timeout=None,
         )
 
 

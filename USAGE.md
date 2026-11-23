@@ -35,10 +35,12 @@ Usage: hexaqual [OPTIONS] COMMAND [ARGS]...
  Suite.
 
 ╭─ Options ────────────────────────────────────────────────────────────────────╮
-│ --install-completion          Install completion for the current shell.      │
-│ --show-completion             Show completion for the current shell, to copy │
-│                               it or customize the installation.              │
-│ --help                        Show this message and exit.                    │
+│ --install-completion        <bool>  Install completion for the current       │
+│                                     shell.                                   │
+│ --show-completion           <bool>  Show completion for the current shell,   │
+│                                     to copy it or customize the              │
+│                                     installation.                            │
+│ --help                      <bool>  Show this message and exit.              │
 ╰──────────────────────────────────────────────────────────────────────────────╯
 ╭─ Commands ───────────────────────────────────────────────────────────────────╮
 │ check       Execute the sanity check pipeline.                               │
@@ -74,7 +76,7 @@ Usage: hexaqual agents [OPTIONS] COMMAND [ARGS]...
  Manage, synchronize, and verify universal .agents guardrails.
 
 ╭─ Options ────────────────────────────────────────────────────────────────────╮
-│ --help          Show this message and exit.                                  │
+│ --help        <bool>  Show this message and exit.                            │
 ╰──────────────────────────────────────────────────────────────────────────────╯
 ╭─ Commands ───────────────────────────────────────────────────────────────────╮
 │ sync   Synchronize universal rules, workflows, and skills to target          │
@@ -107,7 +109,7 @@ Usage: hexaqual agents check [OPTIONS]
 │ --target  -t      <path>  Target repository root or .agents directory.       │
 │ --format  -f      <str>   Output format (table, json, markdown).             │
 │                           [default: table]                                   │
-│ --help                    Show this message and exit.                        │
+│ --help            <bool>  Show this message and exit.                        │
 ╰──────────────────────────────────────────────────────────────────────────────╯
 ```
 
@@ -128,9 +130,9 @@ Usage: hexaqual agents list [OPTIONS]
      Informational inspection command for developers and AI agents.
 
 ╭─ Options ────────────────────────────────────────────────────────────────────╮
-│ --format  -f      <str>  Output format (table, json, markdown).              │
-│                          [default: table]                                    │
-│ --help                   Show this message and exit.                         │
+│ --format  -f      <str>   Output format (table, json, markdown).             │
+│                           [default: table]                                   │
+│ --help            <bool>  Show this message and exit.                        │
 ╰──────────────────────────────────────────────────────────────────────────────╯
 ```
 
@@ -157,11 +159,11 @@ Usage: hexaqual agents sync [OPTIONS]
 
 ╭─ Options ────────────────────────────────────────────────────────────────────╮
 │ --target   -t      <path>  Target repository root or .agents directory.      │
-│ --dry-run                  Simulate synchronization without writing files to │
+│ --dry-run          <bool>  Simulate synchronization without writing files to │
 │                            disk.                                             │
 │ --format   -f      <str>   Output format (table, json, markdown).            │
 │                            [default: table]                                  │
-│ --help                     Show this message and exit.                       │
+│ --help             <bool>  Show this message and exit.                       │
 ╰──────────────────────────────────────────────────────────────────────────────╯
 ```
 
@@ -203,46 +205,52 @@ Usage: hexaqual check [OPTIONS] [files]...
      Primary entrypoint for local pre-commit verification and CI pipelines.
 
 ╭─ Arguments ──────────────────────────────────────────────────────────────────╮
-│   files      <str>  Specific files or directories to verify.                 │
+│   files...      <list[str]>  Specific files or directories to verify.        │
 ╰──────────────────────────────────────────────────────────────────────────────╯
 ╭─ Options ────────────────────────────────────────────────────────────────────╮
-│ --package                      -p       <str>  Target package(s).            │
-│ --example                      -e       <str>  Target example(s).            │
-│ --all                          -a              Run across all packages.      │
-│ --fix                                          Automatically apply           │
-│                                                autofixes.                    │
-│ --skip                                  <str>  Specific pipeline step(s) to  │
-│                                                skip (repeatable).            │
-│ --numprocesses,--parallelism   -n       <str>  Concurrency width ('auto' for │
-│                                                cores - 2, or 1..num_cores).  │
-│                                                [default: auto]               │
-│ --sequential                                   Execute checks sequentially   │
-│                                                (equivalent to -n 1).         │
-│ --max-complexity               -mx      <int>  Cognitive complexity ceiling. │
-│                                                [default: 25]                 │
-│ --audit-gates                                  Audit repository quality      │
-│                                                gates inventory.              │
-│ --format                       -f       <str>  Output format (table, json,   │
-│                                                markdown).                    │
-│                                                [default: table]              │
-│ --skip-lint,--skip-ruff                        Skip execution of the 'lint'  │
-│                                                workflow step.                │
-│ --skip-all-statements,--skip…                  Skip execution of the         │
-│                                                'all_statements' workflow     │
-│                                                step.                         │
-│ --skip-test-parity,--skip-pa…                  Skip execution of the         │
-│                                                'test_parity' workflow step.  │
-│ --skip-diagrams                                Skip execution of the         │
-│                                                'diagrams' workflow step.     │
-│ --skip-typecheck,--skip-ty                     Skip execution of the         │
-│                                                'typecheck' workflow step.    │
-│ --skip-complexity                              Skip execution of the         │
-│                                                'complexity' workflow step.   │
-│ --skip-deptry                                  Skip execution of the         │
-│                                                'deptry' workflow step.       │
-│ --skip-pytest,--skip-tests                     Skip execution of the         │
-│                                                'pytest' workflow step.       │
-│ --help                                         Show this message and exit.   │
+│ --package                   -p       <list[str]>  Target package(s).         │
+│ --example                   -e       <list[str]>  Target example(s).         │
+│ --all                       -a       <bool>       Run across all packages.   │
+│ --fix                                <bool>       Automatically apply        │
+│                                                   autofixes.                 │
+│ --skip                               <list[str]>  Specific pipeline step(s)  │
+│                                                   to skip (repeatable).      │
+│ --numprocesses,--parallel…  -n       <str>        Concurrency width ('auto'  │
+│                                                   for cores - 2, or          │
+│                                                   1..num_cores).             │
+│                                                   [default: auto]            │
+│ --sequential                         <bool>       Execute checks             │
+│                                                   sequentially (equivalent   │
+│                                                   to -n 1).                  │
+│ --max-complexity            -mx      <int>        Cognitive complexity       │
+│                                                   ceiling.                   │
+│                                                   [default: 25]              │
+│ --audit-gates                        <bool>       Audit repository quality   │
+│                                                   gates inventory.           │
+│ --format                    -f       <str>        Output format (table,      │
+│                                                   json, markdown).           │
+│                                                   [default: table]           │
+│ --skip-lint,--skip-ruff              <bool>       Skip execution of the      │
+│                                                   'lint' workflow step.      │
+│ --skip-all-statements,--s…           <bool>       Skip execution of the      │
+│                                                   'all_statements' workflow  │
+│                                                   step.                      │
+│ --skip-test-parity,--skip…           <bool>       Skip execution of the      │
+│                                                   'test_parity' workflow     │
+│                                                   step.                      │
+│ --skip-diagrams                      <bool>       Skip execution of the      │
+│                                                   'diagrams' workflow step.  │
+│ --skip-typecheck,--skip-ty           <bool>       Skip execution of the      │
+│                                                   'typecheck' workflow step. │
+│ --skip-complexity                    <bool>       Skip execution of the      │
+│                                                   'complexity' workflow      │
+│                                                   step.                      │
+│ --skip-deptry                        <bool>       Skip execution of the      │
+│                                                   'deptry' workflow step.    │
+│ --skip-pytest,--skip-tests           <bool>       Skip execution of the      │
+│                                                   'pytest' workflow step.    │
+│ --help                               <bool>       Show this message and      │
+│                                                   exit.                      │
 ╰──────────────────────────────────────────────────────────────────────────────╯
 ```
 
@@ -265,13 +273,14 @@ Usage: hexaqual complexity [OPTIONS] [files]...
      Driving adapter invoking ToolRunnerPort.run_complexipy across targets.
 
 ╭─ Arguments ──────────────────────────────────────────────────────────────────╮
-│   files      <str>  Target file(s) or directories.                           │
+│   files...      <list[str]>  Target file(s) or directories.                  │
 ╰──────────────────────────────────────────────────────────────────────────────╯
 ╭─ Options ────────────────────────────────────────────────────────────────────╮
-│ --max-complexity  -mx      <int>  Maximum cognitive complexity ceiling.      │
-│                                   [default: 25]                              │
-│ --package         -p       <str>  Target package(s).                         │
-│ --help                            Show this message and exit.                │
+│ --max-complexity  -mx      <int>        Maximum cognitive complexity         │
+│                                         ceiling.                             │
+│                                         [default: 25]                        │
+│ --package         -p       <list[str]>  Target package(s).                   │
+│ --help                     <bool>       Show this message and exit.          │
 ╰──────────────────────────────────────────────────────────────────────────────╯
 ```
 
@@ -284,7 +293,7 @@ Usage: hexaqual deps [OPTIONS] COMMAND [ARGS]...
  boundaries.
 
 ╭─ Options ────────────────────────────────────────────────────────────────────╮
-│ --help          Show this message and exit.                                  │
+│ --help        <bool>  Show this message and exit.                            │
 ╰──────────────────────────────────────────────────────────────────────────────╯
 ╭─ Commands ───────────────────────────────────────────────────────────────────╮
 │ audit            Execute unified audit across dependencies, optional extras, │
@@ -329,14 +338,14 @@ Usage: hexaqual deps audit [OPTIONS]
      Dispatches RunUnifiedDepsAuditCommand across the governance bus.
 
 ╭─ Options ────────────────────────────────────────────────────────────────────╮
-│ --diagrams                    Regenerate all Pydeps SVG import graphs and    │
-│                               Mermaid diagrams.                              │
-│ --deptry-only                 Only run deptry source import audits.          │
-│ --extras-only                 Only run optional extras parity checks.        │
-│ --format       -f      <str>  Output representation format (table, json,     │
-│                               markdown).                                     │
-│                               [default: table]                               │
-│ --help                        Show this message and exit.                    │
+│ --diagrams             <bool>  Regenerate all Pydeps SVG import graphs and   │
+│                                Mermaid diagrams.                             │
+│ --deptry-only          <bool>  Only run deptry source import audits.         │
+│ --extras-only          <bool>  Only run optional extras parity checks.       │
+│ --format       -f      <str>   Output representation format (table, json,    │
+│                                markdown).                                    │
+│                                [default: table]                              │
+│ --help                 <bool>  Show this message and exit.                   │
 ╰──────────────────────────────────────────────────────────────────────────────╯
 ```
 
@@ -358,9 +367,10 @@ Usage: hexaqual deps deptry [OPTIONS]
  packages.
 
 ╭─ Options ────────────────────────────────────────────────────────────────────╮
-│ --format  -f      <str>  Output presentation format (table, json, markdown). │
-│                          [default: table]                                    │
-│ --help                   Show this message and exit.                         │
+│ --format  -f      <str>   Output presentation format (table, json,           │
+│                           markdown).                                         │
+│                           [default: table]                                   │
+│ --help            <bool>  Show this message and exit.                        │
 ╰──────────────────────────────────────────────────────────────────────────────╯
 ```
 
@@ -385,15 +395,15 @@ Usage: hexaqual deps linter [OPTIONS] [files]...
  infra.
 
 ╭─ Arguments ──────────────────────────────────────────────────────────────────╮
-│   files      <str>  Optional changed files list.                             │
+│   files...      <list[str]>  Optional changed files list.                    │
 ╰──────────────────────────────────────────────────────────────────────────────╯
 ╭─ Options ────────────────────────────────────────────────────────────────────╮
-│ --package  -p      <str>  Target package(s).                                 │
-│ --all      -a             Run across all packages unconditionally.           │
-│ --format   -f      <str>  Output presentation format (table, json,           │
-│                           markdown).                                         │
-│                           [default: table]                                   │
-│ --help                    Show this message and exit.                        │
+│ --package  -p      <list[str]>  Target package(s).                           │
+│ --all      -a      <bool>       Run across all packages unconditionally.     │
+│ --format   -f      <str>        Output presentation format (table, json,     │
+│                                 markdown).                                   │
+│                                 [default: table]                             │
+│ --help             <bool>       Show this message and exit.                  │
 ╰──────────────────────────────────────────────────────────────────────────────╯
 ```
 
@@ -414,8 +424,8 @@ Usage: hexaqual deps linter-generate [OPTIONS]
  importing any layer.
 
 ╭─ Options ────────────────────────────────────────────────────────────────────╮
-│ --package  -p      <str>  Target package(s).                                 │
-│ --help                    Show this message and exit.                        │
+│ --package  -p      <list[str]>  Target package(s).                           │
+│ --help             <bool>       Show this message and exit.                  │
 ╰──────────────────────────────────────────────────────────────────────────────╯
 ```
 
@@ -439,13 +449,14 @@ Usage: hexaqual deps pydeps [OPTIONS]
      Ensures pydeps availability and dispatches GeneratePydepsCommand.
 
 ╭─ Options ────────────────────────────────────────────────────────────────────╮
-│ --package  -p      <str>  Target package(s).                                 │
-│ --check                   Verify diagram freshness without modifying files.  │
-│ --fix                     Regenerate architecture diagrams.                  │
-│ --format   -f      <str>  Output presentation format (table, json,           │
-│                           markdown).                                         │
-│                           [default: table]                                   │
-│ --help                    Show this message and exit.                        │
+│ --package  -p      <list[str]>  Target package(s).                           │
+│ --check            <bool>       Verify diagram freshness without modifying   │
+│                                 files.                                       │
+│ --fix              <bool>       Regenerate architecture diagrams.            │
+│ --format   -f      <str>        Output presentation format (table, json,     │
+│                                 markdown).                                   │
+│                                 [default: table]                             │
+│ --help             <bool>       Show this message and exit.                  │
 ╰──────────────────────────────────────────────────────────────────────────────╯
 ```
 
@@ -457,7 +468,7 @@ Usage: hexaqual docs [OPTIONS] COMMAND [ARGS]...
  Documentation generation and verification.
 
 ╭─ Options ────────────────────────────────────────────────────────────────────╮
-│ --help          Show this message and exit.                                  │
+│ --help        <bool>  Show this message and exit.                            │
 ╰──────────────────────────────────────────────────────────────────────────────╯
 ╭─ Commands ───────────────────────────────────────────────────────────────────╮
 │ usage    Generate or verify USAGE.md documentation catalogs.                 │
@@ -488,7 +499,7 @@ Usage: hexaqual docs blog [OPTIONS] COMMAND [ARGS]...
  Blog publishing and Medium syndication commands.
 
 ╭─ Options ────────────────────────────────────────────────────────────────────╮
-│ --help          Show this message and exit.                                  │
+│ --help        <bool>  Show this message and exit.                            │
 ╰──────────────────────────────────────────────────────────────────────────────╯
 ╭─ Commands ───────────────────────────────────────────────────────────────────╮
 │ medium  Record canonical syndicated Medium URL for an article.               │
@@ -520,12 +531,12 @@ Usage: hexaqual docs drift [OPTIONS] [path]
 │   path      <path>  Specific markdown document or directory to audit.        │
 ╰──────────────────────────────────────────────────────────────────────────────╯
 ╭─ Options ────────────────────────────────────────────────────────────────────╮
-│ --fix                     Automatically repair detected prose data drift.    │
+│ --fix             <bool>  Automatically repair detected prose data drift.    │
 │ --format  -f      <str>   Output presentation format (table, json, markdown, │
 │                           auto).                                             │
 │                           [default: table]                                   │
 │ --root            <path>  Workspace root directory.                          │
-│ --help                    Show this message and exit.                        │
+│ --help            <bool>  Show this message and exit.                        │
 ╰──────────────────────────────────────────────────────────────────────────────╯
 ```
 
@@ -555,7 +566,7 @@ Usage: hexaqual docs links [OPTIONS]
 │                           rich, auto).                                       │
 │                           [default: table]                                   │
 │ --root            <path>  Workspace root directory.                          │
-│ --help                    Show this message and exit.                        │
+│ --help            <bool>  Show this message and exit.                        │
 ╰──────────────────────────────────────────────────────────────────────────────╯
 ```
 
@@ -592,14 +603,14 @@ Usage: hexaqual docs publish [OPTIONS] [slug]
 ╰──────────────────────────────────────────────────────────────────────────────╯
 ╭─ Options ────────────────────────────────────────────────────────────────────╮
 │ --manifest    -m      <path>  Path to articles manifest or directory.        │
-│ --dry-run                     Validate without making live HTTP requests.    │
-│ --publish                     Publish live articles (otherwise draft upload  │
+│ --dry-run             <bool>  Validate without making live HTTP requests.    │
+│ --publish             <bool>  Publish live articles (otherwise draft upload  │
 │                               mode).                                         │
-│ --all-drafts                  Upload all local articles without devto_id as  │
+│ --all-drafts          <bool>  Upload all local articles without devto_id as  │
 │                               drafts.                                        │
-│ --status                      Show a status table of all articles and their  │
+│ --status              <bool>  Show a status table of all articles and their  │
 │                               publish state.                                 │
-│ --sync-links                  Re-resolve and update cross-links on DEV.to    │
+│ --sync-links          <bool>  Re-resolve and update cross-links on DEV.to    │
 │                               across all published articles.                 │
 │ --medium-url          <str>   Record the Medium URL for a slug after manual  │
 │                               import.                                        │
@@ -609,7 +620,7 @@ Usage: hexaqual docs publish [OPTIONS] [slug]
 │                               markdown, auto).                               │
 │                               [default: table]                               │
 │ --root                <path>  Workspace root directory.                      │
-│ --help                        Show this message and exit.                    │
+│ --help                <bool>  Show this message and exit.                    │
 ╰──────────────────────────────────────────────────────────────────────────────╯
 ```
 
@@ -633,11 +644,11 @@ Usage: hexaqual docs usage [OPTIONS]
      Driving adapter executing usage documentation generator.
 
 ╭─ Options ────────────────────────────────────────────────────────────────────╮
-│ --check                    Verify USAGE.md is up to date.                    │
-│ --fix                      Regenerate USAGE.md.                              │
+│ --check            <bool>  Verify USAGE.md is up to date.                    │
+│ --fix              <bool>  Regenerate USAGE.md.                              │
 │ --package  -p      <str>   Target package.                                   │
 │ --root             <path>  Workspace root directory.                         │
-│ --help                     Show this message and exit.                       │
+│ --help             <bool>  Show this message and exit.                       │
 ╰──────────────────────────────────────────────────────────────────────────────╯
 ```
 
@@ -649,7 +660,7 @@ Usage: hexaqual gh [OPTIONS] COMMAND [ARGS]...
  GitHub repository, PR, and security examination.
 
 ╭─ Options ────────────────────────────────────────────────────────────────────╮
-│ --help          Show this message and exit.                                  │
+│ --help        <bool>  Show this message and exit.                            │
 ╰──────────────────────────────────────────────────────────────────────────────╯
 ╭─ Commands ───────────────────────────────────────────────────────────────────╮
 │ pr             Examine a Pull Request health dashboard.                      │
@@ -708,8 +719,8 @@ Usage: hexaqual gh checks [OPTIONS] {ref_or_pr}
 │                            [required]                                        │
 ╰──────────────────────────────────────────────────────────────────────────────╯
 ╭─ Options ────────────────────────────────────────────────────────────────────╮
-│ --format  -f      <str>  Output format. [default: auto]                      │
-│ --help                   Show this message and exit.                         │
+│ --format  -f      <str>   Output format. [default: auto]                     │
+│ --help            <bool>  Show this message and exit.                        │
 ╰──────────────────────────────────────────────────────────────────────────────╯
 ```
 
@@ -738,14 +749,15 @@ Usage: hexaqual gh ci-duration [OPTIONS]
  charts.
 
 ╭─ Options ────────────────────────────────────────────────────────────────────╮
-│ --workflow  -w      <str>  Workflow name or filename. [default: CI]          │
-│ --branch    -b      <str>  Git branch name. [default: main]                  │
-│ --limit     -l      <int>  Number of historical runs to query. [default: 10] │
-│ --summary   -s             Append report directly to $GITHUB_STEP_SUMMARY.   │
-│ --run-id            <str>  Explicit GitHub Actions run databaseId.           │
-│ --pr                <str>  Optional pull request number to post/update       │
-│                            in-place status comment.                          │
-│ --help                     Show this message and exit.                       │
+│ --workflow  -w      <str>   Workflow name or filename. [default: CI]         │
+│ --branch    -b      <str>   Git branch name. [default: main]                 │
+│ --limit     -l      <int>   Number of historical runs to query.              │
+│                             [default: 10]                                    │
+│ --summary   -s      <bool>  Append report directly to $GITHUB_STEP_SUMMARY.  │
+│ --run-id            <str>   Explicit GitHub Actions run databaseId.          │
+│ --pr                <str>   Optional pull request number to post/update      │
+│                             in-place status comment.                         │
+│ --help              <bool>  Show this message and exit.                      │
 ╰──────────────────────────────────────────────────────────────────────────────╯
 ```
 
@@ -766,8 +778,8 @@ Usage: hexaqual gh code-scanning [OPTIONS]
      Queries GitHub CodeQL code scanning alerts.
 
 ╭─ Options ────────────────────────────────────────────────────────────────────╮
-│ --format  -f      <str>  Output format. [default: auto]                      │
-│ --help                   Show this message and exit.                         │
+│ --format  -f      <str>   Output format. [default: auto]                     │
+│ --help            <bool>  Show this message and exit.                        │
 ╰──────────────────────────────────────────────────────────────────────────────╯
 ```
 
@@ -800,7 +812,7 @@ Usage: hexaqual gh codeql [OPTIONS]
 │ --format   -f      <str>   Output presentation format (table, json,          │
 │                            markdown).                                        │
 │                            [default: table]                                  │
-│ --help                     Show this message and exit.                       │
+│ --help             <bool>  Show this message and exit.                       │
 ╰──────────────────────────────────────────────────────────────────────────────╯
 ```
 
@@ -827,11 +839,11 @@ Usage: hexaqual gh pr [OPTIONS] {pr_number}
 │ *    pr_number      <str>  Pull request number to examine. [required]        │
 ╰──────────────────────────────────────────────────────────────────────────────╯
 ╭─ Options ────────────────────────────────────────────────────────────────────╮
-│ --details  -d             Display full comment discussions.                  │
-│ --watch    -w             Continuously poll until checks finish.             │
-│ --format   -f      <str>  Output format (auto, rich, json, plain).           │
-│                           [default: auto]                                    │
-│ --help                    Show this message and exit.                        │
+│ --details  -d      <bool>  Display full comment discussions.                 │
+│ --watch    -w      <bool>  Continuously poll until checks finish.            │
+│ --format   -f      <str>   Output format (auto, rich, json, plain).          │
+│                            [default: auto]                                   │
+│ --help             <bool>  Show this message and exit.                       │
 ╰──────────────────────────────────────────────────────────────────────────────╯
 ```
 
@@ -856,8 +868,8 @@ Usage: hexaqual gh repo [OPTIONS] [repo_name]
 │   repo_name      <str>  Repository name (owner/repo).                        │
 ╰──────────────────────────────────────────────────────────────────────────────╯
 ╭─ Options ────────────────────────────────────────────────────────────────────╮
-│ --format  -f      <str>  Output format. [default: auto]                      │
-│ --help                   Show this message and exit.                         │
+│ --format  -f      <str>   Output format. [default: auto]                     │
+│ --help            <bool>  Show this message and exit.                        │
 ╰──────────────────────────────────────────────────────────────────────────────╯
 ```
 
@@ -885,10 +897,10 @@ Usage: hexaqual gh resolve [OPTIONS] {pr_number}
 │                            [required]                                        │
 ╰──────────────────────────────────────────────────────────────────────────────╯
 ╭─ Options ────────────────────────────────────────────────────────────────────╮
-│ --bot-only    --all      Resolve only automated bot review threads (e.g.     │
-│                          CodeRabbit, Dependabot).                            │
-│                          [default: bot-only]                                 │
-│ --help                   Show this message and exit.                         │
+│ --bot-only    --all    <bool>  Resolve only automated bot review threads     │
+│                                (e.g. CodeRabbit, Dependabot).                │
+│                                [default: bot-only]                           │
+│ --help                 <bool>  Show this message and exit.                   │
 ╰──────────────────────────────────────────────────────────────────────────────╯
 ```
 
@@ -915,8 +927,8 @@ Usage: hexaqual gh security [OPTIONS] {pr_number}
 │                            [required]                                        │
 ╰──────────────────────────────────────────────────────────────────────────────╯
 ╭─ Options ────────────────────────────────────────────────────────────────────╮
-│ --format  -f      <str>  Output format. [default: auto]                      │
-│ --help                   Show this message and exit.                         │
+│ --format  -f      <str>   Output format. [default: auto]                     │
+│ --help            <bool>  Show this message and exit.                        │
 ╰──────────────────────────────────────────────────────────────────────────────╯
 ```
 
@@ -928,7 +940,7 @@ Usage: hexaqual hooks [OPTIONS] COMMAND [ARGS]...
  Manage, install, and verify Git lifecycle hooks and commit message standards.
 
 ╭─ Options ────────────────────────────────────────────────────────────────────╮
-│ --help          Show this message and exit.                                  │
+│ --help        <bool>  Show this message and exit.                            │
 ╰──────────────────────────────────────────────────────────────────────────────╯
 ╭─ Commands ───────────────────────────────────────────────────────────────────╮
 │ install     Install Git lifecycle hooks (pre-commit, commit-msg, pre-push,   │
@@ -969,7 +981,7 @@ Usage: hexaqual hooks check [OPTIONS]
 
 ╭─ Options ────────────────────────────────────────────────────────────────────╮
 │ --target  -t      <path>  Target repository root directory.                  │
-│ --help                    Show this message and exit.                        │
+│ --help            <bool>  Show this message and exit.                        │
 ╰──────────────────────────────────────────────────────────────────────────────╯
 ```
 
@@ -999,10 +1011,11 @@ Usage: hexaqual hooks commit-msg [OPTIONS] [commit_msg_file]
 │                                .git/COMMIT_EDITMSG). Reads stdin if omitted. │
 ╰──────────────────────────────────────────────────────────────────────────────╯
 ╭─ Options ────────────────────────────────────────────────────────────────────╮
-│ --no-dco                   Disable Developer Certificate of Origin           │
-│                            (Signed-off-by) verification.                     │
-│ --no-conventional          Disable Conventional Commits format verification. │
-│ --help                     Show this message and exit.                       │
+│ --no-dco                 <bool>  Disable Developer Certificate of Origin     │
+│                                  (Signed-off-by) verification.               │
+│ --no-conventional        <bool>  Disable Conventional Commits format         │
+│                                  verification.                               │
+│ --help                   <bool>  Show this message and exit.                 │
 ╰──────────────────────────────────────────────────────────────────────────────╯
 ```
 
@@ -1032,7 +1045,7 @@ Usage: hexaqual hooks install [OPTIONS]
 │                           available, else native), 'pre-commit', or          │
 │                           'native'.                                          │
 │                           [default: auto]                                    │
-│ --help                    Show this message and exit.                        │
+│ --help            <bool>  Show this message and exit.                        │
 ╰──────────────────────────────────────────────────────────────────────────────╯
 ```
 
@@ -1054,7 +1067,7 @@ Usage: hexaqual hooks uninstall [OPTIONS]
 
 ╭─ Options ────────────────────────────────────────────────────────────────────╮
 │ --target  -t      <path>  Target repository root directory.                  │
-│ --help                    Show this message and exit.                        │
+│ --help            <bool>  Show this message and exit.                        │
 ╰──────────────────────────────────────────────────────────────────────────────╯
 ```
 
@@ -1076,7 +1089,7 @@ Usage: hexaqual mutate [OPTIONS] COMMAND [ARGS]...
  Mutation testing execution and surviving mutant inspection.
 
 ╭─ Options ────────────────────────────────────────────────────────────────────╮
-│ --help          Show this message and exit.                                  │
+│ --help        <bool>  Show this message and exit.                            │
 ╰──────────────────────────────────────────────────────────────────────────────╯
 ╭─ Commands ───────────────────────────────────────────────────────────────────╮
 │ run      Run mutation testing scoped to package or workspace.                │
@@ -1110,19 +1123,20 @@ Usage: hexaqual mutate inspect [OPTIONS]
  CQRS bus.
 
 ╭─ Options ────────────────────────────────────────────────────────────────────╮
-│ --package       -p        <str>  Filter by package.                          │
-│ --all           -a               Inspect all mutants.                        │
-│ --actionable    -act             Show actionable critical mutants.           │
-│ --correlated    -c               Correlate with .coverage.                   │
-│ --summary       -s               Triage summary.                             │
-│ --format        -f        <str>  Output format. [default: rich]              │
-│ --engine        -e        <str>  Mutation engine to inspect ('gremlins' or   │
-│                                  'mutmut').                                  │
-│                                  [default: gremlins]                         │
-│ --report-file             <str>  Explicit path to gremlins JSON report file. │
-│ --step-summary                   Append Markdown summary to                  │
-│                                  $GITHUB_STEP_SUMMARY.                       │
-│ --help                           Show this message and exit.                 │
+│ --package       -p        <str>   Filter by package.                         │
+│ --all           -a        <bool>  Inspect all mutants.                       │
+│ --actionable    -act      <bool>  Show actionable critical mutants.          │
+│ --correlated    -c        <bool>  Correlate with .coverage.                  │
+│ --summary       -s        <bool>  Triage summary.                            │
+│ --format        -f        <str>   Output format. [default: rich]             │
+│ --engine        -e        <str>   Mutation engine to inspect ('gremlins' or  │
+│                                   'mutmut').                                 │
+│                                   [default: gremlins]                        │
+│ --report-file             <str>   Explicit path to gremlins JSON report      │
+│                                   file.                                      │
+│ --step-summary            <bool>  Append Markdown summary to                 │
+│                                   $GITHUB_STEP_SUMMARY.                      │
+│ --help                    <bool>  Show this message and exit.                │
 ╰──────────────────────────────────────────────────────────────────────────────╯
 ```
 
@@ -1170,9 +1184,9 @@ Usage: hexaqual mutate plan [OPTIONS]
 │ --max-weight           <int>   Per-slice AST mutation weight cap (0 disables │
 │                                dynamic capping).                             │
 │                                [default: 450]                                │
-│ --github-output                Write 'matrix' and 'has_affected' to          │
+│ --github-output        <bool>  Write 'matrix' and 'has_affected' to          │
 │                                $GITHUB_OUTPUT when set.                      │
-│ --help                         Show this message and exit.                   │
+│ --help                 <bool>  Show this message and exit.                   │
 ╰──────────────────────────────────────────────────────────────────────────────╯
 ```
 
@@ -1194,6 +1208,11 @@ Usage: hexaqual mutate run [OPTIONS]
      workers: Parallel workers during mutation phase.
      numprocesses: Pytest-xdist baseline process count.
      batch_size: Mutants per worker batch.
+     targets: Optional comma-separated relative source file paths to mutate.
+     operators: Optional comma-separated pytest-gremlins operators.
+     mutant_timeout: Optional per-mutant timeout in seconds.
+     prescan_workers: Optional sharded coverage pre-scan worker count.
+     coverage_timeout: Optional coverage pre-scan timeout in seconds.
      cluster: Execution target cluster ('local' or 'hexaqueue').
      cluster_url: Hexaqueue cluster REST endpoint URL.
      cluster_token: Authentication bearer token for Hexaqueue cluster.
@@ -1213,15 +1232,15 @@ Usage: hexaqual mutate run [OPTIONS]
 
 ╭─ Options ────────────────────────────────────────────────────────────────────╮
 │ --package               -p      <str>    Target package name (e.g. core).    │
-│ --all                   -a               Run across all workspace packages   │
+│ --all                   -a      <bool>   Run across all workspace packages   │
 │                                          sequentially.                       │
-│ --affected              -A               Run only on packages affected by    │
+│ --affected              -A      <bool>   Run only on packages affected by    │
 │                                          git diff.                           │
-│ --direct,--direct-only                   Restrict affected analysis to       │
+│ --direct,--direct-only          <bool>   Restrict affected analysis to       │
 │                                          directly modified package           │
 │                                          directories, skipping transitive    │
 │                                          dependents and root infra changes.  │
-│ --reset                 -r               Clear cache and re-run.             │
+│ --reset                 -r      <bool>   Clear cache and re-run.             │
 │ --engine                -e      <str>    Mutation engine to use ('gremlins'  │
 │                                          or 'mutmut').                       │
 │                                          [default: gremlins]                 │
@@ -1235,6 +1254,17 @@ Usage: hexaqual mutate run [OPTIONS]
 │                                          (defaults to 10).                   │
 │ --targets               -t      <str>    Comma-separated relative source     │
 │                                          file paths to mutate.               │
+│ --operators                     <str>    Comma-separated pytest-gremlins     │
+│                                          mutation operators (e.g.            │
+│                                          boolean,comparison).                │
+│ --mutant-timeout                <int>    Per-mutant timeout in seconds for   │
+│                                          pytest-gremlins (defaults to 60).   │
+│ --prescan-workers               <int>    Sharded coverage pre-scan worker    │
+│                                          count for pytest-gremlins (defaults │
+│                                          to min(4, CPUs)).                   │
+│ --coverage-timeout              <int>    Coverage pre-scan timeout in        │
+│                                          seconds for pytest-gremlins         │
+│                                          (defaults to 300).                  │
 │ --cluster                       <str>    Execution target cluster ('local'   │
 │                                          or 'hexaqueue').                    │
 │                                          [default: local]                    │
@@ -1249,13 +1279,13 @@ Usage: hexaqual mutate run [OPTIONS]
 │                                          Hexaqueue cluster.                  │
 │                                          [env var: HEXAQUEUE_USER]           │
 │                                          [default: default]                  │
-│ --cluster-elevate                        Assert administrative elevation on  │
+│ --cluster-elevate               <bool>   Assert administrative elevation on  │
 │                                          Hexaqueue cluster.                  │
 │ --cluster-timeout               <float>  Maximum execution timeout in        │
 │                                          seconds for remote Hexaqueue        │
 │                                          workload (defaults to 1800.0s).     │
 │                                          [env var: HEXAQUEUE_TIMEOUT]        │
-│ --help                                   Show this message and exit.         │
+│ --help                          <bool>   Show this message and exit.         │
 ╰──────────────────────────────────────────────────────────────────────────────╯
 ```
 
@@ -1267,7 +1297,7 @@ Usage: hexaqual openssf [OPTIONS] COMMAND [ARGS]...
  OpenSSF Best Practices badge auditing and proposal generation.
 
 ╭─ Options ────────────────────────────────────────────────────────────────────╮
-│ --help          Show this message and exit.                                  │
+│ --help        <bool>  Show this message and exit.                            │
 ╰──────────────────────────────────────────────────────────────────────────────╯
 ╭─ Commands ───────────────────────────────────────────────────────────────────╮
 │ audit      Audit OpenSSF Best Practices badge status and identify pending    │
@@ -1293,13 +1323,13 @@ Usage: hexaqual openssf audit [OPTIONS]
  Audit OpenSSF Best Practices badge status and identify pending criteria.
 
 ╭─ Options ────────────────────────────────────────────────────────────────────╮
-│ --tier        -t      <str>  Target badge tier: passing, silver, or gold.    │
-│                              [default: passing]                              │
-│ --project-id  -i      <int>  Explicit OpenSSF project numeric ID.            │
-│ --format      -f      <str>  Output presentation format (table, json, rich,  │
-│                              auto).                                          │
-│                              [default: table]                                │
-│ --help                       Show this message and exit.                     │
+│ --tier        -t      <str>   Target badge tier: passing, silver, or gold.   │
+│                               [default: passing]                             │
+│ --project-id  -i      <int>   Explicit OpenSSF project numeric ID.           │
+│ --format      -f      <str>   Output presentation format (table, json, rich, │
+│                               auto).                                         │
+│                               [default: table]                               │
+│ --help                <bool>  Show this message and exit.                    │
 ╰──────────────────────────────────────────────────────────────────────────────╯
 ```
 
@@ -1311,19 +1341,19 @@ Usage: hexaqual openssf check [OPTIONS]
  Enforce OpenSSF badge status and criteria compliance as a CI/quality gate.
 
 ╭─ Options ────────────────────────────────────────────────────────────────────╮
-│ --tier                 -t      <str>  Target badge tier: passing, silver, or │
-│                                       gold.                                  │
-│                                       [default: passing]                     │
-│ --project-id           -i      <int>  Explicit OpenSSF project numeric ID.   │
-│ --min-score            -s      <int>  Minimum required score percentage.     │
-│                                       [default: 100]                         │
-│ --require-badge-level  -b      <str>  Explicit required badge level          │
-│                                       (passing, silver, gold). Defaults to   │
-│                                       --tier.                                │
-│ --format               -f      <str>  Output presentation format (table,     │
-│                                       json, rich, auto).                     │
-│                                       [default: table]                       │
-│ --help                                Show this message and exit.            │
+│ --tier                 -t      <str>   Target badge tier: passing, silver,   │
+│                                        or gold.                              │
+│                                        [default: passing]                    │
+│ --project-id           -i      <int>   Explicit OpenSSF project numeric ID.  │
+│ --min-score            -s      <int>   Minimum required score percentage.    │
+│                                        [default: 100]                        │
+│ --require-badge-level  -b      <str>   Explicit required badge level         │
+│                                        (passing, silver, gold). Defaults to  │
+│                                        --tier.                               │
+│ --format               -f      <str>   Output presentation format (table,    │
+│                                        json, rich, auto).                    │
+│                                        [default: table]                      │
+│ --help                         <bool>  Show this message and exit.           │
 ╰──────────────────────────────────────────────────────────────────────────────╯
 ```
 
@@ -1335,14 +1365,14 @@ Usage: hexaqual openssf checklist [OPTIONS]
  Export or inspect the machine-readable OpenSSF Best Practices checklist.
 
 ╭─ Options ────────────────────────────────────────────────────────────────────╮
-│ --tier        -t      <str>  Target badge tier: passing, silver, or gold.    │
-│                              [default: passing]                              │
-│ --project-id  -i      <int>  Explicit OpenSSF project numeric ID.            │
-│ --format      -f      <str>  Output presentation format (table, json,        │
-│                              markdown, rich, auto).                          │
-│                              [default: table]                                │
-│ --unmet-only  -u             Show only unmet or pending criteria.            │
-│ --help                       Show this message and exit.                     │
+│ --tier        -t      <str>   Target badge tier: passing, silver, or gold.   │
+│                               [default: passing]                             │
+│ --project-id  -i      <int>   Explicit OpenSSF project numeric ID.           │
+│ --format      -f      <str>   Output presentation format (table, json,       │
+│                               markdown, rich, auto).                         │
+│                               [default: table]                               │
+│ --unmet-only  -u      <bool>  Show only unmet or pending criteria.           │
+│ --help                <bool>  Show this message and exit.                    │
 ╰──────────────────────────────────────────────────────────────────────────────╯
 ```
 
@@ -1354,13 +1384,13 @@ Usage: hexaqual openssf propose [OPTIONS]
  Generate 1-click automation proposal URLs for OpenSSF Best Practices.
 
 ╭─ Options ────────────────────────────────────────────────────────────────────╮
-│ --tier        -t      <str>  Target badge tier: passing, silver, or gold.    │
-│                              [default: passing]                              │
-│ --project-id  -i      <int>  Explicit OpenSSF project numeric ID.            │
-│ --open        -o             Automatically launch pre-filled proposal URLs   │
-│                              in default browser.                             │
-│ --max-chunk   -m      <int>  Maximum criteria per URL chunk. [default: 12]   │
-│ --help                       Show this message and exit.                     │
+│ --tier        -t      <str>   Target badge tier: passing, silver, or gold.   │
+│                               [default: passing]                             │
+│ --project-id  -i      <int>   Explicit OpenSSF project numeric ID.           │
+│ --open        -o      <bool>  Automatically launch pre-filled proposal URLs  │
+│                               in default browser.                            │
+│ --max-chunk   -m      <int>   Maximum criteria per URL chunk. [default: 12]  │
+│ --help                <bool>  Show this message and exit.                    │
 ╰──────────────────────────────────────────────────────────────────────────────╯
 ```
 
@@ -1377,8 +1407,8 @@ Usage: hexaqual openssf scaffold [OPTIONS] {document}
 │                           [required]                                         │
 ╰──────────────────────────────────────────────────────────────────────────────╯
 ╭─ Options ────────────────────────────────────────────────────────────────────╮
-│ --force  -f        Overwrite existing files.                                 │
-│ --help             Show this message and exit.                               │
+│ --force  -f      <bool>  Overwrite existing files.                           │
+│ --help           <bool>  Show this message and exit.                         │
 ╰──────────────────────────────────────────────────────────────────────────────╯
 ```
 
@@ -1390,12 +1420,12 @@ Usage: hexaqual openssf scorecard [OPTIONS]
  Audit OpenSSF Security Scorecard metrics and supply chain posture.
 
 ╭─ Options ────────────────────────────────────────────────────────────────────╮
-│ --repo     -r      <str>  Target GitHub repository (e.g. owner/repo).        │
-│ --details  -d             Display granular check reasons and details.        │
-│ --format   -f      <str>  Output presentation format (table, json, rich,     │
-│                           auto).                                             │
-│                           [default: table]                                   │
-│ --help                    Show this message and exit.                        │
+│ --repo     -r      <str>   Target GitHub repository (e.g. owner/repo).       │
+│ --details  -d      <bool>  Display granular check reasons and details.       │
+│ --format   -f      <str>   Output presentation format (table, json, rich,    │
+│                            auto).                                            │
+│                            [default: table]                                  │
+│ --help             <bool>  Show this message and exit.                       │
 ╰──────────────────────────────────────────────────────────────────────────────╯
 ```
 
@@ -1407,7 +1437,7 @@ Usage: hexaqual parity [OPTIONS] COMMAND [ARGS]...
  Audit test symmetry and optional extras parity.
 
 ╭─ Options ────────────────────────────────────────────────────────────────────╮
-│ --help          Show this message and exit.                                  │
+│ --help        <bool>  Show this message and exit.                            │
 ╰──────────────────────────────────────────────────────────────────────────────╯
 ╭─ Commands ───────────────────────────────────────────────────────────────────╮
 │ test          Verify 1:1 symmetry between src modules and unit tests.        │
@@ -1436,9 +1466,9 @@ Usage: hexaqual parity architecture [OPTIONS]
      and test directory inits exist across all workspace packages.
 
 ╭─ Options ────────────────────────────────────────────────────────────────────╮
-│ --format  -f      <str>  Output format (table, json, markdown).              │
-│                          [default: table]                                    │
-│ --help                   Show this message and exit.                         │
+│ --format  -f      <str>   Output format (table, json, markdown).             │
+│                           [default: table]                                   │
+│ --help            <bool>  Show this message and exit.                        │
 ╰──────────────────────────────────────────────────────────────────────────────╯
 ```
 
@@ -1461,10 +1491,10 @@ Usage: hexaqual parity extras [OPTIONS]
  packaging.
 
 ╭─ Options ────────────────────────────────────────────────────────────────────╮
-│ --diagram                 Generate Mermaid dependency diagram.               │
-│ --format   -f      <str>  Output format (table, json, markdown).             │
-│                           [default: table]                                   │
-│ --help                    Show this message and exit.                        │
+│ --diagram          <bool>  Generate Mermaid dependency diagram.              │
+│ --format   -f      <str>   Output format (table, json, markdown).            │
+│                            [default: table]                                  │
+│ --help             <bool>  Show this message and exit.                       │
 ╰──────────────────────────────────────────────────────────────────────────────╯
 ```
 
@@ -1486,9 +1516,9 @@ Usage: hexaqual parity test [OPTIONS]
  presence.
 
 ╭─ Options ────────────────────────────────────────────────────────────────────╮
-│ --format  -f      <str>  Output format (table, json, markdown).              │
-│                          [default: table]                                    │
-│ --help                   Show this message and exit.                         │
+│ --format  -f      <str>   Output format (table, json, markdown).             │
+│                           [default: table]                                   │
+│ --help            <bool>  Show this message and exit.                        │
 ╰──────────────────────────────────────────────────────────────────────────────╯
 ```
 
@@ -1500,7 +1530,7 @@ Usage: hexaqual refactor [OPTIONS] COMMAND [ARGS]...
  AST symbol alphabetization and Python code refactoring.
 
 ╭─ Options ────────────────────────────────────────────────────────────────────╮
-│ --help          Show this message and exit.                                  │
+│ --help        <bool>  Show this message and exit.                            │
 ╰──────────────────────────────────────────────────────────────────────────────╯
 ╭─ Commands ───────────────────────────────────────────────────────────────────╮
 │ alphabetize  Sort functions and class methods alphabetically using LibCST.   │
@@ -1533,16 +1563,16 @@ Usage: hexaqual refactor alphabetize [OPTIONS] [files]...
      Dispatches AlphabetizeCodeCommand across the governance bus.
 
 ╭─ Arguments ──────────────────────────────────────────────────────────────────╮
-│   files      <str>  Specific files or directories to format.                 │
+│   files...      <list[str]>  Specific files or directories to format.        │
 ╰──────────────────────────────────────────────────────────────────────────────╯
 ╭─ Options ────────────────────────────────────────────────────────────────────╮
-│ --package  -p      <str>  Target package(s).                                 │
-│ --all      -a             Format across all packages.                        │
-│ --dry-run                 Preview reordering without modifying disk.         │
-│ --format   -f      <str>  Output presentation format (table, json,           │
-│                           markdown).                                         │
-│                           [default: table]                                   │
-│ --help                    Show this message and exit.                        │
+│ --package  -p      <list[str]>  Target package(s).                           │
+│ --all      -a      <bool>       Format across all packages.                  │
+│ --dry-run          <bool>       Preview reordering without modifying disk.   │
+│ --format   -f      <str>        Output presentation format (table, json,     │
+│                                 markdown).                                   │
+│                                 [default: table]                             │
+│ --help             <bool>       Show this message and exit.                  │
 ╰──────────────────────────────────────────────────────────────────────────────╯
 ```
 
@@ -1574,8 +1604,8 @@ Usage: hexaqual refactor extract [OPTIONS]
 │ *  --name        -n      <str>   Name for the extracted function/method.     │
 │                                  [required]                                  │
 │    --root        -r      <path>  Project root directory.                     │
-│    --dry-run                     Preview extraction without saving.          │
-│    --help                        Show this message and exit.                 │
+│    --dry-run             <bool>  Preview extraction without saving.          │
+│    --help                <bool>  Show this message and exit.                 │
 ╰──────────────────────────────────────────────────────────────────────────────╯
 ```
 
@@ -1608,8 +1638,8 @@ Usage: hexaqual refactor move [OPTIONS]
 │ *  --col          -c      <int>   1-based column offset of symbol.           │
 │                                   [required]                                 │
 │    --root         -r      <path>  Project root directory.                    │
-│    --dry-run                      Preview move without saving.               │
-│    --help                         Show this message and exit.                │
+│    --dry-run              <bool>  Preview move without saving.               │
+│    --help                 <bool>  Show this message and exit.                │
 ╰──────────────────────────────────────────────────────────────────────────────╯
 ```
 
@@ -1641,8 +1671,8 @@ Usage: hexaqual refactor rename [OPTIONS]
 │ *  --col       -c      <int>   1-based column offset of symbol. [required]   │
 │ *  --new-name  -n      <str>   New identifier name. [required]               │
 │    --root      -r      <path>  Project root directory.                       │
-│    --dry-run                   Preview rename without saving.                │
-│    --help                      Show this message and exit.                   │
+│    --dry-run           <bool>  Preview rename without saving.                │
+│    --help              <bool>  Show this message and exit.                   │
 ╰──────────────────────────────────────────────────────────────────────────────╯
 ```
 
@@ -1663,7 +1693,7 @@ Usage: hexaqual refactor run [OPTIONS]
      Passes CLI arguments directly to the Rope refactoring command dispatcher.
 
 ╭─ Options ────────────────────────────────────────────────────────────────────╮
-│ --help          Show this message and exit.                                  │
+│ --help        <bool>  Show this message and exit.                            │
 ╰──────────────────────────────────────────────────────────────────────────────╯
 ```
 
@@ -1675,7 +1705,7 @@ Usage: hexaqual release [OPTIONS] COMMAND [ARGS]...
  Distribution package building, validation, and PyPI publishing.
 
 ╭─ Options ────────────────────────────────────────────────────────────────────╮
-│ --help          Show this message and exit.                                  │
+│ --help        <bool>  Show this message and exit.                            │
 ╰──────────────────────────────────────────────────────────────────────────────╯
 ╭─ Commands ───────────────────────────────────────────────────────────────────╮
 │ build         Build distribution packages (sdist and wheel).                 │
@@ -1707,7 +1737,7 @@ Usage: hexaqual release build [OPTIONS]
 ╭─ Options ────────────────────────────────────────────────────────────────────╮
 │ --dist-dir          <path>  Output directory (default: dist/).               │
 │ --format    -f      <str>   Output format. [default: rich]                   │
-│ --help                      Show this message and exit.                      │
+│ --help              <bool>  Show this message and exit.                      │
 ╰──────────────────────────────────────────────────────────────────────────────╯
 ```
 
@@ -1729,9 +1759,9 @@ Usage: hexaqual release check [OPTIONS]
      Queries PyPI to verify current version status.
 
 ╭─ Options ────────────────────────────────────────────────────────────────────╮
-│ --package  -p      <str>  Target package name (default: all).                │
-│ --format   -f      <str>  Output format. [default: rich]                     │
-│ --help                    Show this message and exit.                        │
+│ --package  -p      <str>   Target package name (default: all).               │
+│ --format   -f      <str>   Output format. [default: rich]                    │
+│ --help             <bool>  Show this message and exit.                       │
 ╰──────────────────────────────────────────────────────────────────────────────╯
 ```
 
@@ -1758,13 +1788,13 @@ Usage: hexaqual release publish [OPTIONS]
 
 ╭─ Options ────────────────────────────────────────────────────────────────────╮
 │ --dist-dir                    <path>   Directory containing packages.        │
-│ --build         --no-build             Build before publishing.              │
+│ --build         --no-build    <bool>   Build before publishing.              │
 │                                        [default: build]                      │
 │ --token                       <str>    PyPI upload token.                    │
 │ --delay                       <float>  Delay between uploads. [default: 2.0] │
-│ --force                                Force upload.                         │
+│ --force                       <bool>   Force upload.                         │
 │ --format    -f                <str>    Output format. [default: rich]        │
-│ --help                                 Show this message and exit.           │
+│ --help                        <bool>   Show this message and exit.           │
 ╰──────────────────────────────────────────────────────────────────────────────╯
 ```
 
@@ -1785,8 +1815,8 @@ Usage: hexaqual release reproducible [OPTIONS]
      Builds twice in clean isolated environments and compares SHA256 hashes.
 
 ╭─ Options ────────────────────────────────────────────────────────────────────╮
-│ --format  -f      <str>  Output format. [default: rich]                      │
-│ --help                   Show this message and exit.                         │
+│ --format  -f      <str>   Output format. [default: rich]                     │
+│ --help            <bool>  Show this message and exit.                        │
 ╰──────────────────────────────────────────────────────────────────────────────╯
 ```
 
@@ -1818,46 +1848,52 @@ Usage: hexaqual sanity [OPTIONS] [files]...
      Convenience alias matching legacy sanity-check naming.
 
 ╭─ Arguments ──────────────────────────────────────────────────────────────────╮
-│   files      <str>  Specific files or directories to verify.                 │
+│   files...      <list[str]>  Specific files or directories to verify.        │
 ╰──────────────────────────────────────────────────────────────────────────────╯
 ╭─ Options ────────────────────────────────────────────────────────────────────╮
-│ --package                      -p       <str>  Target package(s).            │
-│ --example                      -e       <str>  Target example(s).            │
-│ --all                          -a              Run across all packages.      │
-│ --fix                                          Automatically apply           │
-│                                                autofixes.                    │
-│ --skip                                  <str>  Specific pipeline step(s) to  │
-│                                                skip (repeatable).            │
-│ --numprocesses,--parallelism   -n       <str>  Concurrency width ('auto' for │
-│                                                cores - 2, or 1..num_cores).  │
-│                                                [default: auto]               │
-│ --sequential                                   Execute checks sequentially   │
-│                                                (equivalent to -n 1).         │
-│ --max-complexity               -mx      <int>  Cognitive complexity ceiling. │
-│                                                [default: 25]                 │
-│ --audit-gates                                  Audit repository quality      │
-│                                                gates inventory.              │
-│ --format                       -f       <str>  Output format (table, json,   │
-│                                                markdown).                    │
-│                                                [default: table]              │
-│ --skip-lint,--skip-ruff                        Skip execution of the 'lint'  │
-│                                                workflow step.                │
-│ --skip-all-statements,--skip…                  Skip execution of the         │
-│                                                'all_statements' workflow     │
-│                                                step.                         │
-│ --skip-test-parity,--skip-pa…                  Skip execution of the         │
-│                                                'test_parity' workflow step.  │
-│ --skip-diagrams                                Skip execution of the         │
-│                                                'diagrams' workflow step.     │
-│ --skip-typecheck,--skip-ty                     Skip execution of the         │
-│                                                'typecheck' workflow step.    │
-│ --skip-complexity                              Skip execution of the         │
-│                                                'complexity' workflow step.   │
-│ --skip-deptry                                  Skip execution of the         │
-│                                                'deptry' workflow step.       │
-│ --skip-pytest,--skip-tests                     Skip execution of the         │
-│                                                'pytest' workflow step.       │
-│ --help                                         Show this message and exit.   │
+│ --package                   -p       <list[str]>  Target package(s).         │
+│ --example                   -e       <list[str]>  Target example(s).         │
+│ --all                       -a       <bool>       Run across all packages.   │
+│ --fix                                <bool>       Automatically apply        │
+│                                                   autofixes.                 │
+│ --skip                               <list[str]>  Specific pipeline step(s)  │
+│                                                   to skip (repeatable).      │
+│ --numprocesses,--parallel…  -n       <str>        Concurrency width ('auto'  │
+│                                                   for cores - 2, or          │
+│                                                   1..num_cores).             │
+│                                                   [default: auto]            │
+│ --sequential                         <bool>       Execute checks             │
+│                                                   sequentially (equivalent   │
+│                                                   to -n 1).                  │
+│ --max-complexity            -mx      <int>        Cognitive complexity       │
+│                                                   ceiling.                   │
+│                                                   [default: 25]              │
+│ --audit-gates                        <bool>       Audit repository quality   │
+│                                                   gates inventory.           │
+│ --format                    -f       <str>        Output format (table,      │
+│                                                   json, markdown).           │
+│                                                   [default: table]           │
+│ --skip-lint,--skip-ruff              <bool>       Skip execution of the      │
+│                                                   'lint' workflow step.      │
+│ --skip-all-statements,--s…           <bool>       Skip execution of the      │
+│                                                   'all_statements' workflow  │
+│                                                   step.                      │
+│ --skip-test-parity,--skip…           <bool>       Skip execution of the      │
+│                                                   'test_parity' workflow     │
+│                                                   step.                      │
+│ --skip-diagrams                      <bool>       Skip execution of the      │
+│                                                   'diagrams' workflow step.  │
+│ --skip-typecheck,--skip-ty           <bool>       Skip execution of the      │
+│                                                   'typecheck' workflow step. │
+│ --skip-complexity                    <bool>       Skip execution of the      │
+│                                                   'complexity' workflow      │
+│                                                   step.                      │
+│ --skip-deptry                        <bool>       Skip execution of the      │
+│                                                   'deptry' workflow step.    │
+│ --skip-pytest,--skip-tests           <bool>       Skip execution of the      │
+│                                                   'pytest' workflow step.    │
+│ --help                               <bool>       Show this message and      │
+│                                                   exit.                      │
 ╰──────────────────────────────────────────────────────────────────────────────╯
 ```
 
@@ -1869,7 +1905,7 @@ Usage: hexaqual statements [OPTIONS] COMMAND [ARGS]...
  Audit and format __all__ statements.
 
 ╭─ Options ────────────────────────────────────────────────────────────────────╮
-│ --help          Show this message and exit.                                  │
+│ --help        <bool>  Show this message and exit.                            │
 ╰──────────────────────────────────────────────────────────────────────────────╯
 ╭─ Commands ───────────────────────────────────────────────────────────────────╮
 │ check  Validate __all__ declarations across targeted files.                  │
@@ -1897,13 +1933,13 @@ Usage: hexaqual statements check [OPTIONS] [files]...
  presenter.
 
 ╭─ Arguments ──────────────────────────────────────────────────────────────────╮
-│   files      <str>  Target files or directories.                             │
+│   files...      <list[str]>  Target files or directories.                    │
 ╰──────────────────────────────────────────────────────────────────────────────╯
 ╭─ Options ────────────────────────────────────────────────────────────────────╮
-│ --package  -p      <str>  Target package(s).                                 │
-│ --format   -f      <str>  Output format (table, json, markdown).             │
-│                           [default: table]                                   │
-│ --help                    Show this message and exit.                        │
+│ --package  -p      <list[str]>  Target package(s).                           │
+│ --format   -f      <str>        Output format (table, json, markdown).       │
+│                                 [default: table]                             │
+│ --help             <bool>       Show this message and exit.                  │
 ╰──────────────────────────────────────────────────────────────────────────────╯
 ```
 
@@ -1923,13 +1959,13 @@ Usage: hexaqual statements fix [OPTIONS] [files]...
      Driving adapter sorting, deduplicating, and formatting __all__ statements.
 
 ╭─ Arguments ──────────────────────────────────────────────────────────────────╮
-│   files      <str>  Target files or directories.                             │
+│   files...      <list[str]>  Target files or directories.                    │
 ╰──────────────────────────────────────────────────────────────────────────────╯
 ╭─ Options ────────────────────────────────────────────────────────────────────╮
-│ --package  -p      <str>  Target package(s).                                 │
-│ --format   -f      <str>  Output format (table, json, markdown).             │
-│                           [default: table]                                   │
-│ --help                    Show this message and exit.                        │
+│ --package  -p      <list[str]>  Target package(s).                           │
+│ --format   -f      <str>        Output format (table, json, markdown).       │
+│                                 [default: table]                             │
+│ --help             <bool>       Show this message and exit.                  │
 ╰──────────────────────────────────────────────────────────────────────────────╯
 ```
 
@@ -1941,7 +1977,7 @@ Usage: hexaqual test [OPTIONS] COMMAND [ARGS]...
  Test execution, coverage audits, and architecture verification.
 
 ╭─ Options ────────────────────────────────────────────────────────────────────╮
-│ --help          Show this message and exit.                                  │
+│ --help        <bool>  Show this message and exit.                            │
 ╰──────────────────────────────────────────────────────────────────────────────╯
 ╭─ Commands ───────────────────────────────────────────────────────────────────╮
 │ run               Run pytest suite with dynamic worker allocation and        │
@@ -1983,12 +2019,12 @@ Usage: hexaqual test archon [OPTIONS]
  governance bus.
 
 ╭─ Options ────────────────────────────────────────────────────────────────────╮
-│ --package  -p      <str>  Target package(s).                                 │
-│ --force                   Overwrite existing boundary test files.            │
-│ --format   -f      <str>  Output presentation format (table, json,           │
-│                           markdown).                                         │
-│                           [default: table]                                   │
-│ --help                    Show this message and exit.                        │
+│ --package  -p      <list[str]>  Target package(s).                           │
+│ --force            <bool>       Overwrite existing boundary test files.      │
+│ --format   -f      <str>        Output presentation format (table, json,     │
+│                                 markdown).                                   │
+│                                 [default: table]                             │
+│ --help             <bool>       Show this message and exit.                  │
 ╰──────────────────────────────────────────────────────────────────────────────╯
 ```
 
@@ -2033,40 +2069,42 @@ Usage: hexaqual test bench [OPTIONS]
  smoke runs.
 
 ╭─ Options ────────────────────────────────────────────────────────────────────╮
-│ --package          -p      <str>  Target package(s).                         │
-│ --example          -e      <str>  Target example project(s).                 │
-│ --all              -a             Run benchmarks across all workspace        │
-│                                   packages.                                  │
-│ --affected         -A             Run benchmarks only for affected packages. │
-│ --save                     <str>  Save benchmark results with given name tag │
-│                                   under .benchmarks/.                        │
-│ --compare                         Compare against latest saved benchmark     │
-│                                   baseline.                                  │
-│ --json                     <str>  Export benchmark results to JSON file      │
-│                                   path.                                      │
-│ --min-rounds               <int>  Minimum number of benchmark rounds per     │
-│                                   test.                                      │
-│ --smoke                           Smoke mode: disable measurement cycles and │
-│                                   run each benchmark once (for CI PR         │
-│                                   checks).                                   │
-│ --cluster                  <str>  Execution target cluster ('local' or       │
-│                                   'hexaqueue').                              │
-│                                   [default: local]                           │
-│ --cluster-url              <str>  Hexaqueue cluster REST endpoint URL.       │
-│                                   [env var: HEXAQUEUE_URL]                   │
-│                                   [default: http://localhost:8000]           │
-│ --cluster-token            <str>  Authentication bearer token for Hexaqueue  │
-│                                   cluster.                                   │
-│                                   [env var: HEXAQUEUE_TOKEN]                 │
-│ --cluster-user             <str>  Submitting user identity for Hexaqueue     │
-│                                   cluster.                                   │
-│                                   [env var: HEXAQUEUE_USER]                  │
-│                                   [default: default]                         │
-│ --cluster-elevate                 Assert administrative elevation on         │
-│                                   Hexaqueue cluster.                         │
-│ --allow-empty                     Permit benchmark runs with 0 collected     │
-│                                   benchmarks (exercise gate override).       │
-│ --help                            Show this message and exit.                │
+│ --package          -p      <list[str]>  Target package(s).                   │
+│ --example          -e      <list[str]>  Target example project(s).           │
+│ --all              -a      <bool>       Run benchmarks across all workspace  │
+│                                         packages.                            │
+│ --affected         -A      <bool>       Run benchmarks only for affected     │
+│                                         packages.                            │
+│ --save                     <str>        Save benchmark results with given    │
+│                                         name tag under .benchmarks/.         │
+│ --compare                  <bool>       Compare against latest saved         │
+│                                         benchmark baseline.                  │
+│ --json                     <str>        Export benchmark results to JSON     │
+│                                         file path.                           │
+│ --min-rounds               <int>        Minimum number of benchmark rounds   │
+│                                         per test.                            │
+│ --smoke                    <bool>       Smoke mode: disable measurement      │
+│                                         cycles and run each benchmark once   │
+│                                         (for CI PR checks).                  │
+│ --cluster                  <str>        Execution target cluster ('local' or │
+│                                         'hexaqueue').                        │
+│                                         [default: local]                     │
+│ --cluster-url              <str>        Hexaqueue cluster REST endpoint URL. │
+│                                         [env var: HEXAQUEUE_URL]             │
+│                                         [default: http://localhost:8000]     │
+│ --cluster-token            <str>        Authentication bearer token for      │
+│                                         Hexaqueue cluster.                   │
+│                                         [env var: HEXAQUEUE_TOKEN]           │
+│ --cluster-user             <str>        Submitting user identity for         │
+│                                         Hexaqueue cluster.                   │
+│                                         [env var: HEXAQUEUE_USER]            │
+│                                         [default: default]                   │
+│ --cluster-elevate          <bool>       Assert administrative elevation on   │
+│                                         Hexaqueue cluster.                   │
+│ --allow-empty              <bool>       Permit benchmark runs with 0         │
+│                                         collected benchmarks (exercise gate  │
+│                                         override).                           │
+│ --help                     <bool>       Show this message and exit.          │
 ╰──────────────────────────────────────────────────────────────────────────────╯
 ```
 
@@ -2095,17 +2133,17 @@ Usage: hexaqual test benchmark-report [OPTIONS]
  CI step summaries.
 
 ╭─ Options ────────────────────────────────────────────────────────────────────╮
-│ --results      -r      <str>  Path to pytest-benchmark JSON output.          │
-│                               [default: benchmark_results.json]              │
-│ --history      -H      <str>  Path to JSON history tracking file.            │
-│                               [default: .benchmarks_history/history.json]    │
-│ --summary      -s             Append report directly to                      │
-│                               $GITHUB_STEP_SUMMARY.                          │
-│ --max-history          <int>  Maximum historical benchmark runs to retain.   │
-│                               [default: 10]                                  │
-│ --commit               <str>  Explicit Git commit hash label.                │
-│ --run-id               <str>  Explicit CI run identifier.                    │
-│ --help                        Show this message and exit.                    │
+│ --results      -r      <str>   Path to pytest-benchmark JSON output.         │
+│                                [default: benchmark_results.json]             │
+│ --history      -H      <str>   Path to JSON history tracking file.           │
+│                                [default: .benchmarks_history/history.json]   │
+│ --summary      -s      <bool>  Append report directly to                     │
+│                                $GITHUB_STEP_SUMMARY.                         │
+│ --max-history          <int>   Maximum historical benchmark runs to retain.  │
+│                                [default: 10]                                 │
+│ --commit               <str>   Explicit Git commit hash label.               │
+│ --run-id               <str>   Explicit CI run identifier.                   │
+│ --help                 <bool>  Show this message and exit.                   │
 ╰──────────────────────────────────────────────────────────────────────────────╯
 ```
 
@@ -2126,8 +2164,8 @@ Usage: hexaqual test boundary [OPTIONS]
      Audits branch coverage assertions across test suites.
 
 ╭─ Options ────────────────────────────────────────────────────────────────────╮
-│ --format  -f      <str>  Output presentation format. [default: table]        │
-│ --help                   Show this message and exit.                         │
+│ --format  -f      <str>   Output presentation format. [default: table]       │
+│ --help            <bool>  Show this message and exit.                        │
 ╰──────────────────────────────────────────────────────────────────────────────╯
 ```
 
@@ -2161,14 +2199,16 @@ Usage: hexaqual test fuzz [OPTIONS]
      Driving adapter dispatching FuzzRunCommand across the governance bus.
 
 ╭─ Options ────────────────────────────────────────────────────────────────────╮
-│ --target  -t      <str>  Target fuzz harness (all, sanitizer, proto, owasp). │
-│                          [default: all]                                      │
-│ --runs    -n      <int>  Number of fuzzed runs per harness. [default: 1000]  │
-│ --engine  -e      <str>  Fuzzing engine (auto, atheris, standalone).         │
-│                          [default: auto]                                     │
-│ --format  -f      <str>  Output presentation format (table, json, markdown). │
-│                          [default: table]                                    │
-│ --help                   Show this message and exit.                         │
+│ --target  -t      <str>   Target fuzz harness (all, sanitizer, proto,        │
+│                           owasp).                                            │
+│                           [default: all]                                     │
+│ --runs    -n      <int>   Number of fuzzed runs per harness. [default: 1000] │
+│ --engine  -e      <str>   Fuzzing engine (auto, atheris, standalone).        │
+│                           [default: auto]                                    │
+│ --format  -f      <str>   Output presentation format (table, json,           │
+│                           markdown).                                         │
+│                           [default: table]                                   │
+│ --help            <bool>  Show this message and exit.                        │
 ╰──────────────────────────────────────────────────────────────────────────────╯
 ```
 
@@ -2199,8 +2239,8 @@ Usage: hexaqual test impact [OPTIONS]
      Accelerates local feedback loops by running only affected test paths.
 
 ╭─ Options ────────────────────────────────────────────────────────────────────╮
-│ --format  -f      <str>  Output presentation format. [default: table]        │
-│ --help                   Show this message and exit.                         │
+│ --format  -f      <str>   Output presentation format. [default: table]       │
+│ --help            <bool>  Show this message and exit.                        │
 ╰──────────────────────────────────────────────────────────────────────────────╯
 ```
 
@@ -2221,8 +2261,8 @@ Usage: hexaqual test redundancy [OPTIONS]
      Identifies duplicate test execution paths to optimize CI test efficiency.
 
 ╭─ Options ────────────────────────────────────────────────────────────────────╮
-│ --format  -f      <str>  Output presentation format. [default: table]        │
-│ --help                   Show this message and exit.                         │
+│ --format  -f      <str>   Output presentation format. [default: table]       │
+│ --help            <bool>  Show this message and exit.                        │
 ╰──────────────────────────────────────────────────────────────────────────────╯
 ```
 
@@ -2259,34 +2299,39 @@ Usage: hexaqual test run [OPTIONS]
      Supports distributing test execution to a remote Hexaqueue cluster.
 
 ╭─ Options ────────────────────────────────────────────────────────────────────╮
-│ --package               -p      <str>  Target package(s).                    │
-│ --example               -e      <str>  Target example project(s).            │
-│ --all                   -a             Run across all workspace packages.    │
-│ --affected              -A             Run only affected packages.           │
-│ --unit                  -U             Run only unit tests.                  │
-│ --properties            -P             Run only property tests.              │
-│ --with-context                         Capture test context in coverage.     │
-│ --cluster                       <str>  Execution target cluster ('local' or  │
-│                                        'hexaqueue').                         │
-│                                        [default: local]                      │
-│ --cluster-url                   <str>  Hexaqueue cluster REST endpoint URL.  │
-│                                        [env var: HEXAQUEUE_URL]              │
-│                                        [default: http://localhost:8000]      │
-│ --cluster-token                 <str>  Authentication bearer token for       │
-│                                        Hexaqueue cluster.                    │
-│                                        [env var: HEXAQUEUE_TOKEN]            │
-│ --cluster-user                  <str>  Submitting user identity for          │
-│                                        Hexaqueue cluster.                    │
-│                                        [env var: HEXAQUEUE_USER]             │
-│                                        [default: default]                    │
-│ --cluster-elevate                      Assert administrative elevation on    │
-│                                        Hexaqueue cluster.                    │
-│ --profile,--hq-profile          <str>  Named execution profile (reads  for   │
-│                                        defaults/fallback).                   │
-│                                        [env var: HEXAQUEUE_PROFILE]          │
-│ --allow-empty                          Permit test runs with 0 collected     │
-│                                        tests (exercise gate override).       │
-│ --help                                 Show this message and exit.           │
+│ --package               -p      <list[str]>  Target package(s).              │
+│ --example               -e      <list[str]>  Target example project(s).      │
+│ --all                   -a      <bool>       Run across all workspace        │
+│                                              packages.                       │
+│ --affected              -A      <bool>       Run only affected packages.     │
+│ --unit                  -U      <bool>       Run only unit tests.            │
+│ --properties            -P      <bool>       Run only property tests.        │
+│ --with-context                  <bool>       Capture test context in         │
+│                                              coverage.                       │
+│ --cluster                       <str>        Execution target cluster        │
+│                                              ('local' or 'hexaqueue').       │
+│                                              [default: local]                │
+│ --cluster-url                   <str>        Hexaqueue cluster REST endpoint │
+│                                              URL.                            │
+│                                              [env var: HEXAQUEUE_URL]        │
+│                                              [default:                       │
+│                                              http://localhost:8000]          │
+│ --cluster-token                 <str>        Authentication bearer token for │
+│                                              Hexaqueue cluster.              │
+│                                              [env var: HEXAQUEUE_TOKEN]      │
+│ --cluster-user                  <str>        Submitting user identity for    │
+│                                              Hexaqueue cluster.              │
+│                                              [env var: HEXAQUEUE_USER]       │
+│                                              [default: default]              │
+│ --cluster-elevate               <bool>       Assert administrative elevation │
+│                                              on Hexaqueue cluster.           │
+│ --profile,--hq-profile          <str>        Named execution profile (reads  │
+│                                              for defaults/fallback).         │
+│                                              [env var: HEXAQUEUE_PROFILE]    │
+│ --allow-empty                   <bool>       Permit test runs with 0         │
+│                                              collected tests (exercise gate  │
+│                                              override).                      │
+│ --help                          <bool>       Show this message and exit.     │
 ╰──────────────────────────────────────────────────────────────────────────────╯
 ```
 
@@ -2310,16 +2355,16 @@ Usage: hexaqual test snapshot [OPTIONS] [files]...
      Driving adapter dispatching UpdateInlineSnapshotsCommand across packages.
 
 ╭─ Arguments ──────────────────────────────────────────────────────────────────╮
-│   files      <str>  Target file paths.                                       │
+│   files...      <list[str]>  Target file paths.                              │
 ╰──────────────────────────────────────────────────────────────────────────────╯
 ╭─ Options ────────────────────────────────────────────────────────────────────╮
-│ --mode     -m      <str>  inline-snapshot mode (create, fix, review).        │
-│                           [default: fix]                                     │
-│ --package  -p      <str>  Target package(s).                                 │
-│ --format   -f      <str>  Output presentation format (table, json,           │
-│                           markdown).                                         │
-│                           [default: table]                                   │
-│ --help                    Show this message and exit.                        │
+│ --mode     -m      <str>        inline-snapshot mode (create, fix, review).  │
+│                                 [default: fix]                               │
+│ --package  -p      <list[str]>  Target package(s).                           │
+│ --format   -f      <str>        Output presentation format (table, json,     │
+│                                 markdown).                                   │
+│                                 [default: table]                             │
+│ --help             <bool>       Show this message and exit.                  │
 ╰──────────────────────────────────────────────────────────────────────────────╯
 ```
 
@@ -2334,6 +2379,6 @@ Usage: hexaqual version [OPTIONS]
  Quick diagnostic command to confirm package installation and version info.
 
 ╭─ Options ────────────────────────────────────────────────────────────────────╮
-│ --help          Show this message and exit.                                  │
+│ --help        <bool>  Show this message and exit.                            │
 ╰──────────────────────────────────────────────────────────────────────────────╯
 ```

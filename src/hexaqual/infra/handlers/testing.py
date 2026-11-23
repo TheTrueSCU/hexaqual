@@ -75,6 +75,10 @@ class RunMutationTestsHandler:
                 batch_size=command.batch_size,
                 report_file=command.report_file,
                 targets=command.targets,
+                operators=command.operators,
+                mutant_timeout=command.mutant_timeout,
+                prescan_workers=command.prescan_workers,
+                coverage_timeout=command.coverage_timeout,
             )
 
         if command.package:
@@ -104,6 +108,10 @@ class RunMutationTestsHandler:
                 batch_size=command.batch_size,
                 report_file=command.report_file,
                 targets=command.targets,
+                operators=command.operators,
+                mutant_timeout=command.mutant_timeout,
+                prescan_workers=command.prescan_workers,
+                coverage_timeout=command.coverage_timeout,
             )
 
         if command.all_packages:
@@ -118,6 +126,10 @@ class RunMutationTestsHandler:
                 batch_size=command.batch_size,
                 report_file=command.report_file,
                 targets=command.targets,
+                operators=command.operators,
+                mutant_timeout=command.mutant_timeout,
+                prescan_workers=command.prescan_workers,
+                coverage_timeout=command.coverage_timeout,
             )
 
         return 0

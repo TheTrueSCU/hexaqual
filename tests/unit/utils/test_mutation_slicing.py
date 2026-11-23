@@ -222,3 +222,63 @@ def test_plan_mutation_matrix_modes_and_invalid(
 
     with pytest.raises(ValueError, match="Unsupported mutation plan mode"):
         slicing_mod.plan_mutation_matrix("invalid")
+
+
+def test_estimate_file_operator_weights_and_ignore_docstrings(tmp_path: Path) -> None:
+    """Verify per-operator AST weights count operators, skip docstrings, and handle errors."""
+    target = tmp_path / "logic.py"
+    target.write_text(
+        '"""Docstring with fake if x > 1 and True return 0."""\n'
+        "def check(a: int, b: int) -> bool:\n"
+        "    if a > 0 and b <= 10 or not (a == b):\n"
+        "        c = a + b - 1\n"
+        "        c += 2\n"
+        "        neg = -c\n"
+        "        return True\n"
+        "    return False\n",
+        encoding="utf-8",
+    )
+    weights = slicing_mod.estimate_file_operator_weights(target)
+    assert weights["comparison"] > 0
+    assert weights["boundary"] > 0
+    assert weights["arithmetic"] > 0
+    assert weights["boolean"] > 0
+    assert weights["return"] == 2
+
+    empty_file = tmp_path / "empty.py"
+    empty_file.write_text('"""Just a module docstring."""\n', encoding="utf-8")
+    empty_weights = slicing_mod.estimate_file_operator_weights(empty_file)
+    assert empty_weights == {}
+
+    broken = tmp_path / "broken.py"
+    broken.write_text("def bad(:\n", encoding="utf-8")
+    broken_weights = slicing_mod.estimate_file_operator_weights(broken)
+    assert broken_weights == dict.fromkeys(slicing_mod.GREMLIN_OPERATORS, 1)
+
+    missing_weights = slicing_mod.estimate_file_operator_weights(tmp_path / "missing.py")
+    assert missing_weights == dict.fromkeys(slicing_mod.GREMLIN_OPERATORS, 1)
+
+
+def test_partition_operators_lpt_balancing_and_edges() -> None:
+    """Verify LPT operator partitioning balances shards and handles empty/single cases."""
+    empty_shards = slicing_mod.partition_operators_lpt({})
+    assert empty_shards == []
+
+    single_shards = slicing_mod.partition_operators_lpt({"boolean": 40}, max_shards=4)
+    assert single_shards == [["boolean"]]
+
+    shards = slicing_mod.partition_operators_lpt(
+        {
+            "boolean": 120,
+            "comparison": 100,
+            "boundary": 80,
+            "return": 30,
+            "arithmetic": 20,
+        },
+        max_shards=4,
+    )
+    assert len(shards) == 4
+    flattened = sorted(op for shard in shards for op in shard)
+    assert flattened == ["arithmetic", "boolean", "boundary", "comparison", "return"]
+    assert shards[0] == ["boolean"]
+    assert sorted(shards[3]) == ["arithmetic", "return"]
