@@ -8,6 +8,7 @@ Notes/Architectural Intent:
 
 from __future__ import annotations
 
+import io
 import json
 from pathlib import Path
 from unittest.mock import MagicMock, patch
@@ -706,14 +707,18 @@ def test_stage_workspace_collateral_cas_miss_upload(tmp_path: Path) -> None:
         assert body_len == len(b"test_archive_data")
 
 
-def test_stage_workspace_collateral_missing_archiver(tmp_path: Path) -> None:
-    """Verify _stage_workspace_collateral gracefully returns None if archiver is unavailable."""
+def test_stage_workspace_collateral_missing_archiver(
+    tmp_path: Path, caplog: pytest.LogCaptureFixture
+) -> None:
+    """Verify _stage_workspace_collateral warns cleanly and returns None if archiver is unavailable."""
     from unittest.mock import patch
 
+    err_console = Console(file=io.StringIO(), record=True, width=200)
     client = httpx.Client(base_url="http://cluster.local:8000")
     adapter = HexaqueueClusterRunnerAdapter(
         cluster_url="http://cluster.local:8000",
         http_client=client,
+        console=err_console,
     )
 
     with patch(
@@ -723,6 +728,11 @@ def test_stage_workspace_collateral_missing_archiver(tmp_path: Path) -> None:
         col_id = adapter._stage_workspace_collateral(client, tmp_path)
         is_none = col_id is None
         assert is_none is True
+
+    log_text = caplog.text
+    rendered_err = err_console.export_text()
+    assert "hexaqual[cluster]" in log_text
+    assert "hexaqual[cluster]" in rendered_err
 
 
 def test_run_mutation_testing_sliced_batches(tmp_path: Path) -> None:
@@ -1163,5 +1173,72 @@ def test_run_mutation_testing_heavy_file_operator_subsharding(tmp_path: Path) ->
         )
     assert light_code == 0
     light_jobs = submitted_payloads[0]["jobs"]
+    assert len(light_jobs) == 1
+    assert not any(a.startswith("--gremlin-operators=") for a in light_jobs[0]["args"])
+
+
+def test_expand_operator_shards_multi_file_slice_with_heavy_file(tmp_path: Path) -> None:
+    """Verify multi-file slices containing a heavy file (>= 250 weight) still sub-shard operators."""
+    pkg_dir = tmp_path / "mixed_pkg"
+    src_dir = pkg_dir / "src" / "mixed_pkg"
+    src_dir.mkdir(parents=True)
+
+    heavy_lines = []
+    for i in range(11):
+        heavy_lines.extend(
+            [
+                f"def mod_{i}(a: int, b: int) -> bool:",
+                f"    c = a + b + {i}",
+                "    if c > 10 and (a == b or not (b <= 0)):",
+                "        return True",
+                "    return False",
+            ]
+        )
+    (src_dir / "heavy_mod.py").write_text("\n".join(heavy_lines), encoding="utf-8")
+    (src_dir / "tiny_helper.py").write_text("VALUE = 1 + 2\n", encoding="utf-8")
+    (src_dir / "other_light.py").write_text("OTHER = 3 + 4\n", encoding="utf-8")
+
+    adapter = HexaqueueClusterRunnerAdapter(
+        cluster_url="http://cluster.local:8000",
+        console=Console(quiet=True),
+    )
+
+    mixed_jobs = adapter._build_mutation_job_specs(
+        run_id="run-mixed",
+        package_dir=pkg_dir,
+        repo_root=tmp_path,
+        collateral_id="col-mixed",
+        engine=MutationEngine.GREMLINS,
+        reset_cache=False,
+        workers="auto",
+        numprocesses=None,
+        batch_size=None,
+        report_file=None,
+        targets=["src/mixed_pkg/heavy_mod.py", "src/mixed_pkg/tiny_helper.py"],
+    )
+    assert len(mixed_jobs) == 4
+    seen_ops: list[str] = []
+    for job in mixed_jobs:
+        args = job["args"]
+        target_arg = next(a for a in args if a.startswith("--gremlin-targets="))
+        assert "src/mixed_pkg/heavy_mod.py" in target_arg
+        assert "src/mixed_pkg/tiny_helper.py" in target_arg
+        op_arg = next(a for a in args if a.startswith("--gremlin-operators="))
+        seen_ops.extend(op_arg.split("=", 1)[1].split(","))
+    assert sorted(seen_ops) == ["arithmetic", "boolean", "boundary", "comparison", "return"]
+
+    light_jobs = adapter._build_mutation_job_specs(
+        run_id="run-light",
+        package_dir=pkg_dir,
+        repo_root=tmp_path,
+        collateral_id="col-light",
+        engine=MutationEngine.GREMLINS,
+        reset_cache=False,
+        workers="auto",
+        numprocesses=None,
+        batch_size=None,
+        report_file=None,
+        targets=["src/mixed_pkg/tiny_helper.py", "src/mixed_pkg/other_light.py"],
+    )
     assert len(light_jobs) == 1
     assert not any(a.startswith("--gremlin-operators=") for a in light_jobs[0]["args"])

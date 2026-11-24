@@ -171,6 +171,13 @@ class HexaqueueClusterRunnerAdapter(TestingRunnerPort):
         """
         archiver_mod = optional_dependency("pytest_hexaqueue.adapters.git_archiver")
         if archiver_mod is None:
+            msg = (
+                "pytest-hexaqueue is not installed in the active environment; "
+                "workspace collateral cannot be staged for remote workers. "
+                "Install 'hexaqual[cluster]' to enable remote collateral staging."
+            )
+            logger.warning(msg)
+            self._err_console.print(f"Warning: {msg}", style="yellow", markup=False)
             return None
 
         repo_root = self._find_repo_root(workspace_dir)
@@ -297,20 +304,25 @@ class HexaqueueClusterRunnerAdapter(TestingRunnerPort):
         group: list[str],
         operators: Sequence[str] | None,
     ) -> list[list[str] | None]:
-        """Sub-shard heavy solo files across gremlin operators for parallel execution."""
+        """Sub-shard slices containing heavy files across gremlin operators."""
         if operators:
             cleaned = [op.strip() for op in operators if op.strip()]
             return [cleaned] if cleaned else [None]
-        if len(group) != 1:
+        if not group:
             return [None]
-        target_path = package_dir / group[0]
-        if (
-            not target_path.is_file()
-            or estimate_file_mutation_weight(target_path) < DEFAULT_OPERATOR_SHARD_WEIGHT
+        existing_paths = [package_dir / rel for rel in group if (package_dir / rel).is_file()]
+        if not any(
+            estimate_file_mutation_weight(path) >= DEFAULT_OPERATOR_SHARD_WEIGHT
+            for path in existing_paths
         ):
             return [None]
-        op_weights = estimate_file_operator_weights(target_path)
-        op_shards = partition_operators_lpt(op_weights, max_shards=DEFAULT_MAX_OPERATOR_SHARDS)
+        combined_weights: dict[str, int] = {}
+        for path in existing_paths:
+            for op, weight in estimate_file_operator_weights(path).items():
+                combined_weights[op] = combined_weights.get(op, 0) + weight
+        op_shards = partition_operators_lpt(
+            combined_weights, max_shards=DEFAULT_MAX_OPERATOR_SHARDS
+        )
         shards: list[list[str] | None] = list(op_shards)
         return shards if len(shards) > 1 else [None]
 

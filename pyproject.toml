@@ -48,7 +48,7 @@ diagrams = [
     "pydeps>=3.0.7",
 ]
 gremlins = [
-    "pytest-gremlins>=1.13.2",
+    "pytest-gremlins>=1.14.3",
     "pytest-xdist>=3.6.0",
 ]
 mutmut = [
@@ -79,7 +79,7 @@ dev = [
     "pytest-asyncio>=1.4.0",
     "pytest-benchmark>=5.1.0",
     "pytest-cov>=7.1.0",
-    "pytest-gremlins>=1.13.2",
+    "pytest-gremlins>=1.14.3",
     "pytest-playwright>=0.7.0",
     "pytest-xdist>=3.8.0",
     "ruff>=0.16.2",
