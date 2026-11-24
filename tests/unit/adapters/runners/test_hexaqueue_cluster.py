@@ -1242,3 +1242,218 @@ def test_expand_operator_shards_multi_file_slice_with_heavy_file(tmp_path: Path)
     )
     assert len(light_jobs) == 1
     assert not any(a.startswith("--gremlin-operators=") for a in light_jobs[0]["args"])
+
+
+def test_submit_writes_and_clears_active_run_id_file(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Verify active run ID file is written on submit and removed on clean completion."""
+    run_id_file = tmp_path / "nested" / "active-run.id"
+    seen_during_stream: list[str] = []
+
+    def mock_handler(request: httpx.Request) -> httpx.Response:
+        if request.url.path == "/v1/runs" and request.method == "POST":
+            return httpx.Response(status_code=201, json={"run_id": "run-track-1"})
+        if request.url.path.endswith("/stream"):
+            if run_id_file.exists():
+                seen_during_stream.append(run_id_file.read_text(encoding="utf-8").strip())
+            return httpx.Response(
+                status_code=200,
+                text='data: {"state": "DONE", "outcome": "COMPLETED"}\n\n',
+            )
+        if request.url.path == "/v1/runs/run-track-1":
+            if run_id_file.exists():
+                seen_during_stream.append(run_id_file.read_text(encoding="utf-8").strip())
+            return httpx.Response(status_code=200, json={"state": "DONE", "outcome": "COMPLETED"})
+        return httpx.Response(status_code=404)
+
+    monkeypatch.setenv("HEXAQUEUE_ADMIN_TOKEN", "adm-tok")
+    client = httpx.Client(
+        transport=httpx.MockTransport(mock_handler), base_url="http://cluster.local:8000"
+    )
+    adapter = HexaqueueClusterRunnerAdapter(
+        cluster_url="http://cluster.local:8000",
+        elevate=True,
+        http_client=client,
+        run_id_file=run_id_file,
+        console=Console(quiet=True),
+    )
+    headers = adapter._get_headers()
+    assert headers["X-Hexaqueue-Admin-Token"] == "adm-tok"
+
+    exit_code = adapter._submit_and_stream("run-track-1", {"run_id": "run-track-1", "jobs": []})
+    assert exit_code == 0
+    assert seen_during_stream == ["run-track-1"]
+    file_exists = run_id_file.exists()
+    assert file_exists is False
+
+
+def test_run_id_file_retained_on_cancel_failure_and_cleared_on_cancel_success(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Verify HEXAQUEUE_RUN_ID_FILE stays on failed cancel and clears on accepted cancel."""
+    run_id_file = tmp_path / "env-run.id"
+    monkeypatch.setenv("HEXAQUEUE_RUN_ID_FILE", str(run_id_file))
+
+    def mock_handler(request: httpx.Request) -> httpx.Response:
+        if request.url.path == "/v1/runs":
+            return httpx.Response(status_code=201)
+        return httpx.Response(status_code=200, json={"state": "RUNNING"})
+
+    client = httpx.Client(
+        transport=httpx.MockTransport(mock_handler), base_url="http://cluster.local:8000"
+    )
+    adapter = HexaqueueClusterRunnerAdapter(
+        cluster_url="http://cluster.local:8000",
+        http_client=client,
+        console=Console(quiet=True),
+    )
+
+    # 1. Interrupted run where remote cancel fails -> run_id_file retained for external CI cleanup
+    with (
+        patch.object(client, "stream", side_effect=KeyboardInterrupt()),
+        patch.object(
+            client,
+            "post",
+            side_effect=[
+                httpx.Response(status_code=201),
+                httpx.Response(status_code=500, text="server error"),
+            ],
+        ),
+    ):
+        code_fail = adapter._submit_and_stream(
+            "run-int-fail", {"run_id": "run-int-fail", "jobs": []}
+        )
+    assert code_fail == 130
+    retained_text = run_id_file.read_text(encoding="utf-8").strip()
+    assert retained_text == "run-int-fail"
+
+    # 2. Interrupted run where remote cancel succeeds -> run_id_file cleared
+    with (
+        patch.object(client, "stream", side_effect=KeyboardInterrupt()),
+        patch.object(
+            client,
+            "post",
+            side_effect=[
+                httpx.Response(status_code=201),
+                httpx.Response(status_code=200, json={"status": "cancelled"}),
+            ],
+        ),
+    ):
+        code_ok = adapter._submit_and_stream("run-int-ok", {"run_id": "run-int-ok", "jobs": []})
+    assert code_ok == 130
+    exists_after_ok = run_id_file.exists()
+    assert exists_after_ok is False
+
+    # 3. Timeout path: retained on failed cancel, cleared on accepted cancel
+    adapter_timeout = HexaqueueClusterRunnerAdapter(
+        cluster_url="http://cluster.local:8000",
+        timeout=-1.0,
+        poll_interval=0.001,
+        http_client=client,
+        console=Console(quiet=True),
+    )
+    with (
+        patch.object(client, "stream", side_effect=RuntimeError("skip sse")),
+        patch.object(
+            client,
+            "post",
+            side_effect=[
+                httpx.Response(status_code=201),
+                httpx.Response(status_code=503, text="unavailable"),
+            ],
+        ),
+    ):
+        to_fail = adapter_timeout._submit_and_stream(
+            "run-to-fail", {"run_id": "run-to-fail", "jobs": []}
+        )
+    assert to_fail == 2
+    retained_to = run_id_file.read_text(encoding="utf-8").strip()
+    assert retained_to == "run-to-fail"
+
+    with (
+        patch.object(client, "stream", side_effect=RuntimeError("skip sse")),
+        patch.object(
+            client,
+            "post",
+            side_effect=[
+                httpx.Response(status_code=201),
+                httpx.Response(status_code=202),
+            ],
+        ),
+    ):
+        to_ok = adapter_timeout._submit_and_stream("run-to-ok", {"run_id": "run-to-ok", "jobs": []})
+    assert to_ok == 2
+    exists_after_to_ok = run_id_file.exists()
+    assert exists_after_to_ok is False
+
+
+def test_cancel_remote_run_retries_with_fresh_client_on_transport_error() -> None:
+    """Verify _cancel_remote_run retries once with a fresh client on transport error."""
+    mock_client = MagicMock(spec=httpx.Client)
+    mock_client.post.side_effect = httpx.ConnectError("closed stream socket")
+
+    mock_retry_client = MagicMock()
+    mock_retry_client.post.return_value = httpx.Response(status_code=202)
+    mock_cm = MagicMock()
+    mock_cm.__enter__.return_value = mock_retry_client
+    mock_cm.__exit__.return_value = False
+
+    adapter = HexaqueueClusterRunnerAdapter(
+        cluster_url="http://cluster.local:8000",
+        console=Console(quiet=True),
+    )
+    with patch("hexaqual.adapters.runners.hexaqueue_cluster.httpx.Client", return_value=mock_cm):
+        ok = adapter._cancel_remote_run(mock_client, "run-retry-1")
+    assert ok is True
+    mock_client.post.assert_called_once()
+    mock_retry_client.post.assert_called_once()
+
+
+def test_stream_read_timeout_bounded_by_overall_timeout() -> None:
+    """Verify SSE read timeout never exceeds overall configured cluster timeout."""
+    captured_timeouts: list[httpx.Timeout] = []
+
+    class DummyStream:
+        status_code = 200
+
+        def __enter__(self) -> DummyStream:
+            return self
+
+        def __exit__(self, *args: object) -> bool:
+            return False
+
+        def iter_lines(self) -> list[str]:
+            return ['data: {"state": "DONE", "outcome": "COMPLETED"}']
+
+    mock_client = MagicMock(spec=httpx.Client)
+
+    def _capture_stream(*args: object, **kwargs: object) -> DummyStream:
+        timeout_arg = kwargs["timeout"]
+        assert isinstance(timeout_arg, httpx.Timeout)
+        captured_timeouts.append(timeout_arg)
+        return DummyStream()
+
+    mock_client.stream.side_effect = _capture_stream
+
+    adapter_short = HexaqueueClusterRunnerAdapter(
+        cluster_url="http://cluster.local:8000",
+        timeout=8.0,
+        poll_interval=0.5,
+        http_client=mock_client,
+        console=Console(quiet=True),
+    )
+    code_short = adapter_short._stream_run_progress(mock_client, "run-short-to")
+    assert code_short == 0
+    assert captured_timeouts[0].read == 8.0
+
+    adapter_long = HexaqueueClusterRunnerAdapter(
+        cluster_url="http://cluster.local:8000",
+        timeout=3300.0,
+        poll_interval=0.5,
+        http_client=mock_client,
+        console=Console(quiet=True),
+    )
+    code_long = adapter_long._stream_run_progress(mock_client, "run-long-to")
+    assert code_long == 0
+    assert captured_timeouts[1].read == 15.0

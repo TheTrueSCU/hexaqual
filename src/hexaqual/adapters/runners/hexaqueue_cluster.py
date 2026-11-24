@@ -71,6 +71,7 @@ class HexaqueueClusterRunnerAdapter(TestingRunnerPort):
         base_runner: TestingRunnerPort | None = None,
         console: Console | None = None,
         http_client: httpx.Client | None = None,
+        run_id_file: Path | str | None = None,
     ) -> None:
         """Initialize Hexaqueue cluster runner adapter.
 
@@ -84,6 +85,8 @@ class HexaqueueClusterRunnerAdapter(TestingRunnerPort):
             base_runner: Optional local delegate for static inspection and git diffs.
             console: Optional Rich Console for progress reporting.
             http_client: Optional preconfigured httpx.Client (e.g. for testing with MockTransport).
+            run_id_file: Optional file path where the active run ID is recorded for
+                external CI cancellation cleanup (defaults to env ``HEXAQUEUE_RUN_ID_FILE``).
 
         Notes/Architectural Intent:
             Decouples test execution and mutation crunching from local compute by dispatching
@@ -100,6 +103,11 @@ class HexaqueueClusterRunnerAdapter(TestingRunnerPort):
         else:
             env_timeout = os.environ.get("HEXAQUEUE_TIMEOUT")
             self._timeout = float(env_timeout) if env_timeout else 1800.0
+        if run_id_file is not None:
+            self._run_id_file: Path | None = Path(run_id_file)
+        else:
+            env_run_id_file = os.environ.get("HEXAQUEUE_RUN_ID_FILE", "").strip()
+            self._run_id_file = Path(env_run_id_file) if env_run_id_file else None
         self._base_runner = base_runner or SubprocessTestingRunnerAdapter()
         self._console = console or Console()
         self._err_console = console if console is not None else Console(stderr=True)
@@ -107,6 +115,7 @@ class HexaqueueClusterRunnerAdapter(TestingRunnerPort):
         self._heartbeat_interval = 30.0
         self._last_status_snapshot: tuple[Any, int, int, int, int] | None = None
         self._last_print_time: float = 0.0
+        self._last_cancel_succeeded: bool = False
         self._validate_security()
 
     def _validate_security(self) -> None:
@@ -138,6 +147,10 @@ class HexaqueueClusterRunnerAdapter(TestingRunnerPort):
         }
         if self._token:
             headers["Authorization"] = f"Bearer {self._token}"
+        if self._elevate:
+            admin_token = os.environ.get("HEXAQUEUE_ADMIN_TOKEN", "").strip()
+            if admin_token:
+                headers["X-Hexaqueue-Admin-Token"] = admin_token
         return headers
 
     def _build_client(self) -> httpx.Client:
@@ -707,6 +720,23 @@ class HexaqueueClusterRunnerAdapter(TestingRunnerPort):
 
         return "mutmut", ["run"]
 
+    def _write_active_run_id(self, run_id: str) -> None:
+        """Persist the active remote run ID to ``_run_id_file`` if configured."""
+        if self._run_id_file is None:
+            return
+        with contextlib.suppress(OSError):
+            self._run_id_file.parent.mkdir(parents=True, exist_ok=True)
+            self._run_id_file.write_text(f"{run_id}\n", encoding="utf-8")
+
+    def _clear_active_run_id(self, run_id: str) -> None:
+        """Remove ``_run_id_file`` when empty or still holding ``run_id``."""
+        if self._run_id_file is None or not self._run_id_file.exists():
+            return
+        with contextlib.suppress(OSError):
+            current = self._run_id_file.read_text(encoding="utf-8").strip()
+            if not current or current == run_id:
+                self._run_id_file.unlink()
+
     def _submit_and_stream(self, run_id: str, payload: dict[str, Any]) -> int:
         """Submit run specification to Hexaqueue and stream progress to completion."""
         client = self._build_client()
@@ -718,6 +748,9 @@ class HexaqueueClusterRunnerAdapter(TestingRunnerPort):
         )
         self._last_status_snapshot = None
         self._last_print_time = 0.0
+        self._last_cancel_succeeded = False
+        submitted = False
+        exit_code = 1
         try:
             try:
                 resp = client.post(submit_url, json=payload, headers=self._get_headers())
@@ -732,9 +765,14 @@ class HexaqueueClusterRunnerAdapter(TestingRunnerPort):
                 )
                 return 1
 
+            submitted = True
+            self._write_active_run_id(run_id)
             self._emit_step_summary(run_id, payload)
-            return self._stream_run_progress(client=client, run_id=run_id)
+            exit_code = self._stream_run_progress(client=client, run_id=run_id)
+            return exit_code
         finally:
+            if submitted and (exit_code in (0, 1) or self._last_cancel_succeeded):
+                self._clear_active_run_id(run_id)
             if should_close:
                 client.close()
 
@@ -762,78 +800,121 @@ class HexaqueueClusterRunnerAdapter(TestingRunnerPort):
         ):
             fh.write("\n".join(lines) + "\n\n")
 
-    def _cancel_remote_run(self, client: httpx.Client, run_id: str) -> None:
-        """Best-effort cancellation of a remote Hexaqueue run."""
-        with contextlib.suppress(Exception):
-            cancel_resp = client.post(
-                f"{self._cluster_url}/v1/runs/{run_id}/cancel",
-                headers=self._get_headers(),
-                timeout=5.0,
-            )
-            if cancel_resp.status_code not in (200, 202, 204):
-                self._err_console.print(
-                    f"[yellow]Warning: Remote run cancellation returned status {cancel_resp.status_code}[/yellow]"
-                )
-
-    def _stream_run_progress(self, client: httpx.Client, run_id: str) -> int:
-        """Stream SSE run progress pulses, falling back to polling if necessary."""
-        stream_url = f"{self._cluster_url}/v1/runs/{run_id}/stream"
-        start_time = time.time()
-        params = {"poll_interval": self._poll_interval, "timeout": self._timeout}
-        stream_timeout = httpx.Timeout(
-            timeout=float(self._timeout),
-            read=min(max(float(self._poll_interval) * 3, 65.0), float(self._timeout)),
+    def _post_cancel_request(self, client: httpx.Client, run_id: str, timeout: float) -> bool:
+        """Send a single run-cancellation POST request and return True on acceptance."""
+        cancel_resp = client.post(
+            f"{self._cluster_url}/v1/runs/{run_id}/cancel",
+            headers=self._get_headers(),
+            timeout=timeout,
         )
+        if cancel_resp.status_code in (200, 202, 204, 404):
+            return True
+        self._err_console.print(
+            f"Warning: Remote run cancellation returned status {cancel_resp.status_code}",
+            style="yellow",
+            markup=False,
+        )
+        return False
 
-        is_main = threading.current_thread() is threading.main_thread()
-        prev_sigint: Any = None
-        prev_sigterm: Any = None
+    def _cancel_remote_run(self, client: httpx.Client, run_id: str) -> bool:
+        """Best-effort cancellation of a remote Hexaqueue run."""
+        try:
+            return self._post_cancel_request(client, run_id, timeout=5.0)
+        except Exception as initial_exc:
+            reported_exc: Exception = initial_exc
+            if self._client is None:
+                try:
+                    with httpx.Client(
+                        base_url=self._cluster_url,
+                        headers=self._get_headers(),
+                        timeout=3.0,
+                    ) as retry_client:
+                        return self._post_cancel_request(retry_client, run_id, timeout=3.0)
+                except Exception as retry_exc:
+                    reported_exc = retry_exc
+            self._err_console.print(
+                f"Warning: Failed to cancel remote run {run_id}: {reported_exc}",
+                style="yellow",
+                markup=False,
+            )
+            return False
+
+    @staticmethod
+    def _install_interrupt_handlers() -> dict[int, Any]:
+        """Install KeyboardInterrupt signal traps on the main thread."""
+        if threading.current_thread() is not threading.main_thread():
+            return {}
 
         def _raise_interrupt(_signum: int, _frame: Any) -> None:
             raise KeyboardInterrupt
 
-        if is_main:
-            prev_sigint = signal.signal(signal.SIGINT, _raise_interrupt)
-            prev_sigterm = signal.signal(signal.SIGTERM, _raise_interrupt)
+        signals_to_trap = [signal.SIGINT, signal.SIGTERM]
+        if hasattr(signal, "SIGHUP"):
+            signals_to_trap.append(signal.SIGHUP)
+        return {sig: signal.signal(sig, _raise_interrupt) for sig in signals_to_trap}
 
+    @staticmethod
+    def _restore_signal_handlers(prev_handlers: dict[int, Any]) -> None:
+        """Restore previously registered main-thread signal handlers."""
+        for sig, handler in prev_handlers.items():
+            signal.signal(sig, handler)
+
+    def _consume_sse_stream(
+        self,
+        client: httpx.Client,
+        run_id: str,
+        start_time: float,
+    ) -> int | None:
+        """Read SSE run status events until completion, overall timeout, or fallback."""
+        stream_url = f"{self._cluster_url}/v1/runs/{run_id}/stream"
+        params = {"poll_interval": self._poll_interval, "timeout": self._timeout}
+        read_timeout = (
+            max(1.0, min(max(float(self._poll_interval) * 3, 15.0), float(self._timeout)))
+            if self._timeout > 0
+            else float(self._timeout)
+        )
+        stream_timeout = httpx.Timeout(timeout=float(self._timeout), read=read_timeout)
         try:
-            try:
-                with client.stream(
-                    "GET",
-                    stream_url,
-                    params=params,
-                    headers=self._get_headers(),
-                    timeout=stream_timeout,
-                ) as stream_resp:
-                    if stream_resp.status_code == 200:
-                        for line in stream_resp.iter_lines():
-                            if time.time() - start_time > self._timeout:
-                                break
-                            if not line:
-                                continue
-                            if line.startswith("data: "):
-                                raw_data = line[6:].strip()
-                                outcome_code = self._process_sse_data(raw_data)
-                                if outcome_code is not None:
-                                    return outcome_code
-            except Exception as exc:
-                logger.debug(
-                    "SSE streaming connection interrupted (%s), falling back to polling", exc
-                )
+            with client.stream(
+                "GET",
+                stream_url,
+                params=params,
+                headers=self._get_headers(),
+                timeout=stream_timeout,
+            ) as stream_resp:
+                if stream_resp.status_code != 200:
+                    return None
+                for line in stream_resp.iter_lines():
+                    if time.time() - start_time > self._timeout:
+                        break
+                    if not line or not line.startswith("data: "):
+                        continue
+                    outcome_code = self._process_sse_data(line[6:].strip())
+                    if outcome_code is not None:
+                        return outcome_code
+        except Exception as exc:
+            logger.debug("SSE streaming connection interrupted (%s), falling back to polling", exc)
+        return None
 
+    def _stream_run_progress(self, client: httpx.Client, run_id: str) -> int:
+        """Stream SSE run progress pulses, falling back to polling if necessary."""
+        start_time = time.time()
+        prev_handlers = self._install_interrupt_handlers()
+        try:
+            outcome_code = self._consume_sse_stream(
+                client=client, run_id=run_id, start_time=start_time
+            )
+            if outcome_code is not None:
+                return outcome_code
             return self._poll_run_progress(client=client, run_id=run_id, start_time=start_time)
         except KeyboardInterrupt:
             self._err_console.print(
                 f"[yellow]Interrupted; cancelling remote Hexaqueue run {run_id}...[/yellow]"
             )
-            self._cancel_remote_run(client, run_id)
+            self._last_cancel_succeeded = self._cancel_remote_run(client, run_id)
             return 130
         finally:
-            if is_main:
-                if prev_sigint is not None:
-                    signal.signal(signal.SIGINT, prev_sigint)
-                if prev_sigterm is not None:
-                    signal.signal(signal.SIGTERM, prev_sigterm)
+            self._restore_signal_handlers(prev_handlers)
 
     def _process_sse_data(self, raw_data: str) -> int | None:
         """Parse SSE JSON payload and print status pulses."""
@@ -886,7 +967,7 @@ class HexaqueueClusterRunnerAdapter(TestingRunnerPort):
 
         while True:
             if time.time() - start_time > self._timeout:
-                self._cancel_remote_run(client, run_id)
+                self._last_cancel_succeeded = self._cancel_remote_run(client, run_id)
                 self._err_console.print(
                     f"[bold red]Run {run_id} timed out after {self._timeout}s[/bold red]"
                 )
