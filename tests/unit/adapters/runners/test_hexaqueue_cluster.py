@@ -10,7 +10,7 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, patch
 
 import httpx
 import pytest
@@ -1044,3 +1044,124 @@ def test_emit_step_summary_writes_run_and_job_commands(
     assert "hq status run-abc-123" in content
     assert "hq logs job-1" in content
     assert "hq logs job-2" in content
+
+
+def test_run_mutation_testing_heavy_file_operator_subsharding(tmp_path: Path) -> None:
+    """Verify heavy solo files sub-shard across gremlin operators in parallel cluster jobs."""
+    pkg_dir = tmp_path / "heavy_pkg"
+    src_dir = pkg_dir / "src" / "heavy_pkg"
+    src_dir.mkdir(parents=True)
+    lines = []
+    for i in range(60):
+        lines.extend(
+            [
+                f"def fn_{i}(a: int, b: int) -> bool:",
+                f"    c = a + b + {i}",
+                "    c += 1",
+                "    if c > 10 and (a == b or not (b <= 0)):",
+                "        return True",
+                "    return False",
+            ]
+        )
+    (src_dir / "heavy.py").write_text("\n".join(lines), encoding="utf-8")
+
+    submitted_payloads: list[dict] = []
+
+    def mock_handler(request: httpx.Request) -> httpx.Response:
+        if request.url.path == "/v1/runs" and request.method == "POST":
+            payload = json.loads(request.content.decode("utf-8"))
+            submitted_payloads.append(payload)
+            return httpx.Response(
+                status_code=201,
+                json={"run_id": payload["run_spec"]["id"], "state": "PENDING"},
+            )
+        if "/stream" in request.url.path:
+            return httpx.Response(
+                status_code=200,
+                text='event: run_done\ndata: {"state": "DONE", "outcome": "COMPLETED"}\n\n',
+            )
+        return httpx.Response(status_code=404)
+
+    client = httpx.Client(
+        transport=httpx.MockTransport(mock_handler), base_url="http://cluster.local:8000"
+    )
+    adapter = HexaqueueClusterRunnerAdapter(
+        cluster_url="http://cluster.local:8000",
+        http_client=client,
+        console=Console(quiet=True),
+    )
+
+    with patch.object(adapter, "_stage_workspace_collateral", return_value="col-heavy"):
+        code = adapter.run_mutation_testing(
+            package_dir=pkg_dir,
+            engine=MutationEngine.GREMLINS,
+            reset_cache=True,
+            targets=["src/heavy_pkg/heavy.py"],
+        )
+
+    assert code == 0
+    assert len(submitted_payloads) == 1
+    jobs = submitted_payloads[0]["jobs"]
+    assert len(jobs) == 4
+    job_ids = [j["id"] for j in jobs]
+    assert len(set(job_ids)) == 4
+    assert "-op0" in job_ids[0]
+
+    seen_ops: list[str] = []
+    for idx, job in enumerate(jobs):
+        args = job["args"]
+        assert "--cov=src" not in args
+        assert "--cov-fail-under=0" not in args
+        assert "--gremlin-prescan-workers=4" in args
+        assert "--gremlin-coverage-timeout=300" in args
+        assert "--gremlin-mutant-timeout=120" in args
+        assert "--gremlin-batch" not in args
+        assert not any(a.startswith("--gremlin-batch-size=") for a in args)
+        if idx == 0:
+            assert "--gremlin-clear-cache" in args
+        else:
+            assert "--gremlin-clear-cache" not in args
+        op_args = [a for a in args if a.startswith("--gremlin-operators=")]
+        assert len(op_args) == 1
+        seen_ops.extend(op_args[0].split("=", 1)[1].split(","))
+
+    assert sorted(seen_ops) == ["arithmetic", "boolean", "boundary", "comparison", "return"]
+
+    # Explicit operators bypass automatic sub-sharding even for heavy files
+    submitted_payloads.clear()
+    with patch.object(adapter, "_stage_workspace_collateral", return_value="col-heavy"):
+        explicit_code = adapter.run_mutation_testing(
+            package_dir=pkg_dir,
+            engine=MutationEngine.GREMLINS,
+            targets=["src/heavy_pkg/heavy.py"],
+            operators=["boolean"],
+            batch_size=12,
+            mutant_timeout=90,
+            prescan_workers=2,
+            coverage_timeout=450,
+        )
+
+    assert explicit_code == 0
+    explicit_jobs = submitted_payloads[0]["jobs"]
+    assert len(explicit_jobs) == 1
+    exp_args = explicit_jobs[0]["args"]
+    assert "--gremlin-operators=boolean" in exp_args
+    assert "--gremlin-batch-size=12" in exp_args
+    assert "--gremlin-batch" in exp_args
+    assert "--gremlin-mutant-timeout=90" in exp_args
+    assert "--gremlin-prescan-workers=2" in exp_args
+    assert "--gremlin-coverage-timeout=450" in exp_args
+
+    # Light files keep 1 job without --gremlin-operators
+    (src_dir / "light.py").write_text("x = 1 + 2\n", encoding="utf-8")
+    submitted_payloads.clear()
+    with patch.object(adapter, "_stage_workspace_collateral", return_value="col-light"):
+        light_code = adapter.run_mutation_testing(
+            package_dir=pkg_dir,
+            engine=MutationEngine.GREMLINS,
+            targets=["src/heavy_pkg/light.py"],
+        )
+    assert light_code == 0
+    light_jobs = submitted_payloads[0]["jobs"]
+    assert len(light_jobs) == 1
+    assert not any(a.startswith("--gremlin-operators=") for a in light_jobs[0]["args"])

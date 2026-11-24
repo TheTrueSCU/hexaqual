@@ -30,7 +30,26 @@ def test_mutate_run() -> None:
         patch("hexaqual.cli.mutate.create_governance_bus", return_value=mock_bus),
     ):
         res = runner.invoke(
-            mutate_app, ["run", "-p", "core", "-e", "gremlins", "-w", "4", "-n", "2"]
+            mutate_app,
+            [
+                "run",
+                "-p",
+                "core",
+                "-e",
+                "gremlins",
+                "-w",
+                "4",
+                "-n",
+                "2",
+                "--operators",
+                "boolean,comparison",
+                "--mutant-timeout",
+                "75",
+                "--prescan-workers",
+                "3",
+                "--coverage-timeout",
+                "420",
+            ],
         )
         assert res.exit_code == 0
         assert mock_bus.dispatch.called
@@ -39,6 +58,10 @@ def test_mutate_run() -> None:
         assert cmd.engine == "gremlins"
         assert cmd.workers == "4"
         assert cmd.numprocesses == "2"
+        assert cmd.operators == ["boolean", "comparison"]
+        assert cmd.mutant_timeout == 75
+        assert cmd.prescan_workers == 3
+        assert cmd.coverage_timeout == 420
         mock_ensure.assert_called_once_with("pytest_gremlins", extra_name="gremlins")
 
 

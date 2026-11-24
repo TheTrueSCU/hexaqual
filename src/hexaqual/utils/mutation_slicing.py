@@ -13,12 +13,21 @@ import ast
 import math
 import subprocess
 import tomllib
-from collections.abc import Sequence
+from collections.abc import Mapping, Sequence
 from pathlib import Path
 
 DEFAULT_MAX_CLUSTER_SLICES = 16
+DEFAULT_MAX_OPERATOR_SHARDS = 4
 DEFAULT_MAX_SLICE_WEIGHT = 450
 DEFAULT_NUM_SLICES = 12
+DEFAULT_OPERATOR_SHARD_WEIGHT = 250
+GREMLIN_OPERATORS: tuple[str, ...] = (
+    "comparison",
+    "arithmetic",
+    "boolean",
+    "boundary",
+    "return",
+)
 
 _HEAVY_MUTABLE_NODES = (ast.BinOp, ast.Compare, ast.BoolOp, ast.AugAssign)
 _LIGHT_MUTABLE_NODES = (ast.UnaryOp, ast.If, ast.IfExp, ast.While, ast.Return)
@@ -96,6 +105,96 @@ def estimate_file_mutation_weight(path: Path) -> int:
     except OSError:
         return _PER_FILE_OVERHEAD
     return estimate_ast_mutation_weight(source)
+
+
+def _accumulate_node_operator_weights(
+    node: ast.AST,
+    weights: dict[str, int],
+) -> None:
+    """Accumulate per-gremlin-operator AST weights for a single AST node."""
+    if isinstance(node, ast.Compare):
+        weights["comparison"] += 2 * len(node.ops)
+        boundary_ops = sum(
+            1 for op in node.ops if isinstance(op, (ast.Lt, ast.LtE, ast.Gt, ast.GtE))
+        )
+        weights["boundary"] += 2 * boundary_ops
+    elif isinstance(node, (ast.BinOp, ast.AugAssign)):
+        weights["arithmetic"] += 2
+    elif isinstance(node, ast.UnaryOp):
+        if isinstance(node.op, ast.Not):
+            weights["boolean"] += 1
+        elif isinstance(node.op, (ast.UAdd, ast.USub)):
+            weights["arithmetic"] += 1
+    elif isinstance(node, ast.BoolOp):
+        weights["boolean"] += 2 * max(1, len(node.values) - 1)
+    elif isinstance(node, ast.Constant):
+        if isinstance(node.value, bool):
+            weights["boolean"] += 1
+        elif isinstance(node.value, (int, float)):
+            weights["boundary"] += 1
+    elif isinstance(node, ast.Return) and node.value is not None:
+        weights["return"] += 1
+
+
+def estimate_file_operator_weights(path: Path) -> dict[str, int]:
+    """Estimate relative pytest-gremlins operator weights for a Python source file.
+
+    Args:
+        path: Filesystem path to the Python source file.
+
+    Returns:
+        Mapping of non-empty operator name to positive integer weight estimate.
+
+    Notes/Architectural Intent:
+        Ignores docstring constants and maps AST constructs to the 5 built-in
+        pytest-gremlins operators so oversized files can be cleanly sub-sharded
+        across parallel cluster workers. Falls back to uniform unit weights if
+        the file cannot be read or parsed.
+    """
+    try:
+        source = path.read_text(encoding="utf-8")
+        tree = ast.parse(source)
+    except (OSError, SyntaxError):
+        return dict.fromkeys(GREMLIN_OPERATORS, 1)
+
+    doc_ids = _docstring_node_ids(tree)
+    weights: dict[str, int] = dict.fromkeys(GREMLIN_OPERATORS, 0)
+    for node in ast.walk(tree):
+        if id(node) in doc_ids:
+            continue
+        _accumulate_node_operator_weights(node, weights)
+    return {op: w for op, w in weights.items() if w > 0}
+
+
+def partition_operators_lpt(
+    operator_weights: Mapping[str, int],
+    *,
+    max_shards: int = DEFAULT_MAX_OPERATOR_SHARDS,
+) -> list[list[str]]:
+    """Partition gremlin operators into LPT-balanced shards ordered heaviest-first.
+
+    Args:
+        operator_weights: Mapping of operator name to positive weight estimate.
+        max_shards: Maximum number of parallel operator shards to produce.
+
+    Returns:
+        List of operator-name lists ordered heaviest-first by total shard weight.
+
+    Notes/Architectural Intent:
+        Reuses LPT bucket packing so heavy operators (e.g. ``boolean`` or
+        ``comparison``) run solo in dedicated cluster jobs while lighter
+        operators (e.g. ``arithmetic`` or ``return``) pack together cleanly.
+    """
+    ordered = sorted(
+        ((int(weight), str(op)) for op, weight in operator_weights.items() if weight > 0),
+        key=lambda item: (-item[0], item[1]),
+    )
+    if not ordered:
+        return []
+    shard_count = min(max(1, max_shards), len(ordered))
+    packed = _pack_into_buckets(ordered, shard_count)
+    packed.sort(key=lambda item: (-item[0], item[1][0]))
+    return [ops for _w, ops in packed]
 
 
 def _pack_into_buckets(
@@ -476,12 +575,17 @@ __all__ = [
     "build_changed_slices",
     "build_file_slices",
     "DEFAULT_MAX_CLUSTER_SLICES",
+    "DEFAULT_MAX_OPERATOR_SHARDS",
     "DEFAULT_MAX_SLICE_WEIGHT",
     "DEFAULT_NUM_SLICES",
+    "DEFAULT_OPERATOR_SHARD_WEIGHT",
     "discover_affected_packages",
     "discover_all_packages",
     "estimate_ast_mutation_weight",
     "estimate_file_mutation_weight",
+    "estimate_file_operator_weights",
+    "GREMLIN_OPERATORS",
+    "partition_operators_lpt",
     "partition_targets_lpt",
     "plan_mutation_matrix",
 ]

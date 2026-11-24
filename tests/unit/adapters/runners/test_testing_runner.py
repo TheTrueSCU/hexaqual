@@ -203,7 +203,10 @@ def test_run_gremlins(tmp_path: Path):
     adapter = SubprocessTestingRunnerAdapter()
 
     (tmp_path / "tests" / "unit").mkdir(parents=True)
-    with patch("subprocess.run") as mock_run:
+    with (
+        patch("subprocess.run") as mock_run,
+        patch("hexaqual.adapters.runners.testing_runner.os.cpu_count", return_value=8),
+    ):
         mock_run.return_value = MagicMock(returncode=0)
         code = adapter.run_mutation_testing(
             tmp_path,
@@ -213,6 +216,7 @@ def test_run_gremlins(tmp_path: Path):
             numprocesses=4,
             batch_size=10,
             report_file=tmp_path / "coverage" / "gremlins" / "gremlins.json",
+            operators=["boolean", "comparison"],
         )
         assert code == 0
         expected_cmd = [
@@ -220,14 +224,15 @@ def test_run_gremlins(tmp_path: Path):
             "--rootdir=.",
             "-o",
             "addopts=",
-            "--cov=src",
-            "--cov-fail-under=0",
             "--gremlins",
             "--gremlin-clear-cache",
+            "--gremlin-operators=boolean,comparison",
             "--gremlin-workers=auto",
             "--gremlin-batch-size=10",
             "--gremlin-batch",
-            "--gremlin-mutant-timeout=30",
+            "--gremlin-prescan-workers=4",
+            "--gremlin-coverage-timeout=300",
+            "--gremlin-mutant-timeout=120",
             "--gremlin-cache",
             "-m",
             "not demo and not e2e and not integration",
@@ -322,6 +327,10 @@ def test_run_mutation_testing_dispatch(tmp_path: Path):
             batch_size=20,
             report_file=tmp_path / "report.json",
             targets=None,
+            operators=None,
+            mutant_timeout=None,
+            prescan_workers=None,
+            coverage_timeout=None,
         )
 
 
@@ -369,17 +378,22 @@ def test_run_gremlins_options(tmp_path: Path):
         assert code == 0
         mock_run.assert_called_once()
         cmd = mock_run.call_args[0][0]
+        assert "--cov=src" not in cmd
+        assert "--cov-fail-under=0" not in cmd
         assert "--gremlin-clear-cache" in cmd
         assert "--gremlin-workers=auto" in cmd
         assert "--gremlin-batch" in cmd
         assert "--gremlin-batch-size=10" in cmd
+        assert "--gremlin-mutant-timeout=120" in cmd
+        assert "--gremlin-coverage-timeout=300" in cmd
+        assert any(arg.startswith("--gremlin-prescan-workers=") for arg in cmd)
         assert "-n" in cmd
         assert "2" in cmd
         assert f"--gremlins-html-dir={report_file.parent}" in cmd
 
 
 def test_run_gremlins_defaults_auto_cores(tmp_path: Path):
-    """Verify _run_gremlins defaults numprocesses to auto when xdist is installed."""
+    """Verify _run_gremlins omits batching when batch_size is None and supports custom timeouts."""
     adapter = SubprocessTestingRunnerAdapter()
 
     with (
@@ -388,6 +402,7 @@ def test_run_gremlins_defaults_auto_cores(tmp_path: Path):
             "hexaqual.adapters.runners.testing_runner.check_tool_availability",
             return_value=(True, ""),
         ),
+        patch("hexaqual.adapters.runners.testing_runner.os.cpu_count", return_value=2),
     ):
         mock_run.return_value = MagicMock(returncode=0)
         code = adapter.run_mutation_testing(
@@ -396,10 +411,32 @@ def test_run_gremlins_defaults_auto_cores(tmp_path: Path):
         )
         assert code == 0
         cmd = mock_run.call_args[0][0]
+        assert "--cov=src" not in cmd
         assert "--gremlin-workers=auto" in cmd
-        assert "--gremlin-batch-size=10" in cmd
+        assert "--gremlin-batch" not in cmd
+        assert not any(arg.startswith("--gremlin-batch-size=") for arg in cmd)
+        assert "--gremlin-prescan-workers=2" in cmd
+        assert "--gremlin-coverage-timeout=300" in cmd
+        assert "--gremlin-mutant-timeout=120" in cmd
         assert "-n" in cmd
         assert "auto" in cmd
+
+        custom_code = adapter.run_mutation_testing(
+            tmp_path,
+            engine=MutationEngine.GREMLINS,
+            operators=["arithmetic"],
+            mutant_timeout=90,
+            prescan_workers=3,
+            coverage_timeout=450,
+            batch_size=1,
+        )
+        assert custom_code == 0
+        custom_cmd = mock_run.call_args[0][0]
+        assert "--gremlin-operators=arithmetic" in custom_cmd
+        assert "--gremlin-mutant-timeout=90" in custom_cmd
+        assert "--gremlin-prescan-workers=3" in custom_cmd
+        assert "--gremlin-coverage-timeout=450" in custom_cmd
+        assert "--gremlin-batch" not in custom_cmd
 
 
 def test_read_gremlins_report_corrupted(tmp_path: Path):

@@ -97,6 +97,26 @@ def mutate_run(
         "--targets",
         help="Comma-separated relative source file paths to mutate.",
     ),
+    operators: str | None = typer.Option(
+        None,
+        "--operators",
+        help="Comma-separated pytest-gremlins mutation operators (e.g. boolean,comparison).",
+    ),
+    mutant_timeout: int | None = typer.Option(
+        None,
+        "--mutant-timeout",
+        help="Per-mutant timeout in seconds for pytest-gremlins (defaults to 120).",
+    ),
+    prescan_workers: int | None = typer.Option(
+        None,
+        "--prescan-workers",
+        help="Sharded coverage pre-scan worker count for pytest-gremlins (defaults to min(4, CPUs)).",
+    ),
+    coverage_timeout: int | None = typer.Option(
+        None,
+        "--coverage-timeout",
+        help="Coverage pre-scan timeout in seconds for pytest-gremlins (defaults to 300).",
+    ),
     cluster: str = typer.Option(
         "local",
         "--cluster",
@@ -144,6 +164,11 @@ def mutate_run(
         workers: Parallel workers during mutation phase.
         numprocesses: Pytest-xdist baseline process count.
         batch_size: Mutants per worker batch.
+        targets: Optional comma-separated relative source file paths to mutate.
+        operators: Optional comma-separated pytest-gremlins operators.
+        mutant_timeout: Optional per-mutant timeout in seconds.
+        prescan_workers: Optional sharded coverage pre-scan worker count.
+        coverage_timeout: Optional coverage pre-scan timeout in seconds.
         cluster: Execution target cluster ('local' or 'hexaqueue').
         cluster_url: Hexaqueue cluster REST endpoint URL.
         cluster_token: Authentication bearer token for Hexaqueue cluster.
@@ -189,6 +214,9 @@ def mutate_run(
     bus = create_governance_bus(repo_root=root, testing_runner=testing_runner)
 
     target_list = [item.strip() for item in targets.split(",") if item.strip()] if targets else None
+    operator_list = (
+        [item.strip() for item in operators.split(",") if item.strip()] if operators else None
+    )
     exit_code = bus.dispatch(
         RunMutationTestsCommand(
             package=package,
@@ -201,6 +229,10 @@ def mutate_run(
             numprocesses=numprocesses,
             batch_size=batch_size,
             targets=target_list,
+            operators=operator_list,
+            mutant_timeout=mutant_timeout,
+            prescan_workers=prescan_workers,
+            coverage_timeout=coverage_timeout,
         )
     )
 

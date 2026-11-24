@@ -40,6 +40,10 @@ class TestingRunnerPort(ABC):
         batch_size: int | None = None,
         report_file: Path | None = None,
         targets: Sequence[str] | None = None,
+        operators: Sequence[str] | None = None,
+        mutant_timeout: int | None = None,
+        prescan_workers: int | None = None,
+        coverage_timeout: int | None = None,
     ) -> int:
         """Run mutation testing on a specific package directory or set of directories.
 
@@ -52,6 +56,10 @@ class TestingRunnerPort(ABC):
             batch_size: Number of gremlins per worker batch.
             report_file: Path to write the JSON report.
             targets: Optional explicit relative source file paths to mutate.
+            operators: Optional subset of gremlin mutation operator names.
+            mutant_timeout: Optional per-mutant timeout in seconds.
+            prescan_workers: Optional sharded coverage pre-scan worker count.
+            coverage_timeout: Optional coverage pre-scan timeout in seconds.
 
         Returns:
             Exit code of mutation testing process.

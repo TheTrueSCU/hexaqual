@@ -8,6 +8,7 @@ Notes/Architectural Intent:
 from __future__ import annotations
 
 import json
+import os
 import sqlite3
 import subprocess
 from collections.abc import Sequence
@@ -39,6 +40,10 @@ class SubprocessTestingRunnerAdapter(TestingRunnerPort):
         batch_size: int | None = None,
         report_file: Path | None = None,
         targets: Sequence[str] | None = None,
+        operators: Sequence[str] | None = None,
+        mutant_timeout: int | None = None,
+        prescan_workers: int | None = None,
+        coverage_timeout: int | None = None,
     ) -> int:
         """Run mutation testing on a specific package directory using the specified engine.
 
@@ -50,6 +55,11 @@ class SubprocessTestingRunnerAdapter(TestingRunnerPort):
             numprocesses: Pytest-xdist worker count for baseline test execution.
             batch_size: Number of gremlins per worker batch.
             report_file: Path to write the JSON report.
+            targets: Optional explicit relative source file paths to mutate.
+            operators: Optional subset of gremlin mutation operator names.
+            mutant_timeout: Optional per-mutant timeout in seconds.
+            prescan_workers: Optional sharded coverage pre-scan worker count.
+            coverage_timeout: Optional coverage pre-scan timeout in seconds.
 
         Returns:
             Exit code of mutation process.
@@ -70,6 +80,10 @@ class SubprocessTestingRunnerAdapter(TestingRunnerPort):
                     batch_size=batch_size,
                     report_file=report_file,
                     targets=targets,
+                    operators=operators,
+                    mutant_timeout=mutant_timeout,
+                    prescan_workers=prescan_workers,
+                    coverage_timeout=coverage_timeout,
                 )
                 if code != 0:
                     exit_code = code
@@ -84,6 +98,10 @@ class SubprocessTestingRunnerAdapter(TestingRunnerPort):
                 batch_size=batch_size,
                 report_file=report_file,
                 targets=targets,
+                operators=operators,
+                mutant_timeout=mutant_timeout,
+                prescan_workers=prescan_workers,
+                coverage_timeout=coverage_timeout,
             )
         return self._run_mutmut(package_dir=package_dir, reset_cache=reset_cache)
 
@@ -106,30 +124,44 @@ class SubprocessTestingRunnerAdapter(TestingRunnerPort):
         batch_size: int | None = None,
         report_file: Path | None = None,
         targets: Sequence[str] | None = None,
+        operators: Sequence[str] | None = None,
+        mutant_timeout: int | None = None,
+        prescan_workers: int | None = None,
+        coverage_timeout: int | None = None,
     ) -> int:
-        """Execute pytest-gremlins mutation runner."""
+        """Execute pytest-gremlins mutation runner in clean PRIVATE coverage mode."""
         cmd = [
             "pytest",
             "--rootdir=.",
             "-o",
             "addopts=",
-            "--cov=src",
-            "--cov-fail-under=0",
             "--gremlins",
         ]
         if reset_cache:
             cmd.append("--gremlin-clear-cache")
         if targets:
             cmd.append(f"--gremlin-targets={','.join(targets)}")
+        if operators:
+            op_items = [op.strip() for op in operators if op.strip()]
+            if op_items:
+                cmd.append(f"--gremlin-operators={','.join(op_items)}")
         if workers is not None:
             cmd.append(f"--gremlin-workers={workers}")
         else:
             cmd.append("--gremlin-workers=auto")
 
-        effective_batch_size = batch_size if batch_size is not None else 10
-        cmd.append(f"--gremlin-batch-size={effective_batch_size}")
-        cmd.append("--gremlin-batch")
-        cmd.append("--gremlin-mutant-timeout=30")
+        if batch_size is not None and batch_size > 1:
+            cmd.append(f"--gremlin-batch-size={batch_size}")
+            cmd.append("--gremlin-batch")
+
+        eff_prescan = (
+            prescan_workers if prescan_workers is not None else min(4, max(1, os.cpu_count() or 1))
+        )
+        eff_cov_timeout = coverage_timeout if coverage_timeout is not None else 300
+        eff_mutant_timeout = mutant_timeout if mutant_timeout is not None else 120
+        cmd.append(f"--gremlin-prescan-workers={eff_prescan}")
+        cmd.append(f"--gremlin-coverage-timeout={eff_cov_timeout}")
+        cmd.append(f"--gremlin-mutant-timeout={eff_mutant_timeout}")
         cmd.append("--gremlin-cache")
         cmd.extend(["-m", "not demo and not e2e and not integration"])
 
@@ -140,9 +172,7 @@ class SubprocessTestingRunnerAdapter(TestingRunnerPort):
 
         if report_file is not None:
             cmd.append(f"--gremlins-html-dir={report_file.parent}")
-            cmd.append("--gremlin-report=json,console")
-        else:
-            cmd.append("--gremlin-report=json,console")
+        cmd.append("--gremlin-report=json,console")
 
         if (package_dir / "tests" / "unit").is_dir():
             cmd.append("tests/unit")

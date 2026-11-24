@@ -35,8 +35,12 @@ from hexaqual.domain.testing import MutationEngine
 from hexaqual.ports.testing import TestingRunnerPort
 from hexaqual.utils.mutation_slicing import (
     DEFAULT_MAX_CLUSTER_SLICES,
+    DEFAULT_MAX_OPERATOR_SHARDS,
     DEFAULT_MAX_SLICE_WEIGHT,
+    DEFAULT_OPERATOR_SHARD_WEIGHT,
     estimate_file_mutation_weight,
+    estimate_file_operator_weights,
+    partition_operators_lpt,
     partition_targets_lpt,
 )
 
@@ -287,6 +291,29 @@ class HexaqueueClusterRunnerAdapter(TestingRunnerPort):
         )
         return [paths for _weight, paths in packed] or [[]]
 
+    def _expand_operator_shards(
+        self,
+        package_dir: Path,
+        group: list[str],
+        operators: Sequence[str] | None,
+    ) -> list[list[str] | None]:
+        """Sub-shard heavy solo files across gremlin operators for parallel execution."""
+        if operators:
+            cleaned = [op.strip() for op in operators if op.strip()]
+            return [cleaned] if cleaned else [None]
+        if len(group) != 1:
+            return [None]
+        target_path = package_dir / group[0]
+        if (
+            not target_path.is_file()
+            or estimate_file_mutation_weight(target_path) < DEFAULT_OPERATOR_SHARD_WEIGHT
+        ):
+            return [None]
+        op_weights = estimate_file_operator_weights(target_path)
+        op_shards = partition_operators_lpt(op_weights, max_shards=DEFAULT_MAX_OPERATOR_SHARDS)
+        shards: list[list[str] | None] = list(op_shards)
+        return shards if len(shards) > 1 else [None]
+
     def _build_mutation_job_specs(
         self,
         run_id: str,
@@ -300,6 +327,10 @@ class HexaqueueClusterRunnerAdapter(TestingRunnerPort):
         batch_size: int | None,
         report_file: Path | None,
         targets: Sequence[str] | None = None,
+        operators: Sequence[str] | None = None,
+        mutant_timeout: int | None = None,
+        prescan_workers: int | None = None,
+        coverage_timeout: int | None = None,
     ) -> list[dict[str, Any]]:
         """Construct constituent JobSpecs for mutation testing across worker slots.
 
@@ -314,6 +345,11 @@ class HexaqueueClusterRunnerAdapter(TestingRunnerPort):
             numprocesses: Baseline test worker count.
             batch_size: Gremlins per worker batch.
             report_file: Path to write the JSON report.
+            targets: Optional explicit relative source file paths to mutate.
+            operators: Optional subset of gremlin mutation operator names.
+            mutant_timeout: Optional per-mutant timeout in seconds.
+            prescan_workers: Optional sharded coverage pre-scan worker count.
+            coverage_timeout: Optional coverage pre-scan timeout in seconds.
 
         Returns:
             List of JobSpec dictionaries.
@@ -326,7 +362,8 @@ class HexaqueueClusterRunnerAdapter(TestingRunnerPort):
         resolved_targets: list[str] = []
         min_slices = 1
         max_slice_weight: int | None = None
-        if engine == MutationEngine.GREMLINS or str(engine).lower() == "gremlins":
+        is_gremlins = engine == MutationEngine.GREMLINS or str(engine).lower() == "gremlins"
+        if is_gremlins:
             resolved_targets = (
                 [t.strip() for t in targets if t.strip()]
                 if targets
@@ -348,38 +385,49 @@ class HexaqueueClusterRunnerAdapter(TestingRunnerPort):
         job_specs: list[dict[str, Any]] = []
 
         for idx, group in enumerate(target_groups):
-            cmd, args = self._build_mutation_command(
-                package_dir=package_dir,
-                engine=engine,
-                reset_cache=reset_cache and idx == 0,
-                workers=workers,
-                numprocesses=numprocesses,
-                batch_size=batch_size,
-                report_file=report_file,
-                target_files=group if group else None,
+            op_shard_list: list[list[str] | None] = (
+                self._expand_operator_shards(package_dir, group, operators)
+                if is_gremlins
+                else [None]
             )
+            for op_idx, op_shard in enumerate(op_shard_list):
+                cmd, args = self._build_mutation_command(
+                    package_dir=package_dir,
+                    engine=engine,
+                    reset_cache=reset_cache and idx == 0 and op_idx == 0,
+                    workers=workers,
+                    numprocesses=numprocesses,
+                    batch_size=batch_size,
+                    report_file=report_file,
+                    target_files=group if group else None,
+                    operators=op_shard,
+                    mutant_timeout=mutant_timeout,
+                    prescan_workers=prescan_workers,
+                    coverage_timeout=coverage_timeout,
+                )
 
-            job_spec: dict[str, Any] = {
-                "id": f"job-{run_id}-{package_dir.name}-{idx}",
-                "run_id": run_id,
-                "name": f"mutation-{package_dir.name}-batch-{idx}",
-                "command": cmd,
-                "args": args,
-                "env": {
-                    "PYTHONUNBUFFERED": "1",
-                    "HEXAQUEUE_CWD": str(rel_cwd),
-                },
-                "resources": {"cpus": 2, "ram_mb": 2048},
-                "tags": [
-                    f"package:{package_dir.name}",
-                    f"owner:{self._user_id}",
-                    "type:mutation",
-                ],
-                "user": self._user_id,
-            }
-            if collateral_id:
-                job_spec["collateral_ids"] = [collateral_id]
-            job_specs.append(job_spec)
+                suffix = f"{idx}-op{op_idx}" if len(op_shard_list) > 1 else str(idx)
+                job_spec: dict[str, Any] = {
+                    "id": f"job-{run_id}-{package_dir.name}-{suffix}",
+                    "run_id": run_id,
+                    "name": f"mutation-{package_dir.name}-batch-{suffix}",
+                    "command": cmd,
+                    "args": args,
+                    "env": {
+                        "PYTHONUNBUFFERED": "1",
+                        "HEXAQUEUE_CWD": str(rel_cwd),
+                    },
+                    "resources": {"cpus": 2, "ram_mb": 2048},
+                    "tags": [
+                        f"package:{package_dir.name}",
+                        f"owner:{self._user_id}",
+                        "type:mutation",
+                    ],
+                    "user": self._user_id,
+                }
+                if collateral_id:
+                    job_spec["collateral_ids"] = [collateral_id]
+                job_specs.append(job_spec)
 
         return job_specs
 
@@ -393,6 +441,10 @@ class HexaqueueClusterRunnerAdapter(TestingRunnerPort):
         batch_size: int | None = None,
         report_file: Path | None = None,
         targets: Sequence[str] | None = None,
+        operators: Sequence[str] | None = None,
+        mutant_timeout: int | None = None,
+        prescan_workers: int | None = None,
+        coverage_timeout: int | None = None,
     ) -> int:
         """Run mutation testing on a remote Hexaqueue cluster.
 
@@ -404,6 +456,11 @@ class HexaqueueClusterRunnerAdapter(TestingRunnerPort):
             numprocesses: Pytest-xdist worker count for baseline test execution.
             batch_size: Number of gremlins per worker batch.
             report_file: Path to write the JSON report.
+            targets: Optional explicit relative source file paths to mutate.
+            operators: Optional subset of gremlin mutation operator names.
+            mutant_timeout: Optional per-mutant timeout in seconds.
+            prescan_workers: Optional sharded coverage pre-scan worker count.
+            coverage_timeout: Optional coverage pre-scan timeout in seconds.
 
         Returns:
             Exit code of remote mutation testing process (0 for success, non-zero on failure).
@@ -450,6 +507,10 @@ class HexaqueueClusterRunnerAdapter(TestingRunnerPort):
                 batch_size=batch_size,
                 report_file=report_file,
                 targets=targets,
+                operators=operators,
+                mutant_timeout=mutant_timeout,
+                prescan_workers=prescan_workers,
+                coverage_timeout=coverage_timeout,
             )
             all_job_specs.extend(job_specs)
 
@@ -551,6 +612,55 @@ class HexaqueueClusterRunnerAdapter(TestingRunnerPort):
 
         return self._submit_and_stream(run_id=run_id, payload=submission_payload)
 
+    def _build_gremlins_args(
+        self,
+        *,
+        package_dir: Path,
+        reset_cache: bool,
+        workers: int | str | None,
+        numprocesses: int | str | None,
+        batch_size: int | None,
+        report_file: Path | None,
+        target_files: list[str] | None,
+        operators: Sequence[str] | None,
+        mutant_timeout: int | None,
+        prescan_workers: int | None,
+        coverage_timeout: int | None,
+    ) -> list[str]:
+        """Build pytest-gremlins argument vector for a remote cluster job."""
+        args = ["--rootdir=.", "-o", "addopts=", "--gremlins"]
+        if target_files:
+            args.append(f"--gremlin-targets={','.join(target_files)}")
+        op_items = [op.strip() for op in (operators or ()) if op.strip()]
+        if op_items:
+            args.append(f"--gremlin-operators={','.join(op_items)}")
+        if reset_cache:
+            args.append("--gremlin-clear-cache")
+        args.append(f"--gremlin-workers={workers if workers is not None else 'auto'}")
+        if batch_size is not None and batch_size > 1:
+            args.append(f"--gremlin-batch-size={batch_size}")
+            args.append("--gremlin-batch")
+        eff_prescan = prescan_workers if prescan_workers is not None else 4
+        eff_cov_timeout = coverage_timeout if coverage_timeout is not None else 300
+        eff_mutant_timeout = mutant_timeout if mutant_timeout is not None else 120
+        args.extend(
+            [
+                f"--gremlin-prescan-workers={eff_prescan}",
+                f"--gremlin-coverage-timeout={eff_cov_timeout}",
+                f"--gremlin-mutant-timeout={eff_mutant_timeout}",
+                "-m",
+                "not demo and not e2e and not integration",
+                "-n",
+                str(numprocesses) if numprocesses is not None else "auto",
+            ]
+        )
+        if report_file is not None:
+            args.append(f"--gremlins-html-dir={report_file.parent}")
+        args.append("--gremlin-report=json,console")
+        if (package_dir / "tests" / "unit").is_dir():
+            args.append("tests/unit")
+        return args
+
     def _build_mutation_command(
         self,
         package_dir: Path,
@@ -561,45 +671,29 @@ class HexaqueueClusterRunnerAdapter(TestingRunnerPort):
         batch_size: int | None,
         report_file: Path | None,
         target_files: list[str] | None = None,
+        operators: Sequence[str] | None = None,
+        mutant_timeout: int | None = None,
+        prescan_workers: int | None = None,
+        coverage_timeout: int | None = None,
     ) -> tuple[str, list[str]]:
         """Construct executable command and arguments for mutation testing."""
         if engine == MutationEngine.GREMLINS or str(engine).lower() == "gremlins":
-            cmd = "pytest"
-            args = [
-                "--rootdir=.",
-                "-o",
-                "addopts=",
-                "--cov=src",
-                "--cov-fail-under=0",
-                "--gremlins",
-            ]
-            if target_files:
-                args.append(f"--gremlin-targets={','.join(target_files)}")
-            if reset_cache:
-                args.append("--gremlin-clear-cache")
-            eff_workers = workers if workers is not None else "auto"
-            args.append(f"--gremlin-workers={eff_workers}")
-            eff_batch = batch_size if batch_size is not None else 10
-            args.append(f"--gremlin-batch-size={eff_batch}")
-            args.append("--gremlin-batch")
-            args.append("--gremlin-mutant-timeout=30")
-            args.extend(["-m", "not demo and not e2e and not integration"])
+            args = self._build_gremlins_args(
+                package_dir=package_dir,
+                reset_cache=reset_cache,
+                workers=workers,
+                numprocesses=numprocesses,
+                batch_size=batch_size,
+                report_file=report_file,
+                target_files=target_files,
+                operators=operators,
+                mutant_timeout=mutant_timeout,
+                prescan_workers=prescan_workers,
+                coverage_timeout=coverage_timeout,
+            )
+            return "pytest", args
 
-            if numprocesses is not None:
-                args.extend(["-n", str(numprocesses)])
-            else:
-                args.extend(["-n", "auto"])
-
-            if report_file is not None:
-                args.append(f"--gremlins-html-dir={report_file.parent}")
-            args.append("--gremlin-report=json,console")
-            if (package_dir / "tests" / "unit").is_dir():
-                args.append("tests/unit")
-            return cmd, args
-
-        cmd = "mutmut"
-        args = ["run"]
-        return cmd, args
+        return "mutmut", ["run"]
 
     def _submit_and_stream(self, run_id: str, payload: dict[str, Any]) -> int:
         """Submit run specification to Hexaqueue and stream progress to completion."""
