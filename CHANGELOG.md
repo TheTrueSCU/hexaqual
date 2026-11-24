@@ -1,5 +1,13 @@
 # CHANGELOG
 
+## v0.12.1 (2026-11-23)
+
+### Bug Fixes & Cancellation Hardening
+* **Cluster Run Cancellation, `HEXAQUEUE_RUN_ID_FILE`, & Bounded SSE Timeout (#66)**:
+  - Hardened `HexaqueueClusterRunnerAdapter` to persist the active remote `run_id` via `run_id_file` / `HEXAQUEUE_RUN_ID_FILE` so external CI cleanup steps can cancel orphaned runs cleanly even on runner timeout.
+  - Added `HEXAQUEUE_ADMIN_TOKEN` bearer-header forwarding on elevated cancellation requests, `_post_cancel_request`, and a single fresh-client retry on transport errors (without retrying HTTP 5xx responses).
+  - Bounded SSE stream `read_timeout`, added `SIGHUP` signal trapping alongside `SIGINT`/`SIGTERM`, and extracted `_install_interrupt_handlers`, `_restore_signal_handlers`, and `_consume_sse_stream`.
+
 ## v0.12.0 (2026-11-23)
 
 ### Highlights & Performance
