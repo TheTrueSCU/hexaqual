@@ -1,5 +1,18 @@
 # CHANGELOG
 
+## v0.12.0 (2026-11-23)
+
+### Highlights & Performance
+* **Clean `PRIVATE`-Mode `pytest-gremlins` Execution & Operator Sharding (#64)**:
+  - Dropped redundant `--cov=src` and `--cov-fail-under=0` flags from `SubprocessTestingRunnerAdapter._run_gremlins` and `HexaqueueClusterRunnerAdapter._build_gremlins_args` so `pytest-gremlins` runs cleanly in `PRIVATE` coverage mode under `-n auto` without `cov_contexts=0` or sharded pre-scan timeouts.
+  - Added `--operators`, `--mutant-timeout` (default `120`s), `--prescan-workers` (`min(4, CPUs)` / `4` on cluster), and `--coverage-timeout` (default `300`s) CLI options and forwarded them through `RunMutationTestsCommand`, `TestingRunnerPort`, and `RunMutationTestsHandler`.
+  - Stopped emitting `--gremlin-batch`/`--gremlin-batch-size` when `batch_size <= 1`.
+  - Added intra-file AST operator sub-sharding (`GREMLIN_OPERATORS`, `DEFAULT_OPERATOR_SHARD_WEIGHT = 250`, `DEFAULT_MAX_OPERATOR_SHARDS = 4`, `estimate_file_operator_weights`, `partition_operators_lpt`) in `hexaqual.utils.mutation_slicing` so heavy modules fan out across cluster workers (`-op0`..`-op3`).
+* **Pre-Release Hardening & Dependency Updates (#65, #63)**:
+  - Required `pytest-gremlins>=1.14.3` in `hexaqual[gremlins]` and `dev` dependencies for `--gremlin-prescan-workers` and the AST parent-link hang fix (#65).
+  - Enabled operator sub-sharding for multi-file cluster slices containing any file with AST weight `>= 250`, and added an explicit stderr/logger warning when `pytest-hexaqueue` (`hexaqual[cluster]`) is missing during remote collateral staging (#65).
+  - Updated workspace dependencies via Dependabot (#63).
+
 ## v0.11.0 (2026-11-19)
 
 ### Highlights & Features
