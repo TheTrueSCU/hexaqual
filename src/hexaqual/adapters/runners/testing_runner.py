@@ -158,7 +158,7 @@ class SubprocessTestingRunnerAdapter(TestingRunnerPort):
             prescan_workers if prescan_workers is not None else min(4, max(1, os.cpu_count() or 1))
         )
         eff_cov_timeout = coverage_timeout if coverage_timeout is not None else 300
-        eff_mutant_timeout = mutant_timeout if mutant_timeout is not None else 60
+        eff_mutant_timeout = mutant_timeout if mutant_timeout is not None else 120
         cmd.append(f"--gremlin-prescan-workers={eff_prescan}")
         cmd.append(f"--gremlin-coverage-timeout={eff_cov_timeout}")
         cmd.append(f"--gremlin-mutant-timeout={eff_mutant_timeout}")

@@ -1258,7 +1258,7 @@ Usage: hexaqual mutate run [OPTIONS]
 │                                          mutation operators (e.g.            │
 │                                          boolean,comparison).                │
 │ --mutant-timeout                <int>    Per-mutant timeout in seconds for   │
-│                                          pytest-gremlins (defaults to 60).   │
+│                                          pytest-gremlins (defaults to 120).  │
 │ --prescan-workers               <int>    Sharded coverage pre-scan worker    │
 │                                          count for pytest-gremlins (defaults │
 │                                          to min(4, CPUs)).                   │

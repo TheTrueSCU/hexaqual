@@ -1114,7 +1114,7 @@ def test_run_mutation_testing_heavy_file_operator_subsharding(tmp_path: Path) ->
         assert "--cov-fail-under=0" not in args
         assert "--gremlin-prescan-workers=4" in args
         assert "--gremlin-coverage-timeout=300" in args
-        assert "--gremlin-mutant-timeout=60" in args
+        assert "--gremlin-mutant-timeout=120" in args
         assert "--gremlin-batch" not in args
         assert not any(a.startswith("--gremlin-batch-size=") for a in args)
         if idx == 0:

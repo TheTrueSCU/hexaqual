@@ -642,7 +642,7 @@ class HexaqueueClusterRunnerAdapter(TestingRunnerPort):
             args.append("--gremlin-batch")
         eff_prescan = prescan_workers if prescan_workers is not None else 4
         eff_cov_timeout = coverage_timeout if coverage_timeout is not None else 300
-        eff_mutant_timeout = mutant_timeout if mutant_timeout is not None else 60
+        eff_mutant_timeout = mutant_timeout if mutant_timeout is not None else 120
         args.extend(
             [
                 f"--gremlin-prescan-workers={eff_prescan}",

@@ -105,7 +105,7 @@ def mutate_run(
     mutant_timeout: int | None = typer.Option(
         None,
         "--mutant-timeout",
-        help="Per-mutant timeout in seconds for pytest-gremlins (defaults to 60).",
+        help="Per-mutant timeout in seconds for pytest-gremlins (defaults to 120).",
     ),
     prescan_workers: int | None = typer.Option(
         None,

@@ -232,7 +232,7 @@ def test_run_gremlins(tmp_path: Path):
             "--gremlin-batch",
             "--gremlin-prescan-workers=4",
             "--gremlin-coverage-timeout=300",
-            "--gremlin-mutant-timeout=60",
+            "--gremlin-mutant-timeout=120",
             "--gremlin-cache",
             "-m",
             "not demo and not e2e and not integration",
@@ -384,7 +384,7 @@ def test_run_gremlins_options(tmp_path: Path):
         assert "--gremlin-workers=auto" in cmd
         assert "--gremlin-batch" in cmd
         assert "--gremlin-batch-size=10" in cmd
-        assert "--gremlin-mutant-timeout=60" in cmd
+        assert "--gremlin-mutant-timeout=120" in cmd
         assert "--gremlin-coverage-timeout=300" in cmd
         assert any(arg.startswith("--gremlin-prescan-workers=") for arg in cmd)
         assert "-n" in cmd
@@ -417,7 +417,7 @@ def test_run_gremlins_defaults_auto_cores(tmp_path: Path):
         assert not any(arg.startswith("--gremlin-batch-size=") for arg in cmd)
         assert "--gremlin-prescan-workers=2" in cmd
         assert "--gremlin-coverage-timeout=300" in cmd
-        assert "--gremlin-mutant-timeout=60" in cmd
+        assert "--gremlin-mutant-timeout=120" in cmd
         assert "-n" in cmd
         assert "auto" in cmd
 
