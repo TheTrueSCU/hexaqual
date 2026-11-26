@@ -254,6 +254,7 @@ class RunSanityCheckCommand(Command):
     skip_parity: bool = False
     skip_all_statements: bool = False
     skip_diagrams: bool = False
+    include_iac: bool = False
     skip_steps: tuple[str, ...] = ()
     max_complexity: int = 25
     parallelism: int = Field(default_factory=resolve_default_parallelism)

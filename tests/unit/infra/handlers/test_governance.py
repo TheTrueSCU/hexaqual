@@ -23,6 +23,17 @@ from hexaqual.domain.governance import (
     RunTypecheckCommand,
     SanityTarget,
 )
+from hexaqual.domain.iac import (
+    IacAssetInventory,
+    IacAuditReport,
+    IacCategory,
+    IacCheckStatus,
+    IacFinding,
+    IacSeverity,
+    IacToolName,
+    IacToolResult,
+    RunIacAuditCommand,
+)
 from hexaqual.infra.dispatcher import CommandDispatcher
 from hexaqual.infra.handlers.governance import (
     AuditComplexityHandler,
@@ -309,3 +320,94 @@ def test_run_sanity_check_handler_sequential(tmp_path: Path):
         assert called_parallel is False
         called_seq = mock_seq.called
         assert called_seq is True
+
+
+def test_run_sanity_check_handler_include_iac(tmp_path: Path) -> None:
+    """Verify RunSanityCheckHandler handles include_iac=True across pass, fail, and skip."""
+    mock_bus = MagicMock(spec=CommandDispatcher)
+    handler = RunSanityCheckHandler(mock_bus)
+    target = SanityTarget("file.py", "file", tmp_path / "file.py", (tmp_path / "file.py",), ())
+
+    def _make_cmd() -> RunSanityCheckCommand:
+        return RunSanityCheckCommand(
+            targets=(target,),
+            repo_root=tmp_path,
+            skip_tests=True,
+            skip_all_statements=True,
+            skip_typecheck=True,
+            skip_complexity=True,
+            skip_steps=("lint",),
+            include_iac=True,
+        )
+
+    # 1. Skip when no IaC assets discovered
+    skip_iac_report = IacAuditReport(
+        repo_root=tmp_path,
+        inventory=IacAssetInventory(),
+        results=(IacToolResult(IacToolName.TOFU_FMT, IacCategory.OPENTOFU, IacCheckStatus.SKIP),),
+        exit_code=0,
+    )
+    mock_bus.dispatch.side_effect = lambda c: (
+        skip_iac_report
+        if isinstance(c, RunIacAuditCommand)
+        else CheckResult("Sub", "t", CheckStatus.PASS, 0.0)
+    )
+    rep_skip = handler.handle(_make_cmd())
+    assert rep_skip.exit_code == 0
+    assert rep_skip.results[-1].check_name == "IaC Lint & Security"
+    assert rep_skip.results[-1].status == CheckStatus.SKIP
+
+    # 2. Pass when IaC assets pass
+    pass_iac_report = IacAuditReport(
+        repo_root=tmp_path,
+        inventory=IacAssetInventory(dockerfiles=(tmp_path / "Dockerfile",)),
+        results=(
+            IacToolResult(
+                IacToolName.HADOLINT, IacCategory.DOCKER, IacCheckStatus.PASS, targets_checked=1
+            ),
+        ),
+        exit_code=0,
+    )
+    mock_bus.dispatch.side_effect = lambda c: (
+        pass_iac_report
+        if isinstance(c, RunIacAuditCommand)
+        else CheckResult("Sub", "t", CheckStatus.PASS, 0.0)
+    )
+    rep_pass = handler.handle(_make_cmd())
+    assert rep_pass.exit_code == 0
+    assert rep_pass.results[-1].status == CheckStatus.PASS
+
+    # 3. Fail when IaC gate fails
+    fail_iac_report = IacAuditReport(
+        repo_root=tmp_path,
+        inventory=IacAssetInventory(dockerfiles=(tmp_path / "Dockerfile",)),
+        results=(
+            IacToolResult(
+                IacToolName.HADOLINT,
+                IacCategory.DOCKER,
+                IacCheckStatus.FAIL,
+                targets_checked=1,
+                findings=(
+                    IacFinding(
+                        tool=IacToolName.HADOLINT,
+                        category=IacCategory.DOCKER,
+                        file_path="Dockerfile",
+                        line=2,
+                        rule_id="DL3008",
+                        severity=IacSeverity.MEDIUM,
+                        message="Pin versions",
+                    ),
+                ),
+            ),
+        ),
+        exit_code=1,
+    )
+    mock_bus.dispatch.side_effect = lambda c: (
+        fail_iac_report
+        if isinstance(c, RunIacAuditCommand)
+        else CheckResult("Sub", "t", CheckStatus.PASS, 0.0)
+    )
+    rep_fail = handler.handle(_make_cmd())
+    assert rep_fail.exit_code == 1
+    assert rep_fail.results[-1].status == CheckStatus.FAIL
+    assert "Pin versions" in rep_fail.results[-1].error_output

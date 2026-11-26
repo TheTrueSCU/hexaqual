@@ -45,6 +45,12 @@ from hexaqual.cli.hooks import (
     hooks_install,
     hooks_uninstall,
 )
+from hexaqual.cli.iac import (
+    iac_app,
+    iac_check,
+    iac_discover,
+    iac_fmt,
+)
 from hexaqual.cli.mutate import mutate_app, mutate_inspect, mutate_run
 from hexaqual.cli.openssf import (
     openssf_app,
@@ -109,6 +115,10 @@ __all__ = [
     "hooks_commit_msg",
     "hooks_install",
     "hooks_uninstall",
+    "iac_app",
+    "iac_check",
+    "iac_discover",
+    "iac_fmt",
     "mutate_app",
     "mutate_inspect",
     "mutate_run",
@@ -169,6 +179,7 @@ app.add_typer(gh_app)
 app.add_typer(docs_app)
 app.add_typer(refactor_app)
 app.add_typer(hooks_app)
+app.add_typer(iac_app)
 
 
 @app.command()

@@ -49,6 +49,17 @@ from hexaqual.domain.governance import (
     SanityCheckReport,
     SanityTarget,
 )
+from hexaqual.domain.iac import (
+    DiscoverIacAssetsCommand,
+    IacAssetInventory,
+    IacAuditReport,
+    IacCategory,
+    IacCheckStatus,
+    IacInventoryReport,
+    IacToolName,
+    IacToolResult,
+    RunIacAuditCommand,
+)
 from hexaqual.domain.pypi import (
     BuildPackagesCommand,
     CheckPyPiReleasesCommand,
@@ -80,6 +91,7 @@ from hexaqual.infra.bootstrap import create_governance_bus
 from hexaqual.ports.dependencies import DependencyAuditorPort
 from hexaqual.ports.github import GitHubApiPort
 from hexaqual.ports.governance import ToolRunnerPort
+from hexaqual.ports.iac import IacAuditorPort
 from hexaqual.ports.pypi import PyPiClientPort
 from hexaqual.ports.testing import TestingRunnerPort
 
@@ -141,12 +153,25 @@ def test_create_governance_bus_wires_and_dispatches():
     mock_pypi_client.publish_package.return_value = (True, "published")
     mock_pypi_client.get_git_commit_epoch.return_value = "1700000000"
 
+    mock_iac_auditor = MagicMock(spec=IacAuditorPort)
+    mock_iac_auditor.discover_assets.return_value = IacAssetInventory()
+    mock_iac_auditor.check_tool_availability.return_value = ()
+    skip_iac = IacToolResult(IacToolName.TOFU_FMT, IacCategory.OPENTOFU, IacCheckStatus.SKIP)
+    mock_iac_auditor.run_tofu_fmt.return_value = skip_iac
+    mock_iac_auditor.run_tofu_validate.return_value = skip_iac
+    mock_iac_auditor.run_tflint.return_value = skip_iac
+    mock_iac_auditor.run_trivy.return_value = skip_iac
+    mock_iac_auditor.run_checkov.return_value = skip_iac
+    mock_iac_auditor.run_hadolint.return_value = skip_iac
+    mock_iac_auditor.run_shellcheck.return_value = skip_iac
+
     bus = create_governance_bus(
         runner=mock_runner,
         dependency_auditor=mock_dep_auditor,
         testing_runner=mock_testing_runner,
         github_client=mock_github_client,
         pypi_client=mock_pypi_client,
+        iac_auditor=mock_iac_auditor,
     )
 
     # 1. Test dispatching a single governance command
@@ -289,6 +314,13 @@ def test_create_governance_bus_wires_and_dispatches():
 
     medium_res = bus.dispatch(PublishMediumArticlesCommand())
     assert isinstance(medium_res, MediumPublishReport)
+
+    # 10. Test dispatching IaC commands
+    iac_inv_res = bus.dispatch(DiscoverIacAssetsCommand(repo_root=Path("/tmp")))
+    assert isinstance(iac_inv_res, IacInventoryReport)
+
+    iac_audit_res = bus.dispatch(RunIacAuditCommand(repo_root=Path("/tmp")))
+    assert isinstance(iac_audit_res, IacAuditReport)
 
 
 def test_lazy_github_client_delegates_resolve_review_thread() -> None:

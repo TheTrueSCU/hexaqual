@@ -234,7 +234,29 @@ hexaqual agents list
 
 ---
 
-## 10. Additional Command Groups (`hooks`, `openssf`, `docs`, `refactor`, `complexity`, `version`)
+## 10. Infrastructure-as-Code Quality & Security (`iac`)
+
+Auto-detects OpenTofu/Terraform modules, Dockerfiles, Kubernetes/Helm manifests, and shell scripts, running formatting, static linting, and misconfiguration scanning gates while skipping cleanly on repositories without matching IaC assets.
+
+```bash
+# Discover IaC assets and inspect external tool binary readiness
+hexaqual iac discover
+
+# Run auto-detecting IaC formatting, linting, and misconfiguration scans
+hexaqual iac check
+
+# Run targeted tools, apply formatting fixes, or enforce strict binary presence
+hexaqual iac check --fix --tool tofu-fmt --tool tofu-validate
+hexaqual iac check --strict --format json --summary
+
+# Check or apply HCL formatting directly
+hexaqual iac fmt --check
+hexaqual iac fmt --fix
+```
+
+---
+
+## 11. Additional Command Groups (`hooks`, `openssf`, `docs`, `refactor`, `complexity`, `version`)
 
 See the unrolled [CLI Reference Catalog (`USAGE.md`)](https://github.com/TheTrueSCU/hexaqual/blob/main/USAGE.md) for full option listings across every subcommand:
 

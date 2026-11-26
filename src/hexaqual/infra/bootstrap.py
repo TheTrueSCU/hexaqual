@@ -14,6 +14,9 @@ from hexaqual.adapters.github import GitHubHttpAdapter
 from hexaqual.adapters.runners.dependency_runner import (
     SubprocessDependencyAuditorAdapter,
 )
+from hexaqual.adapters.runners.iac_runner import (
+    SubprocessIacAuditorAdapter,
+)
 from hexaqual.adapters.runners.pypi_runner import (
     SubprocessPyPiRunnerAdapter,
 )
@@ -62,6 +65,10 @@ from hexaqual.domain.governance import (
     RunPytestCommand,
     RunSanityCheckCommand,
     RunTypecheckCommand,
+)
+from hexaqual.domain.iac import (
+    DiscoverIacAssetsCommand,
+    RunIacAuditCommand,
 )
 from hexaqual.domain.pypi import (
     BuildPackagesCommand,
@@ -116,6 +123,10 @@ from hexaqual.infra.handlers.governance import (
     RunSanityCheckHandler,
     RunTypecheckHandler,
 )
+from hexaqual.infra.handlers.iac import (
+    DiscoverIacAssetsHandler,
+    RunIacAuditHandler,
+)
 from hexaqual.infra.handlers.pypi import (
     BuildPackagesHandler,
     CheckPyPiReleasesHandler,
@@ -136,6 +147,7 @@ from hexaqual.infra.handlers.testing import (
 from hexaqual.ports.dependencies import DependencyAuditorPort
 from hexaqual.ports.github import GitHubApiPort
 from hexaqual.ports.governance import ToolRunnerPort
+from hexaqual.ports.iac import IacAuditorPort
 from hexaqual.ports.pypi import PyPiClientPort
 from hexaqual.ports.testing import TestingRunnerPort
 
@@ -192,6 +204,7 @@ def create_governance_bus(
     github_client: GitHubApiPort | None = None,
     pypi_client: PyPiClientPort | None = None,
     repo_root: Path | None = None,
+    iac_auditor: IacAuditorPort | None = None,
 ) -> CommandDispatcher:
     """Construct and configure CommandBus with all governance handlers registered.
 
@@ -204,6 +217,7 @@ def create_governance_bus(
         github_client: Optional GitHubApiPort adapter. Defaults to GitHubHttpAdapter.
         pypi_client: Optional PyPiClientPort adapter. Defaults to SubprocessPyPiRunnerAdapter.
         repo_root: Optional Path to repository root. Defaults to auto-detection.
+        iac_auditor: Optional IacAuditorPort adapter. Defaults to SubprocessIacAuditorAdapter.
 
     Returns:
         Configured SynchronousCommandBus instance.
@@ -211,13 +225,14 @@ def create_governance_bus(
     Notes/Architectural Intent:
         Creates a circular binding where the composite RunSanityCheckHandler receives
         the bus itself to dispatch individual check commands, and registers
-        governance, dependency audit, testing/mutation, GitHub, and PyPI handlers.
+        governance, dependency audit, testing/mutation, GitHub, PyPI, and IaC handlers.
     """
     actual_runner = runner or SubprocessToolRunnerAdapter()
     actual_dep_auditor = dependency_auditor or SubprocessDependencyAuditorAdapter()
     actual_testing_runner = testing_runner or SubprocessTestingRunnerAdapter()
     actual_github_client = github_client or _LazyGitHubClient()
     actual_pypi_client = pypi_client or SubprocessPyPiRunnerAdapter()
+    actual_iac_auditor = iac_auditor or SubprocessIacAuditorAdapter()
     bus = CommandDispatcher()
     registry = bus
 
@@ -337,5 +352,12 @@ def create_governance_bus(
 
     medium_handler = PublishMediumArticlesHandler(root=repo_root)
     registry.register(PublishMediumArticlesCommand, medium_handler.handle)
+
+    # 10. Register IaC discovery and audit handlers
+    discover_iac_handler = DiscoverIacAssetsHandler(actual_iac_auditor)
+    registry.register(DiscoverIacAssetsCommand, discover_iac_handler.handle)
+
+    run_iac_handler = RunIacAuditHandler(actual_iac_auditor)
+    registry.register(RunIacAuditCommand, run_iac_handler.handle)
 
     return bus

@@ -16,6 +16,7 @@
 | [**ADR-004**](#adr-004-anti-fake-pass-exercise-gates-boundary-mutation-auditing) | Anti-Fake-Pass Exercise Gates & Boundary Mutation Auditing | 2026-10-18 (`v0.9.1`) | **Accepted** | Zero test collection is a fatal failure; mutation testing audits assertion efficacy. |
 | [**ADR-005**](#adr-005-anti-drift-prose-linting-zero-token-knowledge-graph-guardrails) | Anti-Drift Prose Linting & Zero-Token Knowledge Graph Guardrails | 2026-10-19 (`v0.9.1`) | **Accepted** | Documentation metrics must match code truth via `hexaqual docs drift`; graphify tracks AST. |
 | [**ADR-006**](#adr-006-microbenchmarking-framework-overhead-regression-governance) | Microbenchmarking & Framework Overhead Regression Governance | 2026-10-19 (`v0.9.4`) | **Accepted** | Microbenchmarks execute with zero coverage overhead; skipped during normal runs; smoke mode in PRs. |
+| [**ADR-007**](#adr-007-auto-detecting-polyglot-iac-quality-misconfiguration-gates) | Auto-Detecting Polyglot IaC Quality & Misconfiguration Gates | 2026-11-26 (`v0.13.0`) | **Accepted** | Zero-I/O domain IaC models; graceful skip on missing assets/optional binaries unless `--strict`; offline `tofu validate`. |
 
 ---
 
@@ -137,3 +138,25 @@
 - **Enforcement Mechanism**:
   - `hexaqual test bench` CLI entrypoint with `--no-cov` enforcement.
   - Optional extras grouping `bench = ["pytest-benchmark>=5.1.0"]` and `hexaqual[all]`.
+
+---
+
+### ADR-007: Auto-Detecting Polyglot IaC Quality & Misconfiguration Gates
+
+- **Date & Milestone**: 2026-11-26 (`v0.13.0`)
+- **Status**: Accepted
+- **Context & Problem Statement**:
+  Ecosystem repositories (such as `hexaqueue` and `hexastack`) maintain production OpenTofu/Terraform modules, Dockerfiles, and shell bootstrap templates alongside Python packages. Structural linters (`tofu fmt`, `tofu validate`, `tflint`, `hadolint`, `shellcheck`) and security/compliance scanners (`trivy config`, `checkov`) detect orthogonal failure modes, yet pure Python repositories should not fail when no IaC assets exist or when optional Go/Haskell/Rust binaries are absent locally.
+- **Decision**:
+  Introduce `hexaqual iac` (`check`, `discover`, `fmt`), optional `hexaqual sanity --iac`, and the `hexaqual-iac` pre-commit hook behind strict hexagonal boundaries:
+  1. **Zero-I/O Domain Models**: `hexaqual.domain.iac` defines pure immutable reports, commands, and severity normalization (`normalize_severity`) with zero filesystem or subprocess dependencies.
+  2. **Auto-Detection with Graceful Skip**: Asset discovery skips build/VCS/venv directories; tools cleanly emit `SKIP` when matching assets or optional external binaries are absent unless `--strict` is requested.
+  3. **Offline-Safe OpenTofu Validation**: `tofu validate -json` inspects pre-initialized `.terraform` directories without contacting remote state backends, requiring an explicit `--init` flag to run `tofu init -backend=false`.
+  4. **Complementary Structural + Security Coverage**: Runs formatting/linting alongside misconfiguration scanning (`trivy config` and `checkov`) and surfaces normalized findings through Rich, JSON, and Markdown presenters per ADR-002.
+- **The Invariant ("The Why")**:
+  Infrastructure code receives the same automated formatting, validation, and policy rigor as Python code without imposing mandatory binary bloat or failing pure-Python repositories.
+- **Alternatives Considered & Rejected**:
+  - *Ad-hoc per-repo bash hooks*: Rejected due to inconsistent exclusion rules, missing JSON/Markdown reporting, and duplicated logic across `hexa-*` repos.
+  - *Bundling external Go/Haskell binaries inside Python wheels*: Rejected due to cross-platform wheel bloat and licensing complexity; external tools are discovered dynamically on `PATH`.
+- **Enforcement Mechanism**:
+  - `uv run hexaqual iac check` / `hexaqual-iac` pre-commit hook and 1:1 mirrored unit/integration suites across `domain/iac.py`, `ports/iac.py`, `adapters/runners/iac_runner.py`, `adapters/presenters/iac.py`, `infra/handlers/iac.py`, and `cli/iac.py`.

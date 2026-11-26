@@ -43,6 +43,12 @@ from hexaqual.adapters.presenters.governance import (
     RichGovernancePresenterAdapter,
     create_governance_presenter,
 )
+from hexaqual.adapters.presenters.iac import (
+    JsonIacPresenterAdapter,
+    MarkdownIacPresenterAdapter,
+    RichIacPresenterAdapter,
+    create_iac_presenter,
+)
 from hexaqual.adapters.presenters.pr import (
     present_pr_summary,
     render_pr_summary_json,
@@ -90,6 +96,7 @@ __all__ = [
     "create_generator_presenter",
     "create_github_presenter",
     "create_governance_presenter",
+    "create_iac_presenter",
     "create_pypi_presenter",
     "create_refactoring_presenter",
     "create_testing_presenter",
@@ -99,6 +106,7 @@ __all__ = [
     "JsonGeneratorPresenterAdapter",
     "JsonGitHubPresenterAdapter",
     "JsonGovernancePresenterAdapter",
+    "JsonIacPresenterAdapter",
     "JsonPyPiPresenterAdapter",
     "JsonRefactoringPresenterAdapter",
     "JsonTestingPresenterAdapter",
@@ -108,6 +116,7 @@ __all__ = [
     "MarkdownGeneratorPresenterAdapter",
     "MarkdownGitHubPresenterAdapter",
     "MarkdownGovernancePresenterAdapter",
+    "MarkdownIacPresenterAdapter",
     "MarkdownPyPiPresenterAdapter",
     "MarkdownRefactoringPresenterAdapter",
     "MarkdownTestingPresenterAdapter",
@@ -131,6 +140,7 @@ __all__ = [
     "RichGeneratorPresenterAdapter",
     "RichGitHubPresenterAdapter",
     "RichGovernancePresenterAdapter",
+    "RichIacPresenterAdapter",
     "RichPyPiPresenterAdapter",
     "RichRefactoringPresenterAdapter",
     "RichTestingPresenterAdapter",

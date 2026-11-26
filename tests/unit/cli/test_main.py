@@ -125,3 +125,10 @@ def test_cli_refactor_help() -> None:
     res = runner.invoke(app, ["refactor", "--help"])
     assert res.exit_code == 0
     assert "AST symbol alphabetization and Python code refactoring" in res.stdout
+
+
+def test_cli_iac_help() -> None:
+    """Test iac command group help."""
+    res = runner.invoke(app, ["iac", "--help"])
+    assert res.exit_code == 0
+    assert "Auto-detecting IaC linting, formatting, and misconfiguration scanning" in res.stdout

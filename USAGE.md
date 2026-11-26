@@ -61,6 +61,8 @@ Usage: hexaqual [OPTIONS] COMMAND [ARGS]...
 │ refactor    AST symbol alphabetization and Python code refactoring.          │
 │ hooks       Manage, install, and verify Git lifecycle hooks and commit       │
 │             message standards.                                               │
+│ iac         Auto-detecting IaC linting, formatting, and misconfiguration     │
+│             scanning.                                                        │
 ╰──────────────────────────────────────────────────────────────────────────────╯
 ```
 
@@ -194,6 +196,8 @@ Usage: hexaqual check [OPTIONS] [files]...
      sequential: Whether to execute checks sequentially (equivalent to -n 1).
      max_complexity: Cognitive complexity ceiling.
      audit_gates: Whether to audit repository quality gates inventory.
+     include_iac: Whether to include auto-detecting IaC linting and
+ misconfiguration scanning.
      format_type: Output presentation format.
      skip_steps: Step names dynamically skipped via CLI flags.
      files: Optional explicit file or directory targets.
@@ -227,6 +231,9 @@ Usage: hexaqual check [OPTIONS] [files]...
 │                                                   [default: 25]              │
 │ --audit-gates                        <bool>       Audit repository quality   │
 │                                                   gates inventory.           │
+│ --iac                                <bool>       Include auto-detecting IaC │
+│                                                   linting and                │
+│                                                   misconfiguration scanning. │
 │ --format                    -f       <str>        Output format (table,      │
 │                                                   json, markdown).           │
 │                                                   [default: table]           │
@@ -1071,6 +1078,191 @@ Usage: hexaqual hooks uninstall [OPTIONS]
 ╰──────────────────────────────────────────────────────────────────────────────╯
 ```
 
+### `hexaqual iac`
+
+```text
+Usage: hexaqual iac [OPTIONS] COMMAND [ARGS]...
+
+ Auto-detecting IaC linting, formatting, and misconfiguration scanning.
+
+╭─ Options ────────────────────────────────────────────────────────────────────╮
+│ --help        <bool>  Show this message and exit.                            │
+╰──────────────────────────────────────────────────────────────────────────────╯
+╭─ Commands ───────────────────────────────────────────────────────────────────╮
+│ check     Execute auto-detecting IaC formatting, linting, and                │
+│           misconfiguration scanning gates.                                   │
+│ discover  Discover IaC artifacts and inspect external analyzer binary        │
+│           readiness.                                                         │
+│ fmt       Check or apply canonical HCL formatting via ``tofu fmt``.          │
+╰──────────────────────────────────────────────────────────────────────────────╯
+```
+
+#### `hexaqual iac check`
+
+```text
+Usage: hexaqual iac check [OPTIONS] [paths]...
+
+ Execute auto-detecting IaC formatting, linting, and misconfiguration scanning
+ gates.
+
+ Args:
+     paths: Optional file or directory paths narrowing discovery scope.
+     tools: Optional explicit subset of IaC tools to execute.
+     skip: Optional IaC tools to exclude.
+     fix: Whether to auto-format OpenTofu/Terraform files.
+     init_tofu: Whether to initialize uninitialized OpenTofu modules offline.
+     strict: Fail instead of skip when required binaries or initialization are
+ missing.
+     severity: Trivy severity filter string.
+     shellcheck_severity: Minimum ShellCheck severity floor.
+     hadolint_threshold: Hadolint failure threshold level.
+     format_type: Presentation format (``table``, ``rich``, ``json``,
+ ``markdown``, ``auto``).
+     step_summary: Whether to append Markdown report to
+ ``$GITHUB_STEP_SUMMARY``.
+     root: Optional target repository root directory.
+
+ Raises:
+     typer.BadParameter: If an unknown tool name or unsupported format is
+ provided.
+     typer.Exit: If any IaC gate fails.
+
+ Notes/Architectural Intent:
+     Gracefully skips when no IaC assets are discovered so universal hooks and
+     CI templates can enable IaC checks unconditionally on Python repositories.
+
+╭─ Arguments ──────────────────────────────────────────────────────────────────╮
+│   paths...      <list[Path]>  Optional IaC files or directories to scan      │
+│                               (defaults to entire repository).               │
+╰──────────────────────────────────────────────────────────────────────────────╯
+╭─ Options ────────────────────────────────────────────────────────────────────╮
+│ --tool                 -t      <list[str]>  Specific IaC tool(s) to execute  │
+│                                             (repeatable or comma-separated). │
+│ --skip                         <list[str]>  Specific IaC tool(s) to skip     │
+│                                             (repeatable or comma-separated). │
+│ --fix                          <bool>       Auto-format OpenTofu/Terraform   │
+│                                             files before checking.           │
+│ --init                         <bool>       Run 'tofu init -backend=false'   │
+│                                             for uninitialized                │
+│                                             OpenTofu/Terraform modules.      │
+│ --strict                       <bool>       Fail instead of skipping when a  │
+│                                             matching IaC tool binary is      │
+│                                             missing or module is             │
+│                                             uninitialized.                   │
+│ --severity                     <str>        Comma-separated Trivy severity   │
+│                                             threshold (e.g.                  │
+│                                             'HIGH,CRITICAL').                │
+│                                             [default: HIGH,CRITICAL]         │
+│ --shellcheck-severity          <str>        Minimum ShellCheck severity      │
+│                                             ('error', 'warning', 'info',     │
+│                                             'style').                        │
+│                                             [default: warning]               │
+│ --hadolint-threshold           <str>        Hadolint --failure-threshold     │
+│                                             level ('error', 'warning',       │
+│                                             'info', 'style', 'ignore').      │
+│                                             [default: warning]               │
+│ --format               -f      <str>        Output presentation format       │
+│                                             (table, rich, json, markdown,    │
+│                                             auto).                           │
+│                                             [default: table]                 │
+│ --summary              -s      <bool>       Append Markdown IaC audit        │
+│                                             summary to $GITHUB_STEP_SUMMARY. │
+│ --root                         <path>       Target repository root directory │
+│                                             (defaults to auto-detected repo  │
+│                                             root).                           │
+│ --help                         <bool>       Show this message and exit.      │
+╰──────────────────────────────────────────────────────────────────────────────╯
+```
+
+#### `hexaqual iac discover`
+
+```text
+Usage: hexaqual iac discover [OPTIONS] [paths]...
+
+ Discover IaC artifacts and inspect external analyzer binary readiness.
+
+ Args:
+     paths: Optional files or directories narrowing discovery scope.
+     format_type: Presentation format (``table``, ``rich``, ``json``,
+ ``markdown``, ``auto``).
+     root: Optional target repository root directory.
+
+ Raises:
+     typer.BadParameter: If an unsupported output format is requested.
+
+ Notes/Architectural Intent:
+     Provides deterministic asset discovery and PATH visibility before running
+     automated CI or pre-commit gates.
+
+╭─ Arguments ──────────────────────────────────────────────────────────────────╮
+│   paths...      <list[Path]>  Optional files or directories to scan          │
+│                               (defaults to entire repository).               │
+╰──────────────────────────────────────────────────────────────────────────────╯
+╭─ Options ────────────────────────────────────────────────────────────────────╮
+│ --format  -f      <str>   Output presentation format (table, rich, json,     │
+│                           markdown, auto).                                   │
+│                           [default: table]                                   │
+│ --root            <path>  Target repository root directory (defaults to      │
+│                           auto-detected repo root).                          │
+│ --help            <bool>  Show this message and exit.                        │
+╰──────────────────────────────────────────────────────────────────────────────╯
+```
+
+#### `hexaqual iac fmt`
+
+```text
+Usage: hexaqual iac fmt [OPTIONS] [paths]...
+
+ Check or apply canonical HCL formatting via ``tofu fmt``.
+
+ Args:
+     paths: Optional OpenTofu/Terraform paths to inspect or format.
+     check: Explicitly enforce check-only mode without modifying files.
+     fix: Automatically format OpenTofu/Terraform files in-place.
+     strict: Fail instead of skipping when ``tofu``/``terraform`` is missing.
+     format_type: Presentation format (``table``, ``rich``, ``json``,
+ ``markdown``, ``auto``).
+     root: Optional target repository root directory.
+
+ Raises:
+     typer.BadParameter: If mutually exclusive flags or an invalid format are
+ passed.
+     typer.Exit: If unformatted HCL files remain or strict check fails.
+
+ Notes/Architectural Intent:
+     Focused shorthand for OpenTofu/Terraform formatting parity in local
+ workflows.
+
+╭─ Arguments ──────────────────────────────────────────────────────────────────╮
+│   paths...      <list[Path]>  Optional OpenTofu/Terraform files or           │
+│                               directories to format.                         │
+╰──────────────────────────────────────────────────────────────────────────────╯
+╭─ Options ────────────────────────────────────────────────────────────────────╮
+│ --check           <bool>  Check HCL formatting without modifying files       │
+│                           (default behavior).                                │
+│ --fix             <bool>  Automatically format OpenTofu/Terraform files      │
+│                           in-place.                                          │
+│ --strict          <bool>  Fail instead of skipping when 'tofu'/'terraform'   │
+│                           is not installed.                                  │
+│ --format  -f      <str>   Output presentation format (table, rich, json,     │
+│                           markdown, auto).                                   │
+│                           [default: table]                                   │
+│ --root            <path>  Target repository root directory (defaults to      │
+│                           auto-detected repo root).                          │
+│ --help            <bool>  Show this message and exit.                        │
+╰──────────────────────────────────────────────────────────────────────────────╯
+```
+
+#### `hexaqual iac misconfiguration`
+
+```text
+Usage: hexaqual iac [OPTIONS] COMMAND [ARGS]...
+Try 'hexaqual iac --help' for help.
+╭─ Error ──────────────────────────────────────────────────────────────────────╮
+│ No such command 'misconfiguration'.                                          │
+╰──────────────────────────────────────────────────────────────────────────────╯
+```
+
 ### `hexaqual message`
 
 ```text
@@ -1837,6 +2029,8 @@ Usage: hexaqual sanity [OPTIONS] [files]...
      sequential: Whether to execute checks sequentially (equivalent to -n 1).
      max_complexity: Cognitive complexity ceiling.
      audit_gates: Whether to audit repository quality gates inventory.
+     include_iac: Whether to include auto-detecting IaC linting and
+ misconfiguration scanning.
      format_type: Output presentation format.
      skip_steps: Step names dynamically skipped via CLI flags.
      files: Optional explicit file or directory targets.
@@ -1870,6 +2064,9 @@ Usage: hexaqual sanity [OPTIONS] [files]...
 │                                                   [default: 25]              │
 │ --audit-gates                        <bool>       Audit repository quality   │
 │                                                   gates inventory.           │
+│ --iac                                <bool>       Include auto-detecting IaC │
+│                                                   linting and                │
+│                                                   misconfiguration scanning. │
 │ --format                    -f       <str>        Output format (table,      │
 │                                                   json, markdown).           │
 │                                                   [default: table]           │

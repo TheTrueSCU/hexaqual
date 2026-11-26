@@ -52,7 +52,7 @@ uv run pre-commit run --all-files
 
 ## 🧰 Modular Hook Menu
 
-Hexaqual exposes 15 specialized Git hooks in `.pre-commit-hooks.yaml` across `pre-commit`, `commit-msg`, `pre-push`, `post-merge`, and `post-checkout` stages:
+Hexaqual exposes 16 specialized Git hooks in `.pre-commit-hooks.yaml` across `pre-commit`, `commit-msg`, `pre-push`, `post-merge`, and `post-checkout` stages:
 
 ### 1. `hexaqual-sanity`
 The all-in-one fast quality gate (`--skip-tests --skip-diagrams`). Executes Ruff, Ty typechecking, cognitive complexity (`complexipy`), `__all__` integrity, test parity, and `deptry` across workspace packages.
@@ -206,6 +206,16 @@ Verifies OpenSSF Best Practices badge compliance against the configured required
   rev: v0.12.1
   hooks:
     - id: hexaqual-openssf-check
+```
+
+### 16. `hexaqual-iac`
+Auto-detecting Infrastructure-as-Code formatting, linting, and misconfiguration scan across OpenTofu/Terraform, Dockerfiles, Kubernetes/Helm manifests, and shell scripts (`uv run hexaqual iac check`). Gracefully skips when no matching IaC files exist.
+
+```yaml
+- repo: https://github.com/TheTrueSCU/hexaqual
+  rev: v0.12.1
+  hooks:
+    - id: hexaqual-iac
 ```
 
 ---
