@@ -90,7 +90,7 @@ jobs:
       - discover-slices
       - mutation-audit
     if: ${{ always() }}
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     permissions:
       contents: read
       actions: read
@@ -102,14 +102,37 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          gh run download "${{ github.run_id }}" --pattern "mutation-audit-report-*" --dir artifacts || true
-          {
-            echo "### Scheduled Mutation Audit Status"
-            echo "- **Discover Slices**: ${{ needs.discover-slices.result }}"
-            echo "- **Mutation Audit**: ${{ needs.mutation-audit.result }}"
-            echo ""
-            python3 .github/scripts/aggregate_mutation_summary.py artifacts
-          } >> "$GITHUB_STEP_SUMMARY"
+          mkdir -p artifacts
+          if gh run download "${{ github.run_id }}" --pattern "mutation-audit-report-*" --dir artifacts; then
+            echo "Downloaded slice artifacts successfully."
+          else
+            dl_rc=$?
+            echo "::warning::gh run download exited with code $dl_rc while fetching mutation-audit-report-* artifacts."
+          fi
+
+          report_count=$(find artifacts -name 'gremlins.json' | wc -l | tr -d ' ')
+          echo "Discovered $report_count gremlins.json report file(s) under artifacts/."
+
+          python3 .github/scripts/aggregate_mutation_summary.py artifacts \
+            --status-discover "${{ needs.discover-slices.result }}" \
+            --status-audit "${{ needs.mutation-audit.result }}" \
+            --output mutation-summary.md \
+            --step-summary
+
+          if [ -n "${GITHUB_STEP_SUMMARY:-}" ] && [ -s "$GITHUB_STEP_SUMMARY" ]; then
+            echo "Step summary written ($(wc -c < "$GITHUB_STEP_SUMMARY" | tr -d ' ') bytes)."
+          else
+            echo "::warning::GITHUB_STEP_SUMMARY is unset or empty after aggregation."
+          fi
+
+      - name: Upload Consolidated Mutation Summary
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v4
+        with:
+          name: mutation-audit-summary
+          path: mutation-summary.md
+          if-no-files-found: ignore
+          retention-days: 14
 
       - name: Verify All Mutation Slices Passed
         run: |
