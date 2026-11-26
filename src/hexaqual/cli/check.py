@@ -109,6 +109,7 @@ def _execute_sanity_pipeline(
     numprocesses: str = "auto",
     sequential: bool = False,
     audit_gates: bool = False,
+    include_iac: bool = False,
 ) -> None:
     """Execute shared sanity pipeline across targets.
 
@@ -125,6 +126,7 @@ def _execute_sanity_pipeline(
         numprocesses: Concurrency width ('auto' for cores - 2, or 1..num_cores).
         sequential: Whether to execute checks sequentially (sets parallelism to 1).
         audit_gates: Whether to audit repository quality gates inventory.
+        include_iac: Whether to include auto-detecting IaC lint and security gates.
 
     Raises:
         typer.Exit: If any sanity checks fail.
@@ -179,6 +181,7 @@ def _execute_sanity_pipeline(
         skip_parity="test_parity" in merged_skips,
         skip_all_statements="all_statements" in merged_skips,
         skip_diagrams="diagrams" in merged_skips,
+        include_iac=include_iac,
         skip_steps=tuple(sorted(merged_skips)),
         max_complexity=max_complexity,
         parallelism=parallelism,
@@ -216,6 +219,9 @@ def check(
     audit_gates: bool = typer.Option(
         False, "--audit-gates", help="Audit repository quality gates inventory."
     ),
+    include_iac: bool = typer.Option(
+        False, "--iac", help="Include auto-detecting IaC linting and misconfiguration scanning."
+    ),
     format_type: str = typer.Option(
         "table", "-f", "--format", help="Output format (table, json, markdown)."
     ),
@@ -234,6 +240,7 @@ def check(
         sequential: Whether to execute checks sequentially (equivalent to -n 1).
         max_complexity: Cognitive complexity ceiling.
         audit_gates: Whether to audit repository quality gates inventory.
+        include_iac: Whether to include auto-detecting IaC linting and misconfiguration scanning.
         format_type: Output presentation format.
         skip_steps: Step names dynamically skipped via CLI flags.
         files: Optional explicit file or directory targets.
@@ -257,6 +264,7 @@ def check(
         numprocesses=numprocesses,
         sequential=sequential,
         audit_gates=audit_gates,
+        include_iac=include_iac,
     )
 
 
@@ -287,6 +295,9 @@ def sanity(
     audit_gates: bool = typer.Option(
         False, "--audit-gates", help="Audit repository quality gates inventory."
     ),
+    include_iac: bool = typer.Option(
+        False, "--iac", help="Include auto-detecting IaC linting and misconfiguration scanning."
+    ),
     format_type: str = typer.Option(
         "table", "-f", "--format", help="Output format (table, json, markdown)."
     ),
@@ -305,6 +316,7 @@ def sanity(
         sequential: Whether to execute checks sequentially (equivalent to -n 1).
         max_complexity: Cognitive complexity ceiling.
         audit_gates: Whether to audit repository quality gates inventory.
+        include_iac: Whether to include auto-detecting IaC linting and misconfiguration scanning.
         format_type: Output presentation format.
         skip_steps: Step names dynamically skipped via CLI flags.
         files: Optional explicit file or directory targets.
@@ -328,6 +340,7 @@ def sanity(
         numprocesses=numprocesses,
         sequential=sequential,
         audit_gates=audit_gates,
+        include_iac=include_iac,
     )
 
 

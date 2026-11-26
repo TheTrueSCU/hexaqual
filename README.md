@@ -86,6 +86,7 @@ Hexaqual subsumes all developer quality tools into a single unified entrypoint (
 | `hexaqual test` | `run`, `bench`, `boundary`, `impact`, `redundancy`, `fuzz`, `snapshot`, `archon`, `benchmark-report` | Run pytest suites, microbenchmarks, boundary audits, redundancy, impact tests, fuzzing, and snapshots. |
 | `hexaqual mutate` | `run`, `inspect`, `plan` | Dual-engine mutation testing (`pytest-gremlins` & `mutmut`) with auto-parallelism, triage inspection, and CI slicing. |
 | `hexaqual hooks` | `install`, `check`, `uninstall`, `commit-msg` | Multi-stage Git hooks lifecycle management (`pre-commit`, `commit-msg`, `pre-push`, `post-merge`, `post-checkout`). |
+| `hexaqual iac` | `check`, `discover`, `fmt` | Auto-detecting IaC formatting, linting, and misconfiguration scanning (OpenTofu/Terraform, Docker, K8s, Shell). |
 | `hexaqual openssf` | `audit`, `propose`, `checklist`, `scorecard`, `scaffold`, `check` | Audit OpenSSF Best Practices badge compliance, evaluate scorecard checks, and propose remediation updates. |
 | `hexaqual release` | `build`, `check`, `publish`, `reproducible` | Build sdist/wheel distributions, verify metadata and reproducibility, and publish to PyPI skipping existing releases. |
 | `hexaqual gh` | `pr`, `checks`, `repo`, `security`, `code-scanning`, `codeql`, `resolve`, `ci-duration` | Inspect PR health dashboards, CI checks, repo settings, security threads, CodeQL alerts, and CI duration trends. |
@@ -155,6 +156,7 @@ repos:
       - id: hexaqual-agents-sync   # Auto-sync .agents/ on post-merge and post-checkout
       - id: hexaqual-commit-msg    # Enforce Conventional Commits & DCO on commit-msg
       - id: hexaqual-pre-push      # Run fast sanity check on pre-push
+      - id: hexaqual-iac           # Auto-detecting IaC formatting, linting, & security scan
 ```
 
 ---

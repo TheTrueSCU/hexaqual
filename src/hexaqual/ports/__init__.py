@@ -26,6 +26,10 @@ from hexaqual.ports.hooks import (
     GitHooksPort,
     HooksPresenterPort,
 )
+from hexaqual.ports.iac import (
+    IacAuditorPort,
+    IacPresenterPort,
+)
 from hexaqual.ports.openssf import (
     OpenSsfBadgePort,
     OpenSsfScorecardPort,
@@ -62,6 +66,8 @@ __all__ = [
     "GitHubPresenterPort",
     "GovernancePresenterPort",
     "HooksPresenterPort",
+    "IacAuditorPort",
+    "IacPresenterPort",
     "OpenSsfBadgePort",
     "OpenSsfScorecardPort",
     "PackagePublisherPort",

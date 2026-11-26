@@ -115,3 +115,11 @@
   entry: uv run hexaqual openssf check
   language: system
   pass_filenames: false
+
+- id: hexaqual-iac
+  name: hexaqual IaC lint & security gate
+  description: Auto-detecting IaC formatting, linting, and misconfiguration scan (OpenTofu/Terraform, Docker, K8s, Shell)
+  entry: uv run hexaqual iac check
+  language: system
+  files: (\.tf|\.tfvars|\.hcl|Dockerfile.*|\.dockerfile|\.sh|\.bash|Chart\.yaml|values\.yaml)$
+  pass_filenames: false

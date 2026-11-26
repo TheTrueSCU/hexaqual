@@ -33,6 +33,10 @@ from hexaqual.infra.handlers.governance import (
     RunSanityCheckHandler,
     RunTypecheckHandler,
 )
+from hexaqual.infra.handlers.iac import (
+    DiscoverIacAssetsHandler,
+    RunIacAuditHandler,
+)
 from hexaqual.infra.handlers.pypi import (
     BuildPackagesHandler,
     CheckPyPiReleasesHandler,
@@ -64,6 +68,7 @@ __all__ = [
     "CheckPyPiReleasesHandler",
     "CheckTestParityHandler",
     "discover_workspace_packages",
+    "DiscoverIacAssetsHandler",
     "ExaminePrHandler",
     "find_package_dist_files",
     "FuzzRunHandler",
@@ -79,6 +84,7 @@ __all__ = [
     "PublishMediumArticlesHandler",
     "PublishPackagesHandler",
     "RunDeptryAuditHandler",
+    "RunIacAuditHandler",
     "RunImpactedTestsHandler",
     "RunImportLinterHandler",
     "RunLinterHandler",

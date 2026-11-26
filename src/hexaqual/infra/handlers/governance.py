@@ -42,6 +42,11 @@ from hexaqual.domain.governance import (
     SanityCheckReport,
     SanityTarget,
 )
+from hexaqual.domain.iac import (
+    IacAuditReport,
+    IacCheckStatus,
+    RunIacAuditCommand,
+)
 from hexaqual.infra.dispatcher import CommandDispatcher
 from hexaqual.ports.governance import ToolRunnerPort
 
@@ -747,6 +752,54 @@ class RunSanityCheckHandler:
             )
         return all_results
 
+    def _run_iac_check(self, command: RunSanityCheckCommand) -> CheckResult:
+        """Dispatch optional auto-detecting IaC lint and security gate."""
+        target_name = command.repo_root.name or "workspace"
+        report: IacAuditReport = self._bus.dispatch(
+            RunIacAuditCommand(repo_root=command.repo_root, fix=command.fix)
+        )
+        if not report.inventory.has_any:
+            return CheckResult(
+                check_name="IaC Lint & Security",
+                target_name=target_name,
+                status=CheckStatus.SKIP,
+                duration=report.total_duration,
+                details="No IaC assets discovered",
+            )
+        if report.results and all(r.status == IacCheckStatus.SKIP for r in report.results):
+            return CheckResult(
+                check_name="IaC Lint & Security",
+                target_name=target_name,
+                status=CheckStatus.SKIP,
+                duration=report.total_duration,
+                details="All IaC tools skipped",
+            )
+        if report.exit_code != 0:
+            failed_tools = [r for r in report.results if r.status == IacCheckStatus.FAIL]
+            err_lines = [
+                f"[{f.tool.value}] {f.file_path}{f':{f.line}' if f.line else ''}: {f.message}"
+                for f in report.findings[:20]
+            ]
+            if not err_lines:
+                err_lines = [
+                    f"[{r.tool.value}] {r.error_output or r.details}" for r in failed_tools
+                ]
+            return CheckResult(
+                check_name="IaC Lint & Security",
+                target_name=target_name,
+                status=CheckStatus.FAIL,
+                duration=report.total_duration,
+                details=f"{len(failed_tools)} gate(s) failed ({len(report.findings)} finding(s))",
+                error_output="\n".join(err_lines),
+            )
+        return CheckResult(
+            check_name="IaC Lint & Security",
+            target_name=target_name,
+            status=CheckStatus.PASS,
+            duration=report.total_duration,
+            details=f"IaC gates passed ({report.inventory.total_files} file(s))",
+        )
+
     def handle(self, command: RunSanityCheckCommand) -> SanityCheckReport:
         """Execute composite sanity check battery.
 
@@ -767,6 +820,9 @@ class RunSanityCheckHandler:
             all_results = self._run_targets_sequential(command, diagram_results)
         else:
             all_results = self._run_targets_concurrent(command, diagram_results)
+
+        if command.include_iac:
+            all_results.append(self._run_iac_check(command))
 
         total_duration = time.perf_counter() - start
         has_failure = any(r.status == CheckStatus.FAIL for r in all_results)

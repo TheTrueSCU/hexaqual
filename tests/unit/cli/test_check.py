@@ -244,3 +244,21 @@ def test_check_audit_gates() -> None:
     ):
         res_fail = runner.invoke(test_app, ["sanity", "--audit-gates"])
         assert res_fail.exit_code == 1
+
+
+def test_check_iac_flag_forwarding() -> None:
+    """Test --iac flag forwards include_iac=True through check and sanity."""
+    test_app = typer.Typer()
+    register_check_commands(test_app)
+
+    with patch("hexaqual.cli.check._execute_sanity_pipeline") as mock_run:
+        res_check = runner.invoke(test_app, ["check", "--iac", "--skip-tests"])
+        assert res_check.exit_code == 0
+        inc_check = mock_run.call_args[1]["include_iac"]
+        assert inc_check is True
+
+    with patch("hexaqual.cli.check._execute_sanity_pipeline") as mock_run:
+        res_sanity = runner.invoke(test_app, ["sanity", "--iac", "--skip-tests"])
+        assert res_sanity.exit_code == 0
+        inc_sanity = mock_run.call_args[1]["include_iac"]
+        assert inc_sanity is True
