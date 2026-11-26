@@ -68,7 +68,7 @@ When `uv run hexaqual agents sync` executes in a downstream repository:
 |---|---|---|
 | **Hexagonal Isolation** | `hexaqual-boundaries.md` | Strict hexagonal layer separation (`domain/`, `ports/`, `adapters/`, `infra/`) and unidirectional import hierarchy. |
 | **Docstrings & Intent** | `hexaqual-docstrings.md` | Mandatory Google docstrings with `Args:`, `Returns:`, `Raises:`, and `Notes/Architectural Intent:` design rationale. |
-| **Documentation Sync** | `hexaqual-documentation.md` | Synchronize READMEs, Zensical docs, diagrams, and the canonical `docs/ecosystem.md` map on feature/package changes. |
+| **Documentation Sync** | `hexaqual-documentation.md` | Synchronize READMEs, Zensical docs, diagrams, and `docs/ecosystem.md` on changes; enforce pre-release doc verification. |
 | **Hermetic Testing** | `hexaqual-hermetic-testing.md` | Total test isolation, `tmp_path` fixtures, zero persistent filesystem or network pollution. |
 | **Lazy Imports** | `hexaqual-lazy-imports.md` | Strict directional hexagonal import boundaries and lazy-import hygiene. |
 | **Atomic Modifications** | `hexaqual-modifications.md` | Blast-radius limits, atomic diffs, and prohibition of code placeholder truncation. |
@@ -89,9 +89,9 @@ When `uv run hexaqual agents sync` executes in a downstream repository:
 |---|---|---|
 | **Mutation Testing** | `hexaqual-mutation.md` | Dual-engine mutation testing (`pytest-gremlins` & `mutmut`), surviving mutant triage, and boundary coverage fortification. |
 | **OpenSSF Remediation** | `hexaqual-openssf.md` | Triage and remediate OpenSSF Best Practices badge and Security Scorecard regressions via `hexaqual openssf`. |
-| **Pre-Commit Gate** | `hexaqual-pre-commit.md` | Fast inner-loop static sanity (<1s), format auto-fixes, doc freshness, link validation, and agent sync. |
+| **Pre-Commit Gate** | `hexaqual-pre-commit.md` | Fast inner-loop static sanity (<1s), format auto-fixes, doc freshness/drift, link validation, and agent sync. |
 | **Pre-Push Gate** | `hexaqual-pre-push.md` | Full pre-flight verification: sanity with tests, architecture boundary parity, AST graph sync, and pre-commit checks. |
-| **Pre-Release Gate** | `hexaqual-pre-release.md` | Documentation freeze, diagram refresh, reproducible wheel build verification, and PyPI status check. |
+| **Pre-Release Gate** | `hexaqual-pre-release.md` | Documentation freeze, drift/link/build/accuracy audit, diagram refresh, reproducible wheel verification, and PyPI check. |
 | **Scaffold Unit Test** | `hexaqual-scaffold-unit.md` | Scaffolding 1:1 test mirror and `__init__.py` hierarchy prior to implementing source code. |
 | **Guardrails Sync** | `hexaqual-sync.md` | Synchronize shared agent rules, workflows, and skills from the installed `hexaqual` distribution. |
 
