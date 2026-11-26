@@ -10,12 +10,12 @@
 
 | ADR ID | Title | Date / Milestone | Status | Key Invariant |
 |---|---|---|---|---|
-| [**ADR-001**](#adr-001-pure-hexagonal-layer-isolation--zero-io-domain-logic) | Pure Hexagonal Layer Isolation & Zero-I/O Domain Logic | 2026-08-25 (`v0.1.0`) | **Accepted** | `domain/` has 0 external dependencies and 0 disk I/O; enforced via `import-linter`. |
+| [**ADR-001**](#adr-001-pure-hexagonal-layer-isolation-zero-io-domain-logic) | Pure Hexagonal Layer Isolation & Zero-I/O Domain Logic | 2026-08-25 (`v0.1.0`) | **Accepted** | `domain/` has 0 external dependencies and 0 disk I/O; enforced via `import-linter`. |
 | [**ADR-002**](#adr-002-dynamic-multi-format-presenter-decoupling-rich-json-markdown) | Dynamic Multi-Format Presenter Decoupling (Rich, JSON, Markdown) | 2026-09-01 (`v0.2.0`) | **Accepted** | Core analyzers return pure domain reports; formatters decoupled into dedicated presenter ports. |
 | [**ADR-003**](#adr-003-hexaflow-dag-orchestration-for-multi-stage-quality-pipelines) | Hexaflow DAG Orchestration for Multi-Stage Quality Pipelines | 2026-09-10 (`v0.2.5`) | **Accepted** | Complex multi-stage checks (`sanity`, `release`) orchestrated via acyclic dependency graphs. |
-| [**ADR-004**](#adr-004-anti-fake-pass-exercise-gates--boundary-mutation-auditing) | Anti-Fake-Pass Exercise Gates & Boundary Mutation Auditing | 2026-10-18 (`v0.9.1`) | **Accepted** | Zero test collection is a fatal failure; mutation testing audits assertion efficacy. |
-| [**ADR-005**](#adr-005-anti-drift-prose-linting--zero-token-knowledge-graph-guardrails) | Anti-Drift Prose Linting & Zero-Token Knowledge Graph Guardrails | 2026-10-19 (`v0.9.1`) | **Accepted** | Documentation metrics must match code truth via `hexaqual docs drift`; graphify tracks AST. |
-| [**ADR-006**](#adr-006-microbenchmarking--framework-overhead-regression-governance) | Microbenchmarking & Framework Overhead Regression Governance | 2026-10-19 (`v0.9.4`) | **Accepted** | Microbenchmarks execute with zero coverage overhead; skipped during normal runs; smoke mode in PRs. |
+| [**ADR-004**](#adr-004-anti-fake-pass-exercise-gates-boundary-mutation-auditing) | Anti-Fake-Pass Exercise Gates & Boundary Mutation Auditing | 2026-10-18 (`v0.9.1`) | **Accepted** | Zero test collection is a fatal failure; mutation testing audits assertion efficacy. |
+| [**ADR-005**](#adr-005-anti-drift-prose-linting-zero-token-knowledge-graph-guardrails) | Anti-Drift Prose Linting & Zero-Token Knowledge Graph Guardrails | 2026-10-19 (`v0.9.1`) | **Accepted** | Documentation metrics must match code truth via `hexaqual docs drift`; graphify tracks AST. |
+| [**ADR-006**](#adr-006-microbenchmarking-framework-overhead-regression-governance) | Microbenchmarking & Framework Overhead Regression Governance | 2026-10-19 (`v0.9.4`) | **Accepted** | Microbenchmarks execute with zero coverage overhead; skipped during normal runs; smoke mode in PRs. |
 
 ---
 
@@ -49,7 +49,7 @@
 - **Context & Problem Statement**:
   Developers working locally require interactive, beautifully formatted terminal tables with color and icons (via Rich), whereas CI runners and autonomous agents require structured JSON or Markdown summaries for pull request comments and automated triage. Hardcoding Rich tables in analysis routines prevents machine consumption.
 - **Decision**:
-  Decouple all presentation logic into dedicated Presenter ports (`GeneratorPresenterPort`, `GovernancePresenterPort`, etc.). Analysis commands return structured domain reports (`DocDriftReport`, `GateInventoryReport`, `SanityReport`). Presenter adapters format these reports into Rich tables, JSON payloads, or Markdown tables based on user-supplied flags (`--json`, `--markdown`).
+  Decouple all presentation logic into dedicated Presenter ports (`GeneratorPresenterPort`, `GovernancePresenterPort`, etc.). Analysis commands return structured domain reports (`DocDriftReport`, `GateInventoryReport`, `SanityCheckReport`). Presenter adapters format these reports into Rich tables, JSON payloads, or Markdown tables based on user-supplied flags (`-f / --format`).
 - **The Invariant ("The Why")**:
   Core analysis engines never emit ANSI escape codes or print directly; they return structured domain reports consumed by dedicated presenters.
 - **Alternatives Considered & Rejected**:
@@ -111,7 +111,7 @@
 - **Alternatives Considered & Rejected**:
   - *Manual markdown review*: Rejected as completely ineffective across fast-moving multi-package codebases.
 - **Enforcement Mechanism**:
-  - `hexaqual docs drift` executed in CI.
+  - `uv run hexaqual docs drift` CLI verification gate and unit tests in `tests/`.
   - Pre-push hook verification and gate inventory audit.
 
 ---

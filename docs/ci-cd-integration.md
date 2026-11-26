@@ -4,6 +4,39 @@ Hexaqual powers automated quality gates, tiered CI pipelines, and reproducible s
 
 ---
 
+## 🚀 Composite GitHub Actions (`TheTrueSCU/hexaqual`)
+
+### Turnkey Quality Gate Action (`action.yml`)
+Use the composite action to install Python and `uv`, restore `~/.cache/pre-commit`, and run either `pre-commit` or `hexaqual sanity`:
+
+```yaml
+jobs:
+  quality-gate:
+    name: Pre-Commit Quality Gate
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          fetch-depth: 0
+      - uses: TheTrueSCU/hexaqual@6117ce25b1d39768f22396a55d13103abee88926 # v0.12.1
+        with:
+          mode: pre-commit          # 'pre-commit', 'sanity', or 'setup'
+          python-version: "3.13"
+          uv-version: "latest"
+          sync-args: "--all-extras --dev"
+          sanity-args: "-a --skip-tests"
+          cache-pre-commit: "true"
+          skip-hooks: "hexaqual-agents"
+```
+
+### LPT Mutation Matrix Planner (`.github/actions/mutate-plan/action.yml`)
+Plans AST-weighted, capacity-capped Longest-Processing-Time-first (LPT) shards for parallel `pytest-gremlins` / `mutmut` matrix jobs via `hexaqual mutate plan`:
+
+- **Inputs**: `mode` (`affected`, `all`, `slices`, or `changed-slices`; default `affected`), `base-ref` (`""`), `packages-root` (`"packages"`), `root` (`"src"`), `slices` (`"12"`), `max-weight` (`"450"`).
+- **Outputs**: `matrix` (JSON payload for `strategy.matrix`) and `has_affected` (`'true'` / `'false'`).
+
+---
+
 ## 🏗️ Tiered CI Pipeline Architecture
 
 To minimize CI cycle time while maximizing rigor, Hexaqual organizes GitHub Actions workflows into four sequential stages:
@@ -28,11 +61,13 @@ jobs:
     name: Pre-Commit Quality Gate
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: astral-sh/setup-uv@v5
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          fetch-depth: 0
+      - uses: astral-sh/setup-uv@1db35dd8eee11c5894872e0b383ae6c406cf738d # v10.4.0
         with:
           enable-cache: true
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
         with:
           python-version: "3.13"
       - run: uv sync --all-extras --dev
@@ -48,14 +83,18 @@ Executes pytest with automated worker scaling and generates JUnit and XML covera
     needs: [quality-gate]
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: astral-sh/setup-uv@v5
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          fetch-depth: 0
+      - uses: astral-sh/setup-uv@1db35dd8eee11c5894872e0b383ae6c406cf738d # v10.4.0
+        with:
+          enable-cache: true
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
         with:
           python-version: "3.13"
       - run: uv sync --all-extras --dev
       - run: uv run hexaqual test run -U --cov=src --cov-report=xml --junitxml=junit.xml
-      - uses: codecov/codecov-action@v5
+      - uses: codecov/codecov-action@303a32d7a59b442fa8d48b6a1cc6825c09c847a5 # v7
         with:
           files: coverage.xml
           fail_ci_if_error: false
@@ -71,9 +110,13 @@ Executes generative adversarial property tests on PR branches to catch edge case
     if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: astral-sh/setup-uv@v5
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          fetch-depth: 0
+      - uses: astral-sh/setup-uv@1db35dd8eee11c5894872e0b383ae6c406cf738d # v10.4.0
+        with:
+          enable-cache: true
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
         with:
           python-version: "3.13"
       - run: uv sync --all-extras --dev
@@ -135,17 +178,22 @@ In your `release.yml` workflow:
       attestations: write
       contents: write
     steps:
-      - uses: actions/checkout@v4
-      - uses: astral-sh/setup-uv@v5
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          fetch-depth: 0
+      - uses: astral-sh/setup-uv@1db35dd8eee11c5894872e0b383ae6c406cf738d # v10.4.0
+        with:
+          enable-cache: true
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
         with:
           python-version: "3.13"
       - run: uv sync --all-extras --dev
+      - run: uv run hexaqual release reproducible
       - run: uv build --out-dir dist/
-      - uses: actions/attest-build-provenance@v2
+      - uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4.2.2
         with:
           subject-path: 'dist/*'
-      - uses: pypa/gh-action-pypi-publish@release/v1
+      - uses: pypa/gh-action-pypi-publish@7245906fb61fa33a13554f9d5fb856fe61758086 # release/v1
         with:
           packages-dir: dist/
           skip-existing: true

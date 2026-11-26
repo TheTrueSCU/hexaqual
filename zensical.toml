@@ -11,6 +11,7 @@ nav = [
     { "AI Agent Governance" = "agents-guide.md" },
     { "Pre-Commit Integration" = "pre-commit-guide.md" },
     { "CI/CD & GitHub Actions" = "ci-cd-integration.md" },
+    { "Architecture Decisions (ADRs)" = "decisions.md" },
     { "Ecosystem Architecture" = "ecosystem.md" }
 ]
 

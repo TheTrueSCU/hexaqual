@@ -20,7 +20,7 @@ repos:
       - id: check-yaml
       - id: check-toml
       - id: end-of-file-fixer
-      - id: trim-trailing-whitespace
+      - id: trailing-whitespace
 
   # 2. Ruff (Fast Linting and Formatting)
   - repo: https://github.com/astral-sh/ruff-pre-commit
@@ -32,11 +32,11 @@ repos:
 
   # 3. Hexaqual Unified Architecture & Quality Gate
   - repo: https://github.com/TheTrueSCU/hexaqual
-    rev: v0.3.0
+    rev: v0.12.1
     hooks:
       - id: hexaqual-sanity
         name: hexaqual sanity check
-        entry: uv run hexaqual sanity -a --skip-tests --skip-lint
+        entry: uv run hexaqual sanity -a --skip-tests --skip-diagrams
         language: system
         pass_filenames: false
 ```
@@ -52,76 +52,160 @@ uv run pre-commit run --all-files
 
 ## 🧰 Modular Hook Menu
 
-Hexaqual provides specialized, granular pre-commit hooks that can be invoked individually:
+Hexaqual exposes 15 specialized Git hooks in `.pre-commit-hooks.yaml` across `pre-commit`, `commit-msg`, `pre-push`, `post-merge`, and `post-checkout` stages:
 
 ### 1. `hexaqual-sanity`
-The all-in-one fast quality gate. Evaluates Ty typechecking, cognitive complexity (`complexipy`), `__all__` integrity, and test parity in parallel.
+The all-in-one fast quality gate (`--skip-tests --skip-diagrams`). Executes Ruff, Ty typechecking, cognitive complexity (`complexipy`), `__all__` integrity, test parity, and `deptry` across workspace packages.
 
 ```yaml
 - repo: https://github.com/TheTrueSCU/hexaqual
-  rev: v0.3.0
+  rev: v0.12.1
   hooks:
     - id: hexaqual-sanity
 ```
 
-### 2. `hexaqual-statements`
-Validates that all `__all__` export arrays are sorted alphabetically in casefold order and deduplicated.
+### 2. `hexaqual-architecture`
+Verifies that all internal subpackages maintain dedicated `test_hexagonal_boundaries.py` architectural test suites (`uv run hexaqual parity architecture`).
 
 ```yaml
 - repo: https://github.com/TheTrueSCU/hexaqual
-  rev: v0.3.0
-  hooks:
-    - id: hexaqual-statements
-```
-
-### 3. `hexaqual-test-parity`
-Guarantees 1:1 structural symmetry between source modules in `src/` and unit test suites in `tests/unit/`.
-
-```yaml
-- repo: https://github.com/TheTrueSCU/hexaqual
-  rev: v0.3.0
-  hooks:
-    - id: hexaqual-test-parity
-```
-
-### 4. `hexaqual-architecture`
-Verifies that all internal subpackages maintain dedicated `test_hexagonal_boundaries.py` architectural test suites.
-
-```yaml
-- repo: https://github.com/TheTrueSCU/hexaqual
-  rev: v0.3.0
+  rev: v0.12.1
   hooks:
     - id: hexaqual-architecture
 ```
 
-### 5. `hexaqual-extras`
-Audits subpackage optional dependencies to ensure they are properly forwarded to umbrella package definitions.
+### 3. `hexaqual-test-parity`
+Guarantees 1:1 structural symmetry between source modules in `src/` and unit test suites in `tests/unit/` (`uv run hexaqual parity test`).
 
 ```yaml
 - repo: https://github.com/TheTrueSCU/hexaqual
-  rev: v0.3.0
+  rev: v0.12.1
+  hooks:
+    - id: hexaqual-test-parity
+```
+
+### 4. `hexaqual-statements`
+Validates that all `__all__` export arrays are sorted alphabetically in casefold order and deduplicated (`uv run hexaqual statements check`).
+
+```yaml
+- repo: https://github.com/TheTrueSCU/hexaqual
+  rev: v0.12.1
+  hooks:
+    - id: hexaqual-statements
+```
+
+### 5. `hexaqual-linter`
+Validates hexagonal package import boundaries via `import-linter` (`uv run hexaqual deps linter`).
+
+```yaml
+- repo: https://github.com/TheTrueSCU/hexaqual
+  rev: v0.12.1
+  hooks:
+    - id: hexaqual-linter
+```
+
+### 6. `hexaqual-extras`
+Audits subpackage optional dependencies to ensure they are properly forwarded to umbrella package definitions (`uv run hexaqual parity extras`).
+
+```yaml
+- repo: https://github.com/TheTrueSCU/hexaqual
+  rev: v0.12.1
   hooks:
     - id: hexaqual-extras
 ```
 
-### 6. `hexaqual-usage-docs`
-Ensures that CLI `USAGE.md` documentation stays synchronized with actual Typer CLI entrypoints.
+### 7. `hexaqual-usage-docs`
+Ensures that CLI `USAGE.md` documentation stays synchronized with actual Typer CLI entrypoints (`uv run hexaqual docs usage --check`).
 
 ```yaml
 - repo: https://github.com/TheTrueSCU/hexaqual
-  rev: v0.3.0
+  rev: v0.12.1
   hooks:
     - id: hexaqual-usage-docs
 ```
 
-### 7. `hexaqual-agents`
+### 8. `hexaqual-docs-links`
+Validates relative markdown links and heading anchors across documentation trees (`uv run hexaqual docs links`).
+
+```yaml
+- repo: https://github.com/TheTrueSCU/hexaqual
+  rev: v0.12.1
+  hooks:
+    - id: hexaqual-docs-links
+```
+
+### 9. `hexaqual-diagrams`
+Verifies architecture dependency SVG diagrams generated via `pydeps` are fresh and up to date (`uv run hexaqual deps pydeps --check`).
+
+```yaml
+- repo: https://github.com/TheTrueSCU/hexaqual
+  rev: v0.12.1
+  hooks:
+    - id: hexaqual-diagrams
+```
+
+### 10. `hexaqual-agents`
 Enforces that universal `.agents/` guardrails (rules, workflows, skills) stay synchronized with the installed `hexaqual` package. Rejects commits if managed assets have drifted, instructing the developer to run `uv run hexaqual agents sync`.
 
 ```yaml
 - repo: https://github.com/TheTrueSCU/hexaqual
-  rev: v0.4.3
+  rev: v0.12.1
   hooks:
     - id: hexaqual-agents
+```
+
+### 11. `hexaqual-agents-sync`
+Automatically re-synchronizes shared `.agents/` rules, workflows, and skills after `post-merge` and `post-checkout` Git events.
+
+```yaml
+- repo: https://github.com/TheTrueSCU/hexaqual
+  rev: v0.12.1
+  hooks:
+    - id: hexaqual-agents-sync
+      stages: [post-merge, post-checkout]
+```
+
+### 12. `hexaqual-commit-msg`
+Validates Conventional Commits formatting and OpenSSF DCO `Signed-off-by:` trailers during the `commit-msg` stage (`uv run hexaqual hooks commit-msg`).
+
+```yaml
+- repo: https://github.com/TheTrueSCU/hexaqual
+  rev: v0.12.1
+  hooks:
+    - id: hexaqual-commit-msg
+      stages: [commit-msg]
+```
+
+### 13. `hexaqual-pre-push`
+Runs full workspace static sanity (`uv run hexaqual sanity -a --skip-tests --skip-diagrams`) during the `pre-push` stage.
+
+```yaml
+- repo: https://github.com/TheTrueSCU/hexaqual
+  rev: v0.12.1
+  hooks:
+    - id: hexaqual-pre-push
+      stages: [pre-push]
+```
+
+### 14. `hexaqual-pre-push-tests`
+Executes affected unit tests across workspace packages in parallel before pushing (`uv run hexaqual test run -A -U -n auto`).
+
+```yaml
+- repo: https://github.com/TheTrueSCU/hexaqual
+  rev: v0.12.1
+  hooks:
+    - id: hexaqual-pre-push-tests
+      stages: [pre-push]
+```
+
+### 15. `hexaqual-openssf-check`
+Verifies OpenSSF Best Practices badge compliance against the configured required tier (`uv run hexaqual openssf check`).
+
+```yaml
+- repo: https://github.com/TheTrueSCU/hexaqual
+  rev: v0.12.1
+  hooks:
+    - id: hexaqual-openssf-check
 ```
 
 ---

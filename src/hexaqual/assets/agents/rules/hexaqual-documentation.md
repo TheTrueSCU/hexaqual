@@ -15,6 +15,7 @@ Whenever adding, updating, or refactoring framework features, public APIs, adapt
 
 ### 2. Zensical Documentation (`docs/`)
 - **Guides & References**: Update corresponding documentation pages under `docs/` (e.g. `docs/packages/`, `docs/features/`, `docs/architecture.md`) with accurate usage patterns.
+- **Canonical Ecosystem Map (`docs/ecosystem.md`)**: `TheTrueSCU/hexaqual/docs/ecosystem.md` is the canonical, version-free source of truth for the Hexa family diagram and contracts. Whenever adding, removing, or rewiring packages in any `hexa-*` repository (e.g. `hexaqueue-executors`), update `hexaqual/docs/ecosystem.md` first and mirror it identically across sibling repos.
 - **Cross-Component Architecture**: When introducing cross-package or multi-service relationships, document the rationale, failure modes, and layer boundaries.
 
 ### 3. Diagram & Topology Accuracy
