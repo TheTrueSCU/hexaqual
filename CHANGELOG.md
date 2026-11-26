@@ -1,5 +1,19 @@
 # CHANGELOG
 
+## v0.13.0 (2026-11-26)
+
+### Highlights & Features
+* **Auto-Detecting Polyglot IaC Quality & Misconfiguration Gates (#70, ADR-007)**:
+  - Added `hexaqual iac` CLI command suite (`check`, `discover`, `fmt`), optional `hexaqual sanity --iac` repository-level check, and the `hexaqual-iac` pre-commit hook definition in `.pre-commit-hooks.yaml`.
+  - Enforced pure zero-I/O domain models, commands, and severity normalization (`normalize_severity`) in `hexaqual.domain.iac` (ADR-001) and presenter ports in `hexaqual.ports.iac` with Rich, JSON, and Markdown adapters in `hexaqual.adapters.presenters.iac` (ADR-002).
+  - Implemented `SubprocessIacAuditorAdapter` covering OpenTofu/Terraform (`tofu fmt`, offline-safe `tofu validate`, `tflint`), security/compliance policy scanning (`trivy config`, `checkov`), containers (`hadolint`), and shell scripts (`shellcheck`) using list-only subprocess calls and graceful `SKIP` semantics when assets or optional binaries are absent unless `--strict` is specified.
+* **Consolidated Mutation Audit Summary Hardening (#58)**:
+  - Pinned the `audit-success` job in `.github/workflows/mutation_scheduled.yml` to `ubuntu-24.04`, expanded scheduled mutation matrix slicing to `16` slices with a `40` minute per-slice timeout, removed silent `|| true` artifact download masking, added stdout and `$GITHUB_STEP_SUMMARY` byte-count verification, and uploaded `mutation-audit-summary`.
+  - Hardened `.github/scripts/aggregate_mutation_summary.py` with graceful handling of missing artifact directories and corrupt JSON slice reports, explicit status/output/step-summary flags, and full integration test coverage.
+* **Documentation Accuracy, Guardrails & CI Split (#69, #68, #67)**:
+  - Aligned CLI reference, pre-commit guide, ADR anchors, and canonical `docs/ecosystem.md`; fixed the broken `hexaqual-lazy-imports.md` link; added mandatory pre-release documentation verification rules to `hexaqual-documentation.md` and `hexaqual-pre-release.md`.
+  - Split GitHub Pages build and deploy jobs (#68) and updated pinned GitHub Actions via Dependabot (#67).
+
 ## v0.12.1 (2026-11-23)
 
 ### Bug Fixes & Cancellation Hardening

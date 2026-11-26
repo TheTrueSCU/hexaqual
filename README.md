@@ -148,7 +148,7 @@ Hexaqual distributes reusable hooks via GitHub:
 ```yaml
 repos:
   - repo: https://github.com/TheTrueSCU/hexaqual
-    rev: v0.12.1
+    rev: v0.13.0
     hooks:
       - id: hexaqual-sanity        # Fast static sanity gate (Ruff, Ty, complexipy, etc.)
       - id: hexaqual-architecture  # Verify test_hexagonal_boundaries.py suites
