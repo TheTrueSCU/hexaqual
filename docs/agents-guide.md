@@ -18,9 +18,9 @@ Modern AI coding assistants (Google Antigravity, Claude Code, Cursor, Windsurf, 
 flowchart TD
     subgraph upstream ["Definitive Source of Truth (hexaqual)"]
         Assets["src/hexaqual/assets/agents/"]
-        R1["9 Universal Rules"]
-        W1["6 SDLC Workflows"]
-        S1["3 Colocated Skills"]
+        R1["16 Universal Rules"]
+        W1["7 SDLC Workflows"]
+        S1["4 Colocated Skills"]
         Assets --> R1
         Assets --> W1
         Assets --> S1
@@ -62,37 +62,46 @@ When `uv run hexaqual agents sync` executes in a downstream repository:
 
 ## 🛡️ The Universal Guardrail Suite
 
-### 1. The 9 Universal Rules (`.agents/rules/`)
+### 1. The 16 Universal Rules (`.agents/rules/`)
 
 | Rule | File | Purpose & Architectural Intent |
 |---|---|---|
 | **Hexagonal Isolation** | `hexaqual-boundaries.md` | Strict hexagonal layer separation (`domain/`, `ports/`, `adapters/`, `infra/`) and unidirectional import hierarchy. |
 | **Docstrings & Intent** | `hexaqual-docstrings.md` | Mandatory Google docstrings with `Args:`, `Returns:`, `Raises:`, and `Notes/Architectural Intent:` design rationale. |
+| **Documentation Sync** | `hexaqual-documentation.md` | Synchronize READMEs, Zensical docs, diagrams, and `docs/ecosystem.md` on changes; enforce pre-release doc verification. |
 | **Hermetic Testing** | `hexaqual-hermetic-testing.md` | Total test isolation, `tmp_path` fixtures, zero persistent filesystem or network pollution. |
-| **Test Symmetry** | `hexaqual-test-authoring.md` | Strict 1:1 structural symmetry between `src/` and `tests/unit/`, side-effect free assertions. |
-| **Modern Typing** | `hexaqual-typing.md` | Python 3.13 generic parameter syntax (`class C[T]:`), zero bare `Any` across domain boundaries. |
-| **Workspace Structure** | `hexaqual-workspace.md` | Monorepo and single-package layout conventions, casefold-sorted `__all__` export integrity. |
+| **Lazy Imports** | `hexaqual-lazy-imports.md` | Strict directional hexagonal import boundaries and lazy-import hygiene. |
+| **Atomic Modifications** | `hexaqual-modifications.md` | Blast-radius limits, atomic diffs, and prohibition of code placeholder truncation. |
+| **OpenSSF Security** | `hexaqual-openssf.md` | DCO sign-off (`git commit -s`), SHA-pinned Actions, least-privilege workflows, and zero-credential persistence. |
 | **Property Testing** | `hexaqual-property-testing.md` | Hypothesis stateful fuzzing (`RuleBasedStateMachine`) for schedulers, state engines, and queues. |
+| **Re-Anchoring** | `hexaqual-reanchoring.md` | Mandatory post-compaction re-anchoring and Architectural Invariant Receipts before handoff. |
 | **Defensive Security** | `hexaqual-security.md` | Prohibition of `shell=True`, path traversal validation, secret scanning, and least-privilege defaults. |
 | **Synchronization** | `hexaqual-sync.md` | Mandate to verify and synchronize guardrails whenever dependencies are upgraded. |
+| **Test Symmetry** | `hexaqual-test-authoring.md` | Strict 1:1 structural symmetry between `src/` and `tests/unit/`, side-effect-free assertions. |
+| **Testing Pyramid** | `hexaqual-test-pyramid.md` | Four-tier testing standards (Unit, Integration, Property-Based, and Fuzzing) across packages. |
+| **Modern Tooling** | `hexaqual-tooling.md` | Standardize `uv run` execution, PEP 735 `[dependency-groups]`, and local gate verification before completion. |
+| **Modern Typing** | `hexaqual-typing.md` | Python 3.12+ PEP 695 generic parameter syntax (`class C[T]:`), zero bare `Any` across domain boundaries. |
+| **Workspace Structure** | `hexaqual-workspace.md` | Monorepo and single-package layout conventions, casefold-sorted `__all__` export integrity. |
 
-### 2. The 6 SDLC-Aligned Workflows (`.agents/workflows/`)
+### 2. The 7 SDLC-Aligned Workflows (`.agents/workflows/`)
 
 | Workflow | File | SDLC Phase & Purpose |
 |---|---|---|
-| **Pre-Commit Gate** | `hexaqual-pre-commit.md` | Fast inner-loop static sanity (<1s), format auto-fixes, doc freshness, link validation, and agent sync. |
+| **Mutation Testing** | `hexaqual-mutation.md` | Dual-engine mutation testing (`pytest-gremlins` & `mutmut`), surviving mutant triage, and boundary coverage fortification. |
+| **OpenSSF Remediation** | `hexaqual-openssf.md` | Triage and remediate OpenSSF Best Practices badge and Security Scorecard regressions via `hexaqual openssf`. |
+| **Pre-Commit Gate** | `hexaqual-pre-commit.md` | Fast inner-loop static sanity (<1s), format auto-fixes, doc freshness/drift, link validation, and agent sync. |
 | **Pre-Push Gate** | `hexaqual-pre-push.md` | Full pre-flight verification: sanity with tests, architecture boundary parity, AST graph sync, and pre-commit checks. |
-| **Pre-Release Gate** | `hexaqual-pre-release.md` | Documentation freeze, diagram refresh, reproducible wheel build verification, and PyPI status check. |
+| **Pre-Release Gate** | `hexaqual-pre-release.md` | Documentation freeze, drift/link/build/accuracy audit, diagram refresh, reproducible wheel verification, and PyPI check. |
 | **Scaffold Unit Test** | `hexaqual-scaffold-unit.md` | Scaffolding 1:1 test mirror and `__init__.py` hierarchy prior to implementing source code. |
-| **Mutation Testing** | `hexaqual-mutation.md` | Scoped mutation testing via `mutmut` and triage of surviving mutants. |
 | **Guardrails Sync** | `hexaqual-sync.md` | Synchronize shared agent rules, workflows, and skills from the installed `hexaqual` distribution. |
 
-### 3. The 3 Colocated Agent Skills (`.agents/skills/`)
+### 3. The 4 Colocated Agent Skills (`.agents/skills/`)
 
 | Skill | Executable Script | Capability |
 |---|---|---|
 | **Complexity Auditor** | `hexaqual_audit_complexity.py` | Fast function cognitive complexity auditor enforcing $\le 25$ via `complexipy`. |
 | **Docstrings Auditor** | `hexaqual_audit_docstrings.py` | AST docstring auditor validating Google docstrings and Architectural Intent sections. |
+| **Lazy Import Auditor** | `hexaqual_audit_lazy_imports.py` | AST auditor flagging unauthorized lazy imports and hexagonal layer bypasses. |
 | **Test Parity Scaffolder** | `hexaqual_scaffold_test_parity.py` | Git-aware test mirror and missing `__init__.py` generator. |
 
 ---
@@ -190,7 +199,7 @@ Add the `hexaqual-agents` hook to your repository's `.pre-commit-config.yaml` to
 ```yaml
 repos:
   - repo: https://github.com/TheTrueSCU/hexaqual
-    rev: v0.5.0
+    rev: v0.12.1
     hooks:
       - id: hexaqual-agents
       - id: hexaqual-sanity

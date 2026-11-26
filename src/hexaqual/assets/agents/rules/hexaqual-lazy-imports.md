@@ -8,7 +8,7 @@
 ## 1. Zero Layer Boundary Bypasses
 
 1. **Directional Invariants**:
-   - `adapters/` must **never** import from `infra/`, whether at the module top-level or inside functions, methods, or callbacks ([ADR-001](docs/decisions.md#adr-001-strict-hexagonal-layer-boundaries--import-linter-enforcement)).
+   - `adapters/` must **never** import from `infra/`, whether at the module top-level or inside functions, methods, or callbacks (ADR-001 in `docs/decisions.md`).
    - `domain/` contains pure business models and entities and must **never** import from `ports/`, `adapters/`, or `infra/`.
    - `ports/` defines abstract ABC interfaces and must **never** import from `adapters/` or `infra/`.
 

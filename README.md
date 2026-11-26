@@ -49,7 +49,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: TheTrueSCU/hexaqual@v0.4.0
+      - uses: TheTrueSCU/hexaqual@6117ce25b1d39768f22396a55d13103abee88926 # v0.12.1
         with:
           mode: "pre-commit" # options: 'pre-commit', 'sanity', 'setup'
           sync-args: "--all-extras --dev"
@@ -80,20 +80,21 @@ Hexaqual subsumes all developer quality tools into a single unified entrypoint (
 
 | Command | Subcommands | Description |
 |---|---|---|
-| `hexaqual check` (alias: `sanity`) | — | Run the multi-stage quality pipeline (Ruff, Ty, Complexipy, `__all__`, test parity, pytest). |
+| `hexaqual check` (alias: `sanity`) | — | Run the multi-stage quality pipeline (Ruff, Ty, Complexipy, `__all__`, test parity, deptry, pytest). |
 | `hexaqual statements` | `check`, `fix` | Audit and auto-format `__all__` exports with strict casefold sorting. |
-| `hexaqual parity` | `test`, `extras` | Audit 1:1 symmetry between source modules and unit tests, and optional extras forwarding. |
-| `hexaqual test` | `run`, `boundary`, `redundancy`, `impact`, `fuzz`, `snapshot`, `archon` | Run pytest suites, boundary assertion audits, redundancy analysis, git impact tests, fuzzing, and inline snapshots. |
-| `hexaqual mutate` | `run`, `inspect` | Dual-engine mutation testing (pytest-gremlins & mutmut) with auto-parallelism and triage inspection. |
-| `hexaqual hooks` | `install`, `check`, `uninstall`, `commit-msg` | Multi-stage Git hooks lifecycle management (pre-commit, commit-msg, pre-push, post-merge, post-checkout). |
-| `hexaqual release` | `build`, `check`, `publish`, `reproducible` | Build sdist/wheel distributions, verify metadata, and publish to PyPI with smart duplicate skipping. |
-| `hexaqual gh` | `pr`, `checks`, `repo`, `security`, `code-scanning`, `codeql` | Inspect PR health dashboards, CI checks, repo governance, Dependabot, and CodeQL alerts. |
-| `hexaqual deps` | `audit`, `deptry`, `graph` | Audit dependencies, run deptry checks, and generate dependency graphs via pydeps. |
-| `hexaqual imports` | `check`, `generate` | Verify and generate import-linter contracts for hexagonal boundary enforcement. |
+| `hexaqual parity` | `test`, `architecture`, `extras` | Audit 1:1 test symmetry, architectural boundary suites, and optional extras forwarding. |
+| `hexaqual test` | `run`, `bench`, `boundary`, `impact`, `redundancy`, `fuzz`, `snapshot`, `archon`, `benchmark-report` | Run pytest suites, microbenchmarks, boundary audits, redundancy, impact tests, fuzzing, and snapshots. |
+| `hexaqual mutate` | `run`, `inspect`, `plan` | Dual-engine mutation testing (`pytest-gremlins` & `mutmut`) with auto-parallelism, triage inspection, and CI slicing. |
+| `hexaqual hooks` | `install`, `check`, `uninstall`, `commit-msg` | Multi-stage Git hooks lifecycle management (`pre-commit`, `commit-msg`, `pre-push`, `post-merge`, `post-checkout`). |
+| `hexaqual openssf` | `audit`, `propose`, `checklist`, `scorecard`, `scaffold`, `check` | Audit OpenSSF Best Practices badge compliance, evaluate scorecard checks, and propose remediation updates. |
+| `hexaqual release` | `build`, `check`, `publish`, `reproducible` | Build sdist/wheel distributions, verify metadata and reproducibility, and publish to PyPI skipping existing releases. |
+| `hexaqual gh` | `pr`, `checks`, `repo`, `security`, `code-scanning`, `codeql`, `resolve`, `ci-duration` | Inspect PR health dashboards, CI checks, repo settings, security threads, CodeQL alerts, and CI duration trends. |
+| `hexaqual deps` | `audit`, `deptry`, `linter`, `linter-generate`, `pydeps` | Audit dependencies, run deptry checks, verify/generate `import-linter` contracts, and inspect `pydeps` diagrams. |
 | `hexaqual refactor` | `alphabetize`, `rename`, `extract`, `move`, `run` | Automated code refactoring and AST-level symbol alphabetization via Rope. |
-| `hexaqual docs` | `usage`, `publish` | Verify/regenerate USAGE.md catalogs and publish Medium articles. |
+| `hexaqual docs` | `usage`, `drift`, `links`, `publish`, `blog medium` | Verify/regenerate `USAGE.md`, check documentation drift/links, and publish Dev.to or Medium links. |
 | `hexaqual agents` | `sync`, `check`, `list` | Synchronize and verify universal `.agents` guardrails (rules, workflows, skills). |
-| `hexaqual complexity` | — | Audit cognitive complexity across functions and methods via complexipy. |
+| `hexaqual complexity` | — | Audit cognitive complexity across functions and methods via `complexipy`. |
+| `hexaqual version` | — | Display the installed `hexaqual` version. |
 
 ```bash
 # Run sanity checks on specific packages in a workspace
@@ -146,7 +147,7 @@ Hexaqual distributes reusable hooks via GitHub:
 ```yaml
 repos:
   - repo: https://github.com/TheTrueSCU/hexaqual
-    rev: v0.8.0
+    rev: v0.12.1
     hooks:
       - id: hexaqual-sanity        # Fast static sanity gate (Ruff, Ty, complexipy, etc.)
       - id: hexaqual-architecture  # Verify test_hexagonal_boundaries.py suites
@@ -201,11 +202,13 @@ graph LR
         Lint["Ruff Lint & Format"]
         Statements["__all__ Integrity"]
         Parity["1:1 Test Symmetry"]
+        Diagrams["Architecture Diagrams"]
     end
 
     subgraph stage2 ["Stage 2: Static Analysis"]
         Typecheck["Ty Typecheck"]
         Complexity["Cognitive Complexity <= 25"]
+        Deptry["Deptry Dependencies"]
     end
 
     subgraph stage3 ["Stage 3: Dynamic Verification"]
@@ -215,14 +218,16 @@ graph LR
     Lint --> Typecheck
     Statements --> Typecheck
     Parity --> Complexity
+    Diagrams --> Complexity
     Typecheck --> Pytest
     Complexity --> Pytest
+    Deptry --> Pytest
 ```
 
 ### Why Dogfooding Hexaflow Matters:
-1. **Deterministic Staging & Fail-Fast**: Ultra-fast leaf AST checks (Ruff, `__all__`, test symmetry) execute in Stage 1 (~0.05s), providing immediate feedback before heavier static analysis (Ty, complexipy) or test suites run.
+1. **Deterministic Staging & Fail-Fast**: Ultra-fast leaf AST checks (Ruff, `__all__`, test symmetry, architecture diagrams) execute in Stage 1, providing immediate feedback before heavier static analysis (`ty`, `complexipy`, `deptry`) or test suites run.
 2. **Granular Step Checkpoints**: Each verification step executes within a discrete `StepContext`, recording execution metrics, structured findings, and pass/fail states into an `InMemoryStateStore`.
-3. **Zero-Latency Overhead**: Hexaflow's minimal runtime footprint adds virtually zero overhead—the entire 5-stage static check pipeline runs in under **0.6 seconds**.
+3. **Zero-Latency Overhead**: Hexaflow's minimal runtime footprint lets static checks fan out cleanly across stages.
 4. **Resilient Error Isolation**: If a step fails, the workflow gracefully preserves partial reports, enabling the Rich presenter to render complete multi-target dashboards showing exact failure context.
 
 ---
@@ -240,23 +245,32 @@ It implements a **Two-Tier Architecture**:
 | Category | File | Description |
 |---|---|---|
 | **Rule** | `hexaqual-boundaries.md` | Enforce hexagonal layer isolation (`domain/` -> `ports/` -> `adapters/` -> `infra/`). |
-| **Rule** | `hexaqual-test-authoring.md` | 1:1 test parity, `__init__.py` mirroring, pure ABC port mocking, side-effect-free assertions. |
-| **Rule** | `hexaqual-hermetic-testing.md` | Hermetically sealed test fixtures, `tmp_path`, zero global state or socket pollution. |
 | **Rule** | `hexaqual-docstrings.md` | Mandatory Google docstrings with `Args:`, `Returns:`, `Raises:`, and `Notes/Architectural Intent:`. |
-| **Rule** | `hexaqual-workspace.md` | Monorepo hierarchy, subpackage import boundaries, casefold-sorted `__all__` exports. |
-| **Rule** | `hexaqual-typing.md` | Python 3.12+ generic syntax (`class C[T]:`), zero bare `Any` across domain boundaries. |
-| **Rule** | `hexaqual-property-testing.md`| Hypothesis stateful fuzzing (`RuleBasedStateMachine`) for state machines and schedulers. |
+| **Rule** | `hexaqual-documentation.md` | Synchronize READMEs, Zensical docs, diagrams, and the canonical `docs/ecosystem.md` map on changes. |
+| **Rule** | `hexaqual-hermetic-testing.md` | Hermetically sealed test fixtures, `tmp_path`, zero global state or socket pollution. |
+| **Rule** | `hexaqual-lazy-imports.md` | Strict directional hexagonal import boundaries and lazy-import hygiene. |
+| **Rule** | `hexaqual-modifications.md` | Blast-radius limits, atomic diff constraints, and prohibition of placeholder truncation. |
+| **Rule** | `hexaqual-openssf.md` | OpenSSF Best Practices badge & Security Scorecard regression prevention (DCO sign-off, pinned SHAs). |
+| **Rule** | `hexaqual-property-testing.md` | Hypothesis stateful fuzzing (`RuleBasedStateMachine`) for state machines and schedulers. |
+| **Rule** | `hexaqual-reanchoring.md` | Architectural re-anchoring, context re-hydration, and evidence receipts after compaction. |
 | **Rule** | `hexaqual-security.md` | Prohibition of `shell=True`, path traversal guards, secret scanning, least-privilege defaults. |
 | **Rule** | `hexaqual-sync.md` | Guardrail invariant to execute `hexaqual agents sync` upon dependency upgrades. |
+| **Rule** | `hexaqual-test-authoring.md` | 1:1 test parity, `__init__.py` mirroring, pure ABC port mocking, side-effect-free assertions. |
+| **Rule** | `hexaqual-test-pyramid.md` | Four-tier testing pyramid standards (Unit, Integration, Property-Based, and Fuzzing). |
+| **Rule** | `hexaqual-tooling.md` | Modern Python tooling invariants (`uv run`, PEP 735) and mandatory local verification protocol. |
+| **Rule** | `hexaqual-typing.md` | PEP 695 generic syntax (`class C[T]:`), zero bare `Any` across domain boundaries. |
+| **Rule** | `hexaqual-workspace.md` | Monorepo hierarchy, subpackage import boundaries, casefold-sorted `__all__` exports. |
+| **Workflow** | `hexaqual-mutation.md` | Dual-engine mutation testing (`pytest-gremlins` & `mutmut`) and actionable mutant triage. |
+| **Workflow** | `hexaqual-openssf.md` | Triage and remediate OpenSSF Best Practices badge & Security Scorecard regressions. |
 | **Workflow** | `hexaqual-pre-commit.md` | Fast pre-commit gate (`hexaqual sanity -a --skip-tests`, docs freshness, agent sync). |
 | **Workflow** | `hexaqual-pre-push.md` | Full pre-push gate: format drift -> sanity with tests -> graphify -> pre-commit hooks. |
-| **Workflow** | `hexaqual-pre-release.md`| Pre-release packaging audit, doc freeze, PyPI availability, reproducible wheel check. |
+| **Workflow** | `hexaqual-pre-release.md` | Pre-release packaging audit, doc freeze, PyPI availability, reproducible wheel check. |
 | **Workflow** | `hexaqual-scaffold-unit.md` | Scaffold domain entity, port, adapter, and mirrored unit test file. |
-| **Workflow** | `hexaqual-mutation.md` | Targeted mutation analysis and actionable mutant triage. |
 | **Workflow** | `hexaqual-sync.md` | Synchronize shared agent guardrails from installed `hexaqual`. |
-| **Skill** | `hexaqual_audit_complexity.py`| Fast function cognitive complexity linter (<= 25 via `complexipy`). |
-| **Skill** | `hexaqual_audit_docstrings.py`| AST docstring auditor checking for Google docstrings & Architectural Intent. |
-| **Skill** | `hexaqual_scaffold_test_parity.py`| Git-aware test mirror and `__init__.py` scaffolding helper. |
+| **Skill** | `hexaqual_audit_complexity.py` | Fast function cognitive complexity linter (<= 25 via `complexipy`). |
+| **Skill** | `hexaqual_audit_docstrings.py` | AST docstring auditor checking for Google docstrings & Architectural Intent. |
+| **Skill** | `hexaqual_audit_lazy_imports.py` | AST auditor detecting unauthorized lazy imports and hexagonal layer bypasses. |
+| **Skill** | `hexaqual_scaffold_test_parity.py` | Git-aware test mirror and `__init__.py` scaffolding helper. |
 
 ### CLI Synchronization & Drift Verification
 
@@ -286,6 +300,7 @@ uv run hexaqual agents list
 
 - **[Architecture & Design Guide](docs/architecture.md)**: Hexagonal boundaries, CQRS command bus, and architectural invariants.
 - **[AI Agent Governance Guide](docs/agents-guide.md)**: Universal `.agents/` rules, SDLC workflows, colocated skills, and VCS hygiene.
+- **[Ecosystem Architecture](docs/ecosystem.md)**: Canonical Four Pillars dependency map across `hexastack`, `hexaqueue`, `hexaflow`, and `hexaqual`.
 - **[CLI Reference Catalog](USAGE.md)**: Full unrolled command and subcommand trees with exhaustive option listings.
 
 ---

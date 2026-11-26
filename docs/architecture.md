@@ -58,12 +58,16 @@ graph TD
 1. **Domain Core (`hexaqual.domain`)**: Pure Python models, command dataclasses, and enums. Contains zero framework dependencies (no CLI, no external tool runners, no subprocess calls).
 2. **Ports (`hexaqual.ports`)**: Abstract ABC interfaces defining what the domain and handlers require from the outside world (presenters, runners, API clients).
 3. **Adapters (`hexaqual.adapters`)**: Concrete implementations of ports:
-   - `adapters/presenters/`: Terminal (Rich), JSON, and Markdown presentation formatters.
-   - `adapters/runners/`: Execution of subprocess tools (`ruff`, `ty`, `pytest`, `complexipy`).
-   - `adapters/clients/`: GitHub API (`gh`) and PyPI package publishing clients.
+   - `adapters/agents/`: Universal `.agents/` guardrail synchronization and drift auditing (`fs.py`, `service.py`).
+   - `adapters/code_analysis/`: AST and quality adapters (`all_statements.py`, `test_parity.py`, `import_linter.py`, `pydeps.py`, `docs_drift.py`, `doc_links.py`, `extras_parity.py`, `mutmut.py`, `rope.py`, `sanity.py`, `usage_docs.py`, `coverage.py`, etc.).
+   - `adapters/github/` & `adapters/publishers/`: GitHub API (`client.py`, `ci_duration.py`), Dev.to (`devto.py`), and PyPI (`pypi.py`) clients.
+   - `adapters/hooks/`: Git lifecycle hook installers and commit-msg validators (`git_hooks.py`, `service.py`).
+   - `adapters/presenters/`: Rich, table, JSON, and Markdown presentation formatters.
+   - `adapters/runners/` & `adapters/testing/`: Subprocess, testing, dependency, PyPI, and cluster runners plus test event narration.
+   - `adapters/openssf.py` & `adapters/workspace.py`: OpenSSF audit and workspace layout discovery adapters.
 4. **CLI (`hexaqual.cli`)**: Driving adapters powered by Typer. They parse user inputs, construct domain commands, dispatch them across the CQRS bus, and delegate output rendering to adapters.
-5. **Infra (`hexaqual.infra`)**: Plumbing, including the `CommandDispatcher`, command handler registries, and bootstrap wiring.
-6. **Utils (`hexaqual.utils`)**: Shared low-level helpers for AST parsing, git status detection, workspace layout inspection, and `pyproject.toml` parsing.
+5. **Infra (`hexaqual.infra`)**: Plumbing, including the `CommandDispatcher`, decoupled CQRS command handlers (`infra/handlers/`), `openssf.py`, `workspace.py`, and bootstrap wiring (`bootstrap.py`).
+6. **Utils (`hexaqual.utils`)**: Shared low-level helpers (`mutation_slicing.py` for AST-weighted LPT mutation slice partitioning).
 
 ---
 
@@ -72,45 +76,71 @@ graph TD
 ```text
 src/hexaqual/
 ├── domain/                  # Pure domain entities, commands, and reports
+│   ├── agents.py            # AgentAsset, AgentSyncReport, AgentCheckReport
+│   ├── analysis.py          # Complexity and static analysis contracts
 │   ├── base.py              # Base Command and DomainModel primitives
-│   ├── governance.py        # Sanity check findings, targets, and reports
-│   ├── testing.py           # Test execution and coverage analysis models
+│   ├── dependencies.py      # Dependency audit, deptry, pydeps, and extras models
+│   ├── docs_drift.py        # Documentation drift models and commands
+│   ├── generators.py        # Documentation and diagram generation contracts
 │   ├── github.py            # PR summary, check run, and review models
+│   ├── governance.py        # Sanity check findings, targets, and reports
+│   ├── hooks.py             # Git hook lifecycle contracts
+│   ├── imports.py           # Import-linter contract models
+│   ├── openssf.py           # OpenSSF badge and scorecard contracts
 │   ├── pypi.py              # Release metadata and package distribution models
-│   ├── dependencies.py      # Dependency audit and import boundary models
-│   └── generators.py        # Documentation and diagram generation contracts
+│   ├── refactoring.py       # Rope refactoring commands and results
+│   └── testing.py           # Test execution, mutation, and coverage models
 ├── ports/                   # Abstract Port interfaces (ABCs)
-│   ├── governance.py        # GovernancePresenterPort, ToolRunnerPort
-│   ├── testing.py           # TestingPresenterPort
+│   ├── agents.py            # AgentAssetPort
+│   ├── analysis.py          # Analysis presenter and runner ports
+│   ├── dependencies.py      # DependencyAuditorPort
+│   ├── generators.py        # Doc generator and presenter ports
 │   ├── github.py            # GitHubApiPort, GitHubPresenterPort
+│   ├── governance.py        # GovernancePresenterPort, ToolRunnerPort
+│   ├── hooks.py             # GitHooksPort
+│   ├── openssf.py           # OpenSsfPort
+│   ├── publishers.py        # Article publisher ports
 │   ├── pypi.py              # PyPiClientPort, PyPiPresenterPort
-│   └── dependencies.py      # DependencyAuditorPort
+│   ├── refactoring.py       # RefactoringPort
+│   ├── testing.py           # TestingPresenterPort
+│   └── workspace.py         # Workspace discovery port
 ├── adapters/                # Concrete Port implementations
-│   ├── presenters/          # Rich, JSON, and Markdown format presenters
-│   ├── runners/             # Subprocess, coverage, and dependency runners
-│   └── clients/             # GitHub CLI and PyPI HTTP adapters
+│   ├── agents/              # Bundled asset sync & drift detection
+│   ├── code_analysis/       # AST analyzers, parity, statements, drift, links, mutmut, rope
+│   ├── github/              # GitHub HTTP API & CI duration adapters
+│   ├── hooks/               # Git hook installers and DCO commit-msg validators
+│   ├── presenters/          # Rich, JSON, plain, table, and Markdown presenters
+│   ├── publishers/          # Dev.to and PyPI publishers
+│   ├── runners/             # Subprocess, testing, dependency, PyPI, and cluster runners
+│   ├── testing/             # Test event capture & terminal narrators
+│   ├── openssf.py           # OpenSSF badge & Security Scorecard adapter
+│   └── workspace.py         # Workspace root and package layout resolver
+├── assets/
+│   └── agents/              # Bundled universal .agents rules, workflows, and skills
 ├── cli/                     # Driving adapters (Modular Typer sub-applications)
-│   ├── main.py              # Root Typer entrypoint mounting sub-apps
-│   ├── check.py             # 'check' and 'sanity' commands (and 'complexity')
-│   ├── deps.py              # 'deps' subcommands (audit, deptry, graph)
-│   ├── docs.py              # 'docs' subcommands (usage, publish)
-│   ├── gh.py                # 'gh' subcommands (pr, checks, repo, security, code-scanning, codeql)
-│   ├── imports.py           # 'imports' subcommands (check, generate)
-│   ├── mutate.py            # 'mutate' subcommands (run, inspect)
-│   ├── parity.py            # 'parity' subcommands (test, extras)
+│   ├── main.py              # Root Typer entrypoint mounting sub-apps + 'version'
+│   ├── agents.py            # 'agents' subcommands (sync, check, list)
+│   ├── check.py             # 'check', 'sanity', and 'complexity' commands
+│   ├── deps.py              # 'deps' subcommands (audit, deptry, linter, linter-generate, pydeps)
+│   ├── docs.py              # 'docs' subcommands (usage, drift, links, publish, blog medium)
+│   ├── gh.py                # 'gh' subcommands (pr, checks, repo, security, code-scanning, codeql, resolve, ci-duration)
+│   ├── hooks.py             # 'hooks' subcommands (install, uninstall, check, commit-msg)
+│   ├── mutate.py            # 'mutate' subcommands (run, inspect, plan)
+│   ├── openssf.py           # 'openssf' subcommands (audit, propose, checklist, scorecard, scaffold, check)
+│   ├── options.py           # Shared '-f/--format' and '-s/--summary' Typer options
+│   ├── parity.py            # 'parity' subcommands (test, architecture, extras)
 │   ├── refactor.py          # 'refactor' subcommands (alphabetize, rename, extract, move, run)
 │   ├── release.py           # 'release' subcommands (build, check, publish, reproducible)
 │   ├── statements.py        # 'statements' subcommands (check, fix)
-│   └── test.py              # 'test' subcommands (run, boundary, impact, redundancy, fuzz, snapshot, archon)
+│   └── test.py              # 'test' subcommands (run, bench, boundary, impact, redundancy, fuzz, snapshot, archon, benchmark-report)
 ├── infra/                   # CQRS bus and orchestration plumbing
 │   ├── dispatcher.py        # Synchronous in-process command dispatcher
 │   ├── bootstrap.py         # Factory assembling buses with default adapter wiring
-│   └── handlers/            # Decoupled CQRS command handlers
-└── utils/                   # Shared workspace, AST, and file inspection helpers
-    ├── workspace.py         # Dynamic workspace root and package resolution
-    ├── all_statements.py    # AST parser and casefold sorter for __all__
-    ├── test_parity.py       # 1:1 source-to-test symmetry checker
-    └── help_extractor.py    # BFS CLI command tree extractor
+│   ├── openssf.py           # OpenSSF orchestration service
+│   ├── workspace.py         # Workspace service wrapper
+│   └── handlers/            # Decoupled CQRS command handlers (including Hexaflow sanity DAG)
+└── utils/                   # Shared helper utilities
+    └── mutation_slicing.py  # AST-weighted LPT mutation slice planner
 ```
 
 ---
@@ -162,11 +192,16 @@ repos:
         pass_filenames: false
 ```
 
-The sanity check runs 5 parallel static checks:
-1. **Ruff Lint & Format**: Validates formatting and static style rules.
-2. **Ty Typecheck**: Fast static type analysis of `src/`.
-3. **Cognitive Complexity**: Ensures all methods stay <= 25.
-4. **`__all__` Integrity**: Confirms public exports are deduplicated and casefold-sorted.
-5. **Test Parity**: Guarantees complete 1:1 unit test symmetry.
+The sanity workflow orchestrates a **3-stage Hexaflow DAG** across workspace targets:
 
-When run with `hexaqual sanity` (without `--skip-tests`), it automatically appends execution of the target project's pytest test suite.
+1. **Stage 1 (`static_checks`)**:
+   - **Ruff Lint & Format**: Validates formatting and static style rules.
+   - **`__all__` Integrity**: Confirms public exports are deduplicated and casefold-sorted.
+   - **Test Parity**: Guarantees 1:1 unit test symmetry for workspace packages.
+   - **Architecture Diagrams**: Audits `pydeps` dependency SVGs (skippable via `--skip-diagrams`).
+2. **Stage 2 (`analysis`)** (depends on `lint`):
+   - **Ty Typecheck**: Fast static type analysis.
+   - **Cognitive Complexity**: Ensures functions and methods stay $\le 25$.
+   - **Deptry**: Detects unused or missing dependencies across package manifests.
+3. **Stage 3 (`verification`)** (depends on `typecheck` and `complexity`):
+   - **Pytest**: Runs target test suites automatically unless `--skip-tests` is passed.

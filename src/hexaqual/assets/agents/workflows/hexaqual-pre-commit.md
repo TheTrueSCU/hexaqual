@@ -28,16 +28,21 @@ Follow these steps prior to staging and committing changes to ensure local branc
      uv run ruff format .
      ```
 
-3. **Verify Documentation & Link Integrity**:
+3. **Verify Documentation, Drift & Link Integrity**:
    - Check CLI USAGE documentation freshness:
      ```bash
      uv run hexaqual docs usage --check
      ```
      *(Auto-fix with `uv run hexaqual docs usage --fix` if CLI entrypoints changed)*
+   - Check documentation drift against codebase manifests:
+     ```bash
+     uv run hexaqual docs drift
+     ```
    - Validate internal markdown links and anchors:
      ```bash
      uv run hexaqual docs links
      ```
+   - If `docs/` or `zensical.toml` changed, verify the docs site compiles cleanly (`uv run zensical build && rm -rf site/`).
 
 4. **Verify AI Agent Guardrails Synchronization**:
    ```bash

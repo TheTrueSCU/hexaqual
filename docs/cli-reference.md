@@ -62,38 +62,53 @@ hexaqual statements fix -p <package-name>
 
 ---
 
-## 4. Architectural Import Boundaries (`imports`)
+## 4. Dependencies & Import Boundaries (`deps`)
 
-Enforces hexagonal layers and import separation via `import-linter`.
+Audits dependency hygiene (`deptry`), enforces hexagonal layer contracts (`[tool.importlinter]` in `pyproject.toml`), and validates architecture SVG diagrams (`pydeps`).
 
 ```bash
-# Check import boundaries defined in .importlinter
-hexaqual imports check
+# Audit declared vs imported dependencies
+hexaqual deps audit
 
-# Generate or update .importlinter configuration
-hexaqual imports generate
+# Run deptry unused/missing dependency checks
+hexaqual deps deptry
+
+# Verify import boundaries configured in [tool.importlinter]
+hexaqual deps linter
+
+# Generate or update [tool.importlinter] contract configuration
+hexaqual deps linter-generate
+
+# Verify or regenerate pydeps architecture dependency SVG diagrams
+hexaqual deps pydeps --check
 ```
 
 ---
 
 ## 5. Mutation Testing (`mutate`)
 
-Executes mutation testing using `mutmut` and correlates surviving mutants with line coverage data.
+Executes dual-engine mutation testing using `pytest-gremlins` (default) or `mutmut`, plans capacity-capped LPT CI slices, and correlates surviving mutants with `.coverage` execution contexts.
 
 ```bash
-# Run mutation tests for a specific package
+# Run mutation tests for a specific package (default engine: pytest-gremlins)
 hexaqual mutate run -p <package-name>
+
+# Run pytest-gremlins with parallel baseline (-n) and mutation workers (-w)
+hexaqual mutate run -p <package-name> -e gremlins -w auto --batch-size 10 -n auto
+
+# Run mutmut on affected workspace packages
+hexaqual mutate run -A -e mutmut
 
 # Clear mutation cache and re-run from scratch
 hexaqual mutate run -p <package-name> -r
 
+# Plan AST-weighted LPT mutation slices for GitHub Actions matrices
+hexaqual mutate plan --mode affected --slices 12 --github-output
+
 # High-level triage summary of surviving mutants (Critical, Equivalent, Ignorable)
 hexaqual mutate inspect -s
 
-# Display actionable critical surviving mutants
-hexaqual mutate inspect -p <package-name> -act
-
-# Correlate surviving mutants with .coverage to identify covering tests
+# Display actionable critical surviving mutants correlated with .coverage
 hexaqual mutate inspect -p <package-name> -act -c
 ```
 
@@ -151,11 +166,16 @@ hexaqual gh checks <pr-number>
 # Inspect GitHub repository settings, Actions permissions, and environments
 hexaqual gh repo [owner/repo]
 
-# Summarize Dependabot alerts and security advisories
-hexaqual gh security
+# Summarize review discussions and security comments on a specific PR
+hexaqual gh security <pr-number>
 
 # Query CodeQL alerts and scanning status
 hexaqual gh code-scanning
+hexaqual gh codeql
+
+# Inspect inline PR review threads or resolve stale threads; measure CI duration trends
+hexaqual gh resolve
+hexaqual gh ci-duration
 ```
 
 ---
@@ -206,20 +226,31 @@ hexaqual agents list
 1. **Root Pointer (`AGENTS.md`)**:
    - `hexaqual agents sync` generates an aggregated `AGENTS.md` at the repository root indexing all active rules, workflows, and skills (both universal `hexaqual-*` and local `hexa<X>-*` assets).
    - This ensures tools that only inspect a single root file (such as GitHub Copilot Workspace or Claude Code) immediately see the full guardrails suite.
-2. **Git Cleanliness via `.git/info/exclude`**:
-   - To keep repository git status clean, `hexaqual agents sync` automatically appends `AGENTS.md` to `.git/info/exclude` if a `.git` repository directory is present.
+2. **VCS Hygiene (`.gitignore`)**:
+   - `hexaqual agents sync` appends managed ignore patterns (`.agents/rules/hexaqual-*`, `.agents/workflows/hexaqual-*`, `.agents/skills/hexaqual_*`) to `.gitignore` if missing.
+   - Whether `AGENTS.md` is committed or added to `.git/info/exclude` is left to maintainer preference.
 3. **Dynamic Reloading**:
-   - **Antigravity / AGY CLI**: Re-reads `.agents/rules/*.md` and `AGENTS.md` at the start of each conversation turn. Any synced updates take effect on the very next prompt without restarting.
-   - **Pre-Commit Enforcement**: The `hexaqual-agents` pre-commit hook ensures files cannot drift from the installed `hexaqual` distribution.
+   - **Antigravity CLI / IDE**: Re-reads `.agents/rules/*.md` and `AGENTS.md` at the start of each conversation turn; the `hexaqual-agents` pre-commit hook enforces sync.
+
+---
+
+## 10. Additional Command Groups (`hooks`, `openssf`, `docs`, `refactor`, `complexity`, `version`)
+
+See the unrolled [CLI Reference Catalog (`USAGE.md`)](https://github.com/TheTrueSCU/hexaqual/blob/main/USAGE.md) for full option listings across every subcommand:
+
+- **`hexaqual hooks`** (`install`, `uninstall`, `check`, `commit-msg`): Manage the 5 Git hook stages and validate Conventional Commits + OpenSSF DCO `Signed-off-by:` trailers.
+- **`hexaqual openssf`** (`audit`, `propose`, `checklist`, `scorecard`, `scaffold`, `check`): Audit OpenSSF Best Practices badge criteria (Passing/Silver/Gold), evaluate Security Scorecards, scaffold compliance docs, and propose updates.
+- **`hexaqual docs`** (`usage`, `drift`, `links`, `publish`, `blog medium`): Audit or regenerate `USAGE.md`, check documentation metric drift, validate relative markdown links/anchors, publish Dev.to articles, and record Medium syndication links.
+- **`hexaqual refactor`** (`alphabetize`, `rename`, `extract`, `move`, `run`): Rope-powered refactoring and AST-level symbol alphabetization.
+- **`hexaqual complexity`** / **`hexaqual version`**: Run `complexipy` cognitive complexity audits or print the installed `hexaqual` version.
 
 ---
 
 ## Output Formatting (`-f / --format`)
 
-All diagnostic commands support uniform `-f / --format` flags:
+Supported format values depend on the command group (see `USAGE.md` for exact per-command options):
 
-- `table` (Default in interactive terminals)
-- `json` (Machine-readable serialization, automatically selected in pipelines)
-- `markdown` (Formatted tables and checklists ready for GitHub PR comments)
-- `rich` (Styled Rich console rendering)
-- `plain` (Unformatted TSV/text)
+- **Governance, parity, deps, docs, openssf, refactor, test-audit commands**: Typically support `table` (default), `json`, and `markdown` (`docs` and `openssf` use `resolve_format`, switching `auto` from `table` on a TTY to `json` when piped).
+- **`gh` inspection commands** (`pr`, `checks`, `repo`, `security`, `code-scanning`): Default to `auto`, supporting `rich`, `json`, and `plain` (TSV). (`gh codeql` uses `table`, `json`, `markdown`.)
+- **`mutate inspect` & `release` commands**: Default to `rich`.
+- **Exceptions**: `hooks check`, `hooks install`, `hooks uninstall`, `hooks commit-msg`, and `mutate plan` use dedicated status output or GitHub Actions output without `-f / --format`.
