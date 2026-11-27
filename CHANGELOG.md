@@ -1,5 +1,12 @@
 # CHANGELOG
 
+## v0.13.1 (2026-11-26)
+
+### Bug Fixes
+* **Local Coverage Runs Without `pytest-hexaqueue` Interference (#73)**:
+  - Automatically pass `-p no:hexaqueue` in `hexaqual test run` and `SubprocessToolRunnerAdapter.run_pytest` when executing locally without `--cluster hexaqueue`, `--profile`, or explicit `--hexaqueue` / `--hq-*` flags whenever `pytest_hexaqueue` is installed (probed via `importlib.util.find_spec` without importing the plugin).
+  - Eliminates eager `pytest11` plugin pre-imports before `pytest-cov` starts coverage instrumentation while preserving remote cluster execution unchanged.
+
 ## v0.13.0 (2026-11-26)
 
 ### Highlights & Features
