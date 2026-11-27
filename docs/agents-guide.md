@@ -199,7 +199,7 @@ Add the `hexaqual-agents` hook to your repository's `.pre-commit-config.yaml` to
 ```yaml
 repos:
   - repo: https://github.com/TheTrueSCU/hexaqual
-    rev: v0.13.0
+    rev: v0.13.1
     hooks:
       - id: hexaqual-agents
       - id: hexaqual-sanity
