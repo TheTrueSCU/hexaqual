@@ -8,6 +8,7 @@ Notes/Architectural Intent:
 
 from __future__ import annotations
 
+import importlib.util
 import shutil
 import subprocess
 import sys
@@ -493,6 +494,8 @@ class SubprocessToolRunnerAdapter(ToolRunnerPort):
         else:
             test_path = target.path / "tests" if (target.path / "tests").is_dir() else target.path
             cmd = ["uv", "run", "pytest", str(test_path), "-q"]
+            if importlib.util.find_spec("pytest_hexaqueue") is not None:
+                cmd.extend(["-p", "no:hexaqueue"])
             code, out, err, dur = _execute_subprocess(cmd, cwd=repo_root)
 
         if code != 0:
