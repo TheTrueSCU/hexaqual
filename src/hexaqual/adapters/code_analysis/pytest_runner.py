@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+import importlib.util
 import os
 import subprocess
 import sys
@@ -48,6 +49,11 @@ def _setup_example_target(example_name: str, sub_dir: str, root: Path) -> str:
 def _is_pytest_benchmark_installed() -> bool:
     """Check if pytest-benchmark plugin is installed in current Python environment."""
     return optional_dependency("pytest_benchmark") is not None
+
+
+def _is_pytest_hexaqueue_installed() -> bool:
+    """Check if pytest-hexaqueue plugin is installed without importing it."""
+    return importlib.util.find_spec("pytest_hexaqueue") is not None
 
 
 def _pkg_test_path(pkg_dir: Path, sub_dir: str) -> str | None:
@@ -189,6 +195,28 @@ def _build_benchmark_args(args: argparse.Namespace, unknown: list[str]) -> list[
     return []
 
 
+def _build_hexaqueue_plugin_args(args: argparse.Namespace, unknown: list[str]) -> list[str]:
+    """Disable unused pytest-hexaqueue plugin auto-loading during local coverage runs.
+
+    Notes/Architectural Intent:
+        Prevents pytest11 entry-point eager imports inside ``pytest-hexaqueue`` from loading
+        workspace packages before ``pytest-cov`` begins instrumentation when running locally.
+    """
+    if getattr(args, "cluster", "local").lower() == "hexaqueue":
+        return []
+    if getattr(args, "profile", None):
+        return []
+    has_hq_flag = any(
+        arg == "--hexaqueue" or arg.startswith("--hq-") or arg in {"hexaqueue", "no:hexaqueue"}
+        for arg in unknown
+    )
+    if has_hq_flag:
+        return []
+    if _is_pytest_hexaqueue_installed():
+        return ["-p", "no:hexaqueue"]
+    return []
+
+
 def run_main(argv: list[str] | None = None) -> int:
     """CLI entrypoint for pytest-run."""
     parser = argparse.ArgumentParser(description="Run pytest test suite.")
@@ -305,6 +333,7 @@ def run_main(argv: list[str] | None = None) -> int:
     )
 
     bench_args = _build_benchmark_args(args=args, unknown=unknown or [])
+    plugin_args = _build_hexaqueue_plugin_args(args=args, unknown=unknown or [])
 
     if not test_paths and (
         args.unit or args.properties or args.benchmark or args.affected or args.packages
@@ -325,7 +354,7 @@ def run_main(argv: list[str] | None = None) -> int:
     profile_args: list[str] = []
     if getattr(args, "profile", None):
         profile_args = ["--hq-profile", args.profile]
-    call_args = test_paths + cov_args + bench_args + profile_args + (unknown or [])
+    call_args = test_paths + cov_args + bench_args + plugin_args + profile_args + (unknown or [])
 
     if getattr(args, "cluster", "local").lower() == "hexaqueue":
         from hexaqual.adapters.runners.hexaqueue_cluster import HexaqueueClusterRunnerAdapter

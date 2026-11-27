@@ -161,8 +161,19 @@ def test_run_pytest_variations(tmp_path: Path):
         assert ex_res.status == CheckStatus.PASS
 
         mock_exec.return_value = (1, "1 failed", "Traceback", 0.5)
-        file_res = adapter.run_pytest(file_target, tmp_path)
-        assert file_res.status == CheckStatus.FAIL
+        with patch("importlib.util.find_spec", return_value=object()):
+            file_res = adapter.run_pytest(file_target, tmp_path)
+            assert file_res.status == CheckStatus.FAIL
+            cmd_with_plugin = mock_exec.call_args[0][0]
+            has_no_hq = "no:hexaqueue" in cmd_with_plugin
+            assert has_no_hq is True
+
+        with patch("importlib.util.find_spec", return_value=None):
+            file_res_no_plugin = adapter.run_pytest(file_target, tmp_path)
+            assert file_res_no_plugin.status == CheckStatus.FAIL
+            cmd_without_plugin = mock_exec.call_args[0][0]
+            lacks_no_hq = "no:hexaqueue" not in cmd_without_plugin
+            assert lacks_no_hq is True
 
 
 def test_run_diagrams_variations(tmp_path: Path):

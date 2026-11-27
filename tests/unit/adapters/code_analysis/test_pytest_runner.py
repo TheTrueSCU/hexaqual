@@ -4,6 +4,7 @@ from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 from hexaqual.adapters.code_analysis.pytest_runner import (
+    _is_pytest_hexaqueue_installed,
     run_main,
 )
 
@@ -231,3 +232,86 @@ def test_run_main_skips_cleanly_when_no_properties_tests_exist(tmp_path: Path) -
         code = run_main(["-p", "hexastack_core", "-P"])
         is_zero = code == 0
         assert is_zero is True
+
+
+def test_is_pytest_hexaqueue_installed_uses_find_spec() -> None:
+    """Verify _is_pytest_hexaqueue_installed checks module spec without importing."""
+    with patch("importlib.util.find_spec", return_value=object()) as mock_spec:
+        installed = _is_pytest_hexaqueue_installed()
+        assert installed is True
+        mock_spec.assert_called_once_with("pytest_hexaqueue")
+
+    with patch("importlib.util.find_spec", return_value=None):
+        not_installed = _is_pytest_hexaqueue_installed()
+        assert not_installed is False
+
+
+def test_run_main_disables_hexaqueue_plugin_on_local_run(tmp_path: Path) -> None:
+    """Verify run_main disables pytest-hexaqueue during local runs when installed."""
+    pkg_dir = tmp_path / "packages" / "hexastack_core"
+    (pkg_dir / "src" / "hexastack_core").mkdir(parents=True)
+    (pkg_dir / "tests" / "unit").mkdir(parents=True)
+
+    with (
+        patch("hexaqual.adapters.code_analysis.pytest_runner.get_repo_root", return_value=tmp_path),
+        patch("subprocess.run", return_value=MagicMock(returncode=0)) as mock_subproc,
+        patch(
+            "hexaqual.adapters.code_analysis.pytest_runner._is_pytest_hexaqueue_installed",
+            return_value=True,
+        ),
+    ):
+        code = run_main(["-p", "core", "-U"])
+        is_zero = code == 0
+        assert is_zero is True
+        cmd_args = mock_subproc.call_args[0][0]
+        has_flag = "-p" in cmd_args
+        has_disable = "no:hexaqueue" in cmd_args
+        assert has_flag is True
+        assert has_disable is True
+
+
+def test_run_main_omits_no_hexaqueue_when_plugin_not_installed(tmp_path: Path) -> None:
+    """Verify run_main does not pass -p no:hexaqueue when plugin is absent."""
+    pkg_dir = tmp_path / "packages" / "hexastack_core"
+    (pkg_dir / "src" / "hexastack_core").mkdir(parents=True)
+    (pkg_dir / "tests" / "unit").mkdir(parents=True)
+
+    with (
+        patch("hexaqual.adapters.code_analysis.pytest_runner.get_repo_root", return_value=tmp_path),
+        patch("subprocess.run", return_value=MagicMock(returncode=0)) as mock_subproc,
+        patch(
+            "hexaqual.adapters.code_analysis.pytest_runner._is_pytest_hexaqueue_installed",
+            return_value=False,
+        ),
+    ):
+        code = run_main(["-p", "core", "-U"])
+        is_zero = code == 0
+        assert is_zero is True
+        cmd_args = mock_subproc.call_args[0][0]
+        absent = "no:hexaqueue" not in cmd_args
+        assert absent is True
+
+
+def test_run_main_keeps_hexaqueue_plugin_with_profile_or_flags(tmp_path: Path) -> None:
+    """Verify run_main preserves pytest-hexaqueue when --profile or hq flags are given."""
+    pkg_dir = tmp_path / "packages" / "hexastack_core"
+    (pkg_dir / "src" / "hexastack_core").mkdir(parents=True)
+    (pkg_dir / "tests" / "unit").mkdir(parents=True)
+
+    with (
+        patch("hexaqual.adapters.code_analysis.pytest_runner.get_repo_root", return_value=tmp_path),
+        patch("subprocess.run", return_value=MagicMock(returncode=0)) as mock_subproc,
+        patch(
+            "hexaqual.adapters.code_analysis.pytest_runner._is_pytest_hexaqueue_installed",
+            return_value=True,
+        ),
+    ):
+        code_profile = run_main(["-p", "core", "--profile", "ci"])
+        assert code_profile == 0
+        args_profile = mock_subproc.call_args[0][0]
+        assert "no:hexaqueue" not in args_profile
+
+        code_flag = run_main(["-p", "core", "--hexaqueue"])
+        assert code_flag == 0
+        args_flag = mock_subproc.call_args[0][0]
+        assert "no:hexaqueue" not in args_flag
