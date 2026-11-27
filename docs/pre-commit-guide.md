@@ -32,7 +32,7 @@ repos:
 
   # 3. Hexaqual Unified Architecture & Quality Gate
   - repo: https://github.com/TheTrueSCU/hexaqual
-    rev: v0.12.1
+    rev: v0.13.0
     hooks:
       - id: hexaqual-sanity
         name: hexaqual sanity check
@@ -59,7 +59,7 @@ The all-in-one fast quality gate (`--skip-tests --skip-diagrams`). Executes Ruff
 
 ```yaml
 - repo: https://github.com/TheTrueSCU/hexaqual
-  rev: v0.12.1
+  rev: v0.13.0
   hooks:
     - id: hexaqual-sanity
 ```
@@ -69,7 +69,7 @@ Verifies that all internal subpackages maintain dedicated `test_hexagonal_bounda
 
 ```yaml
 - repo: https://github.com/TheTrueSCU/hexaqual
-  rev: v0.12.1
+  rev: v0.13.0
   hooks:
     - id: hexaqual-architecture
 ```
@@ -79,7 +79,7 @@ Guarantees 1:1 structural symmetry between source modules in `src/` and unit tes
 
 ```yaml
 - repo: https://github.com/TheTrueSCU/hexaqual
-  rev: v0.12.1
+  rev: v0.13.0
   hooks:
     - id: hexaqual-test-parity
 ```
@@ -89,7 +89,7 @@ Validates that all `__all__` export arrays are sorted alphabetically in casefold
 
 ```yaml
 - repo: https://github.com/TheTrueSCU/hexaqual
-  rev: v0.12.1
+  rev: v0.13.0
   hooks:
     - id: hexaqual-statements
 ```
@@ -99,7 +99,7 @@ Validates hexagonal package import boundaries via `import-linter` (`uv run hexaq
 
 ```yaml
 - repo: https://github.com/TheTrueSCU/hexaqual
-  rev: v0.12.1
+  rev: v0.13.0
   hooks:
     - id: hexaqual-linter
 ```
@@ -109,7 +109,7 @@ Audits subpackage optional dependencies to ensure they are properly forwarded to
 
 ```yaml
 - repo: https://github.com/TheTrueSCU/hexaqual
-  rev: v0.12.1
+  rev: v0.13.0
   hooks:
     - id: hexaqual-extras
 ```
@@ -119,7 +119,7 @@ Ensures that CLI `USAGE.md` documentation stays synchronized with actual Typer C
 
 ```yaml
 - repo: https://github.com/TheTrueSCU/hexaqual
-  rev: v0.12.1
+  rev: v0.13.0
   hooks:
     - id: hexaqual-usage-docs
 ```
@@ -129,7 +129,7 @@ Validates relative markdown links and heading anchors across documentation trees
 
 ```yaml
 - repo: https://github.com/TheTrueSCU/hexaqual
-  rev: v0.12.1
+  rev: v0.13.0
   hooks:
     - id: hexaqual-docs-links
 ```
@@ -139,7 +139,7 @@ Verifies architecture dependency SVG diagrams generated via `pydeps` are fresh a
 
 ```yaml
 - repo: https://github.com/TheTrueSCU/hexaqual
-  rev: v0.12.1
+  rev: v0.13.0
   hooks:
     - id: hexaqual-diagrams
 ```
@@ -149,7 +149,7 @@ Enforces that universal `.agents/` guardrails (rules, workflows, skills) stay sy
 
 ```yaml
 - repo: https://github.com/TheTrueSCU/hexaqual
-  rev: v0.12.1
+  rev: v0.13.0
   hooks:
     - id: hexaqual-agents
 ```
@@ -159,7 +159,7 @@ Automatically re-synchronizes shared `.agents/` rules, workflows, and skills aft
 
 ```yaml
 - repo: https://github.com/TheTrueSCU/hexaqual
-  rev: v0.12.1
+  rev: v0.13.0
   hooks:
     - id: hexaqual-agents-sync
       stages: [post-merge, post-checkout]
@@ -170,7 +170,7 @@ Validates Conventional Commits formatting and OpenSSF DCO `Signed-off-by:` trail
 
 ```yaml
 - repo: https://github.com/TheTrueSCU/hexaqual
-  rev: v0.12.1
+  rev: v0.13.0
   hooks:
     - id: hexaqual-commit-msg
       stages: [commit-msg]
@@ -181,7 +181,7 @@ Runs full workspace static sanity (`uv run hexaqual sanity -a --skip-tests --ski
 
 ```yaml
 - repo: https://github.com/TheTrueSCU/hexaqual
-  rev: v0.12.1
+  rev: v0.13.0
   hooks:
     - id: hexaqual-pre-push
       stages: [pre-push]
@@ -192,7 +192,7 @@ Executes affected unit tests across workspace packages in parallel before pushin
 
 ```yaml
 - repo: https://github.com/TheTrueSCU/hexaqual
-  rev: v0.12.1
+  rev: v0.13.0
   hooks:
     - id: hexaqual-pre-push-tests
       stages: [pre-push]
@@ -203,7 +203,7 @@ Verifies OpenSSF Best Practices badge compliance against the configured required
 
 ```yaml
 - repo: https://github.com/TheTrueSCU/hexaqual
-  rev: v0.12.1
+  rev: v0.13.0
   hooks:
     - id: hexaqual-openssf-check
 ```
@@ -213,7 +213,7 @@ Auto-detecting Infrastructure-as-Code formatting, linting, and misconfiguration 
 
 ```yaml
 - repo: https://github.com/TheTrueSCU/hexaqual
-  rev: v0.12.1
+  rev: v0.13.0
   hooks:
     - id: hexaqual-iac
 ```
